@@ -2,9 +2,21 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 
 export default function VariantSelectorModal({ open, group, variants, onConfirm, onClose }) {
   const [selectedVariant, setSelectedVariant] = useState(null);
+
+  const { data: settings } = useQuery({
+    queryKey: ['app-settings'],
+    queryFn: async () => {
+      const list = await base44.entities.AppSettings.list();
+      return list[0] || { low_stock_threshold: 5 };
+    },
+  });
+
+  const threshold = settings?.low_stock_threshold || 5;
 
   if (!group) return null;
 
@@ -36,28 +48,41 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
           <div className="space-y-4">
             <p className="text-sm text-gray-600">בחר מידה, גזרה וצווארון:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {availableVariants.map(variant => (
-                <button
-                  key={variant.id}
-                  onClick={() => setSelectedVariant(variant)}
-                  className={`p-4 rounded-xl border-2 text-right transition-all ${
-                    selectedVariant?.id === variant.id
-                      ? 'border-amber-500 bg-amber-50'
-                      : 'border-gray-200 bg-white hover:border-amber-300'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-lg">מידה {variant.size}</p>
-                      <p className="text-sm text-gray-600">{variant.cut} | {variant.collar}</p>
-                      <p className="text-xs text-gray-400 mt-1">מלאי: {variant.stock}</p>
-                    </div>
-                    {!group.has_uniform_price && (
-                      <span className="text-amber-600 font-bold">₪{variant.sell_price}</span>
+              {availableVariants.map(variant => {
+                const stock = variant.stock || 0;
+                const isLowStock = stock < threshold;
+                return (
+                  <button
+                    key={variant.id}
+                    onClick={() => setSelectedVariant(variant)}
+                    className={`relative p-4 rounded-xl border-2 text-right transition-all ${
+                      selectedVariant?.id === variant.id
+                        ? 'border-amber-500 bg-amber-50'
+                        : isLowStock
+                        ? 'border-orange-200 bg-orange-50 hover:border-orange-300'
+                        : 'border-gray-200 bg-white hover:border-amber-300'
+                    }`}
+                  >
+                    {isLowStock && (
+                      <div className="absolute top-2 left-2">
+                        <AlertTriangle className="w-4 h-4 text-orange-500" />
+                      </div>
                     )}
-                  </div>
-                </button>
-              ))}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-lg">מידה {variant.size}</p>
+                        <p className="text-sm text-gray-600">{variant.cut} | {variant.collar}</p>
+                        <p className={`text-xs mt-1 font-semibold ${isLowStock ? 'text-orange-600' : 'text-gray-400'}`}>
+                          מלאי: {stock}
+                        </p>
+                      </div>
+                      {!group.has_uniform_price && (
+                        <span className="text-amber-600 font-bold">₪{variant.sell_price}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex gap-3 pt-4">
