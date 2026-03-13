@@ -10,6 +10,7 @@ import Cart from '@/components/pos/Cart';
 import VariantSelectorModal from '@/components/pos/VariantSelectorModal';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import SmartSearch from '@/components/pos/SmartSearch';
+import ReceiptModal from '@/components/pos/ReceiptModal';
 
 export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -17,6 +18,8 @@ export default function POS() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastSale, setLastSale] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -44,7 +47,7 @@ export default function POS() {
       const totalCost = cartItems.reduce((s, i) => s + (i.cost_price || 0) * i.quantity, 0);
       const total = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
-      await base44.entities.Sale.create({
+      const sale = await base44.entities.Sale.create({
         items: cartItems,
         total,
         total_cost: totalCost,
@@ -61,12 +64,16 @@ export default function POS() {
           }
         }
       }
+
+      return sale;
     },
-    onSuccess: () => {
+    onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      setLastSale(sale);
       setCartItems([]);
       setShowCheckout(false);
       setShowCart(false);
+      setShowReceipt(true);
       toast({ title: '✅ המכירה הושלמה בהצלחה!' });
     },
   });
@@ -220,6 +227,15 @@ export default function POS() {
         onConfirm={(method) => saleMutation.mutate(method)}
         onClose={() => setShowCheckout(false)}
         isProcessing={saleMutation.isPending}
+      />
+
+      <ReceiptModal
+        open={showReceipt}
+        sale={lastSale}
+        onClose={() => {
+          setShowReceipt(false);
+          setLastSale(null);
+        }}
       />
     </div>
   );
