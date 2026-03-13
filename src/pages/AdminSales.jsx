@@ -569,6 +569,7 @@ export default function AdminSales() {
           )}
         </CardContent>
       </Card>
+        </>
       )}
     </div>
   );
