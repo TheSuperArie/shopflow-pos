@@ -4,11 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import CategoryGrid from '../components/pos/CategoryGrid';
-import ProductGrid from '../components/pos/ProductGrid';
-import Cart from '../components/pos/Cart';
-import VariantSelectorModal from '../components/pos/VariantSelectorModal';
-import CheckoutModal from '../components/pos/CheckoutModal';
+import CategoryGrid from '@/components/pos/CategoryGrid';
+import ProductGrid from '@/components/pos/ProductGrid';
+import Cart from '@/components/pos/Cart';
+import VariantSelectorModal from '@/components/pos/VariantSelectorModal';
+import CheckoutModal from '@/components/pos/CheckoutModal';
 
 export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);
