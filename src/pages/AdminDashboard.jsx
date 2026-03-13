@@ -21,9 +21,14 @@ export default function AdminDashboard() {
     queryFn: () => base44.entities.Expense.list('-date'),
   });
 
-  const { data: products = [] } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => base44.entities.Product.list(),
+  const { data: groups = [] } = useQuery({
+    queryKey: ['product-groups'],
+    queryFn: () => base44.entities.ProductGroup.list(),
+  });
+
+  const { data: variants = [] } = useQuery({
+    queryKey: ['product-variants'],
+    queryFn: () => base44.entities.ProductVariant.list(),
   });
 
   const filteredSales = sales.filter(s => {
@@ -41,7 +46,14 @@ export default function AdminDashboard() {
   const netProfit = totalSales - totalCost - totalExpenses;
   const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (sale.total || 0), 0);
   const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (sale.total || 0), 0);
-  const lowStockProducts = products.filter(p => (p.stock || 0) <= 3);
+  const lowStockVariants = variants.filter(v => (v.stock || 0) <= 3).map(v => {
+    const group = groups.find(g => g.id === v.group_id);
+    return {
+      id: v.id,
+      name: group ? `${group.name} - ${v.size} ${v.cut} ${v.collar}` : `מידה ${v.size}`,
+      stock: v.stock || 0
+    };
+  });
 
   const isLoading = loadingSales || loadingExpenses;
 
@@ -103,14 +115,14 @@ export default function AdminDashboard() {
                 <CardTitle className="text-base font-semibold text-gray-600">מלאי נמוך</CardTitle>
               </CardHeader>
               <CardContent>
-                {lowStockProducts.length === 0 ? (
+                {lowStockVariants.length === 0 ? (
                   <p className="text-gray-400 text-center py-4">כל המוצרים במלאי תקין</p>
                 ) : (
                   <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {lowStockProducts.map(p => (
-                      <div key={p.id} className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
-                        <span className="text-sm font-medium">{p.name}</span>
-                        <span className="text-sm font-bold text-red-600">מלאי: {p.stock || 0}</span>
+                    {lowStockVariants.map(v => (
+                      <div key={v.id} className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
+                        <span className="text-sm font-medium">{v.name}</span>
+                        <span className="text-sm font-bold text-red-600">מלאי: {v.stock}</span>
                       </div>
                     ))}
                   </div>
