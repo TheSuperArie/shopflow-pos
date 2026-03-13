@@ -7,13 +7,13 @@ import { useToast } from '@/components/ui/use-toast';
 import CategoryGrid from '../components/pos/CategoryGrid';
 import ProductGrid from '../components/pos/ProductGrid';
 import Cart from '../components/pos/Cart';
-import ShirtOptionsModal from '../components/pos/ShirtOptionsModal';
+import VariantSelectorModal from '../components/pos/VariantSelectorModal';
 import CheckoutModal from '../components/pos/CheckoutModal';
 
 export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [cartItems, setCartItems] = useState([]);
-  const [shirtProduct, setShirtProduct] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const { toast } = useToast();
@@ -24,13 +24,18 @@ export default function POS() {
     queryFn: () => base44.entities.Category.list('sort_order'),
   });
 
-  const { data: allProducts = [] } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => base44.entities.Product.list(),
+  const { data: allGroups = [] } = useQuery({
+    queryKey: ['product-groups'],
+    queryFn: () => base44.entities.ProductGroup.list(),
   });
 
-  const products = selectedCategory
-    ? allProducts.filter(p => p.category_id === selectedCategory.id)
+  const { data: allVariants = [] } = useQuery({
+    queryKey: ['product-variants'],
+    queryFn: () => base44.entities.ProductVariant.list(),
+  });
+
+  const groups = selectedCategory
+    ? allGroups.filter(g => g.category_id === selectedCategory.id)
     : [];
 
   const saleMutation = useMutation({
@@ -46,16 +51,18 @@ export default function POS() {
       });
 
       for (const item of cartItems) {
-        const product = allProducts.find(p => p.id === item.product_id);
-        if (product) {
-          await base44.entities.Product.update(product.id, {
-            stock: Math.max(0, (product.stock || 0) - item.quantity),
-          });
+        if (item.variant_id) {
+          const variant = allVariants.find(v => v.id === item.variant_id);
+          if (variant) {
+            await base44.entities.ProductVariant.update(variant.id, {
+              stock: Math.max(0, (variant.stock || 0) - item.quantity),
+            });
+          }
         }
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       setCartItems([]);
       setShowCheckout(false);
       setShowCart(false);
@@ -63,29 +70,25 @@ export default function POS() {
     },
   });
 
-  const handleProductSelect = (product) => {
-    const category = categories.find(c => c.id === product.category_id);
-    if (category?.is_shirts || product.is_shirt) {
-      setShirtProduct(product);
-    } else {
-      addToCart(product, {});
-    }
+  const handleGroupSelect = (group) => {
+    setSelectedGroup(group);
   };
 
-  const addToCart = (product, shirtOptions) => {
+  const handleVariantConfirm = (variant, group) => {
+    const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
+    const costPrice = group.has_uniform_price ? group.uniform_cost_price : variant.cost_price;
+    
     setCartItems(prev => [...prev, {
-      product_id: product.id,
-      product_name: product.name,
+      variant_id: variant.id,
+      product_name: `${group.name} - מידה ${variant.size}, ${variant.cut}, ${variant.collar}`,
       quantity: 1,
-      sell_price: product.sell_price,
-      cost_price: product.cost_price || 0,
-      ...shirtOptions,
+      sell_price: sellPrice,
+      cost_price: costPrice || 0,
+      shirt_size: variant.size,
+      shirt_collar: variant.collar,
+      shirt_cut: variant.cut,
     }]);
-  };
-
-  const handleShirtConfirm = (options) => {
-    addToCart(shirtProduct, options);
-    setShirtProduct(null);
+    setSelectedGroup(null);
   };
 
   const updateCartQty = (idx, newQty) => {
@@ -150,7 +153,11 @@ export default function POS() {
               />
               <div className="mt-4">
                 <h2 className="text-lg font-bold text-gray-700 mb-3">{selectedCategory.name}</h2>
-                <ProductGrid products={products} onSelect={handleProductSelect} />
+                <ProductGrid 
+                  groups={groups} 
+                  variants={allVariants}
+                  onSelect={handleGroupSelect} 
+                />
               </div>
             </>
           )}
@@ -190,11 +197,12 @@ export default function POS() {
         )}
       </div>
 
-      <ShirtOptionsModal
-        open={!!shirtProduct}
-        product={shirtProduct}
-        onConfirm={handleShirtConfirm}
-        onClose={() => setShirtProduct(null)}
+      <VariantSelectorModal
+        open={!!selectedGroup}
+        group={selectedGroup}
+        variants={allVariants.filter(v => v.group_id === selectedGroup?.id)}
+        onConfirm={handleVariantConfirm}
+        onClose={() => setSelectedGroup(null)}
       />
 
       <CheckoutModal
