@@ -11,6 +11,7 @@ import { Loader2, Lock, Save } from 'lucide-react';
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
   const [storeName, setStoreName] = useState('');
+  const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -23,6 +24,7 @@ export default function AdminSettings() {
     if (settings[0]) {
       setPassword(settings[0].admin_password || '12345678');
       setStoreName(settings[0].store_name || 'החנות שלי');
+      setLowStockThreshold(settings[0].low_stock_threshold || 5);
     }
   }, [settings]);
 
@@ -68,8 +70,22 @@ export default function AdminSettings() {
             <Input type="text" value={password} onChange={e => setPassword(e.target.value)} />
             <p className="text-xs text-gray-400 mt-1">סיסמה זו נדרשת לכניסה לפאנל הניהול</p>
           </div>
+          <div>
+            <Label>סף מלאי נמוך (יחידות)</Label>
+            <Input 
+              type="number" 
+              value={lowStockThreshold} 
+              onChange={e => setLowStockThreshold(Number(e.target.value))} 
+              min="0"
+            />
+            <p className="text-xs text-gray-400 mt-1">מוצרים עם מלאי מתחת לסף זה יוצגו כמלאי חסר ויסומנו באדום</p>
+          </div>
           <Button
-            onClick={() => mutation.mutate({ admin_password: password, store_name: storeName })}
+            onClick={() => mutation.mutate({ 
+              admin_password: password, 
+              store_name: storeName,
+              low_stock_threshold: lowStockThreshold 
+            })}
             className="bg-amber-500 hover:bg-amber-600 gap-2"
             disabled={!password}
           >
