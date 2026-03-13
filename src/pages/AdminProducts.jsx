@@ -176,8 +176,9 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
-        title: 'התיקייה נמחקה',
-        duration: 3000
+        title: '🗑️ התיקייה נמחקה',
+        duration: 3000,
+        className: 'bg-red-500 text-white border-red-600'
       });
     },
   });
@@ -211,8 +212,9 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({ 
-        title: category ? 'הקטגוריה עודכנה' : 'הקטגוריה נוצרה',
-        duration: 3000
+        title: category ? '✅ הקטגוריה עודכנה' : '✅ הקטגוריה נוצרה',
+        duration: 3000,
+        className: 'bg-blue-500 text-white border-blue-600'
       });
       onClose();
     },
@@ -223,8 +225,9 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({ 
-        title: 'הקטגוריה נמחקה',
-        duration: 3000
+        title: '🗑️ הקטגוריה נמחקה',
+        duration: 3000,
+        className: 'bg-red-500 text-white border-red-600'
       });
       onClose();
     },
@@ -290,8 +293,9 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
       toast({ 
-        title: group ? 'התיקייה עודכנה' : 'התיקייה נוצרה',
-        duration: 3000 
+        title: group ? '✅ התיקייה עודכנה' : '✅ התיקייה נוצרה',
+        duration: 3000,
+        className: 'bg-green-500 text-white border-green-600'
       });
       onClose();
     },
@@ -431,8 +435,9 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
-        title: 'הוריאציה נמחקה',
-        duration: 3000
+        title: '🗑️ הוריאציה נמחקה',
+        duration: 3000,
+        className: 'bg-red-500 text-white border-red-600'
       });
     },
   });
@@ -445,17 +450,71 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
 }
 
 function GenerateAllVariantsButton({ group, queryClient, toast }) {
-  const [generating, setGenerating] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
 
-  const generateAll = async () => {
-    if (!window.confirm('ליצור אוטומטית את כל הוריאציות האפשריות (מידות × גזרות × צווארונים)?')) return;
-    
-    setGenerating(true);
+  return (
+    <>
+      <Button onClick={() => setShowWizard(true)} variant="outline" className="gap-2">
+        <Plus className="w-4 h-4" />
+        צור וריאציות אוטומטית
+      </Button>
+      
+      {showWizard && (
+        <BulkVariantWizard
+          group={group}
+          onClose={() => setShowWizard(false)}
+          queryClient={queryClient}
+          toast={toast}
+        />
+      )}
+    </>
+  );
+}
+
+function BulkVariantWizard({ group, onClose, queryClient, toast }) {
+  const [step, setStep] = useState('sizes'); // 'sizes' | 'cuts' | 'collars' | 'confirm'
+  const [selectedSizes, setSelectedSizes] = useState([]);
+  const [selectedCuts, setSelectedCuts] = useState([]);
+  const [selectedCollars, setSelectedCollars] = useState([]);
+  const [creating, setCreating] = useState(false);
+
+  const toggleSize = (size) => {
+    setSelectedSizes(prev => 
+      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+    );
+  };
+
+  const toggleCut = (cut) => {
+    setSelectedCuts(prev => 
+      prev.includes(cut) ? prev.filter(c => c !== cut) : [...prev, cut]
+    );
+  };
+
+  const toggleCollar = (collar) => {
+    setSelectedCollars(prev => 
+      prev.includes(collar) ? prev.filter(c => c !== collar) : [...prev, collar]
+    );
+  };
+
+  const handleNext = () => {
+    if (step === 'sizes' && selectedSizes.length > 0) setStep('cuts');
+    else if (step === 'cuts' && selectedCuts.length > 0) setStep('collars');
+    else if (step === 'collars' && selectedCollars.length > 0) setStep('confirm');
+  };
+
+  const handleBack = () => {
+    if (step === 'cuts') setStep('sizes');
+    else if (step === 'collars') setStep('cuts');
+    else if (step === 'confirm') setStep('collars');
+  };
+
+  const handleCreate = async () => {
+    setCreating(true);
     const allVariants = [];
     
-    for (const size of SIZES) {
-      for (const cut of CUTS) {
-        for (const collar of COLLARS) {
+    for (const size of selectedSizes) {
+      for (const cut of selectedCuts) {
+        for (const collar of selectedCollars) {
           allVariants.push({
             group_id: group.id,
             size,
@@ -471,17 +530,166 @@ function GenerateAllVariantsButton({ group, queryClient, toast }) {
     await base44.entities.ProductVariant.bulkCreate(allVariants);
     queryClient.invalidateQueries({ queryKey: ['product-variants'] });
     toast({ 
-      title: `נוצרו ${allVariants.length} וריאציות`,
-      duration: 3000
+      title: `✅ נוצרו ${allVariants.length} וריאציות בהצלחה!`,
+      duration: 3000,
+      className: 'bg-green-500 text-white border-green-600'
     });
-    setGenerating(false);
+    setCreating(false);
+    onClose();
   };
 
+  const totalVariants = selectedSizes.length * selectedCuts.length * selectedCollars.length;
+
   return (
-    <Button onClick={generateAll} variant="outline" className="gap-2" disabled={generating}>
-      {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-      צור את כל הוריאציות אוטומטית
-    </Button>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent dir="rtl" className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>יצירת וריאציות אוטומטית - {group.name}</DialogTitle>
+        </DialogHeader>
+
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'sizes' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
+            1. מידות
+          </div>
+          <div className="w-8 h-0.5 bg-gray-300"></div>
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'cuts' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
+            2. גזרות
+          </div>
+          <div className="w-8 h-0.5 bg-gray-300"></div>
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'collars' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
+            3. צווארונים
+          </div>
+          <div className="w-8 h-0.5 bg-gray-300"></div>
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'confirm' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
+            4. אישור
+          </div>
+        </div>
+
+        {/* Sizes Selection */}
+        {step === 'sizes' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-center">בחר מידות</h3>
+            <p className="text-sm text-gray-500 text-center">נבחרו: {selectedSizes.length} מידות</p>
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+              {SIZES.map(size => (
+                <button
+                  key={size}
+                  onClick={() => toggleSize(size)}
+                  className={`p-4 text-xl font-bold rounded-xl border-2 transition-all ${
+                    selectedSizes.includes(size)
+                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                      : 'border-gray-200 hover:border-amber-300'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Cuts Selection */}
+        {step === 'cuts' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-center">בחר גזרות</h3>
+            <p className="text-sm text-gray-500 text-center">נבחרו: {selectedCuts.length} גזרות</p>
+            <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
+              {CUTS.map(cut => (
+                <button
+                  key={cut}
+                  onClick={() => toggleCut(cut)}
+                  className={`p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
+                    selectedCuts.includes(cut)
+                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                      : 'border-gray-200 hover:border-amber-300'
+                  }`}
+                >
+                  {cut}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Collars Selection */}
+        {step === 'collars' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-center">בחר צווארונים</h3>
+            <p className="text-sm text-gray-500 text-center">נבחרו: {selectedCollars.length} צווארונים</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {COLLARS.map(collar => (
+                <button
+                  key={collar}
+                  onClick={() => toggleCollar(collar)}
+                  className={`p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
+                    selectedCollars.includes(collar)
+                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                      : 'border-gray-200 hover:border-amber-300'
+                  }`}
+                >
+                  {collar}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation */}
+        {step === 'confirm' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-center">סיכום</h3>
+            <div className="bg-amber-50 p-6 rounded-xl space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">מידות:</span>
+                <span className="font-semibold">{selectedSizes.join(', ')}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">גזרות:</span>
+                <span className="font-semibold">{selectedCuts.join(', ')}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">צווארונים:</span>
+                <span className="font-semibold">{selectedCollars.join(', ')}</span>
+              </div>
+              <div className="pt-3 border-t border-amber-200">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">סה"כ וריאציות:</span>
+                  <span className="text-2xl font-bold text-amber-600">{totalVariants}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="flex justify-between">
+          <Button variant="outline" onClick={handleBack} disabled={step === 'sizes' || creating}>
+            חזור
+          </Button>
+          {step !== 'confirm' ? (
+            <Button 
+              onClick={handleNext}
+              className="bg-amber-500 hover:bg-amber-600"
+              disabled={
+                (step === 'sizes' && selectedSizes.length === 0) ||
+                (step === 'cuts' && selectedCuts.length === 0) ||
+                (step === 'collars' && selectedCollars.length === 0)
+              }
+            >
+              המשך
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleCreate}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={creating}
+            >
+              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : `צור ${totalVariants} וריאציות`}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
