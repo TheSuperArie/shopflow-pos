@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Loader2, TruckIcon } from 'lucide-react';
+import { Plus, Loader2, TruckIcon, AlertTriangle, Package } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function AdminStock() {
@@ -21,6 +22,31 @@ export default function AdminStock() {
     queryFn: () => base44.entities.StockUpdate.list('-arrival_date'),
   });
 
+  const { data: groups = [] } = useQuery({
+    queryKey: ['product-groups'],
+    queryFn: () => base44.entities.ProductGroup.list(),
+  });
+
+  const { data: variants = [] } = useQuery({
+    queryKey: ['product-variants'],
+    queryFn: () => base44.entities.ProductVariant.list(),
+  });
+
+  // Calculate low stock items
+  const lowStockItems = [];
+  groups.forEach(group => {
+    const groupVariants = variants.filter(v => v.group_id === group.id);
+    groupVariants.forEach(variant => {
+      if ((variant.stock || 0) < 5) {
+        lowStockItems.push({
+          groupName: group.name,
+          variant,
+          stock: variant.stock || 0,
+        });
+      }
+    });
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -29,6 +55,33 @@ export default function AdminStock() {
           <Plus className="w-4 h-4" /> סחורה חדשה
         </Button>
       </div>
+
+      {/* Low Stock Alert */}
+      {lowStockItems.length > 0 && (
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-700">
+              <AlertTriangle className="w-5 h-5" />
+              התראות מלאי נמוך ({lowStockItems.length} פריטים)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {lowStockItems.map((item, idx) => (
+                <div key={idx} className="p-3 bg-white rounded-lg border border-red-200">
+                  <p className="font-semibold text-sm">{item.groupName}</p>
+                  <p className="text-xs text-gray-600">
+                    {item.variant.size} | {item.variant.cut} | {item.variant.collar}
+                  </p>
+                  <Badge className="mt-2 bg-red-600">
+                    מלאי: {item.stock} יחידות
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
