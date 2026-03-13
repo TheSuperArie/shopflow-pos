@@ -448,6 +448,7 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
 }
 
 function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
+  const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0,
   });
@@ -462,8 +463,10 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
         sell_price: variant.sell_price || 0,
         cost_price: variant.cost_price || 0,
       });
+      setStep(4);
     } else {
       setForm({ size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0 });
+      setStep(1);
     }
   }, [variant]);
 
@@ -482,66 +485,117 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
     },
   });
 
+  const handleSizeSelect = (size) => {
+    setForm({ ...form, size });
+    setStep(2);
+  };
+
+  const handleCutSelect = (cut) => {
+    setForm({ ...form, cut });
+    setStep(3);
+  };
+
+  const handleCollarSelect = (collar) => {
+    setForm({ ...form, collar });
+    setStep(4);
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-sm">
+      <DialogContent dir="rtl" className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{variant.id ? 'עריכת וריאציה' : 'וריאציה חדשה'}</DialogTitle>
+          <DialogTitle>
+            {variant.id ? 'עריכת וריאציה' : 'וריאציה חדשה'}
+            {step > 1 && !variant.id && (
+              <button onClick={() => setStep(step - 1)} className="mr-3 text-sm text-gray-500 hover:text-gray-700">
+                ← חזור
+              </button>
+            )}
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label>מידה</Label>
-            <Select value={form.size} onValueChange={v => setForm({ ...form, size: v })}>
-              <SelectTrigger><SelectValue placeholder="בחר מידה" /></SelectTrigger>
-              <SelectContent>
-                {SIZES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>גזרה</Label>
-            <Select value={form.cut} onValueChange={v => setForm({ ...form, cut: v })}>
-              <SelectTrigger><SelectValue placeholder="בחר גזרה" /></SelectTrigger>
-              <SelectContent>
-                {CUTS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>צווארון</Label>
-            <Select value={form.collar} onValueChange={v => setForm({ ...form, collar: v })}>
-              <SelectTrigger><SelectValue placeholder="בחר צווארון" /></SelectTrigger>
-              <SelectContent>
-                {COLLARS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>מלאי</Label>
-            <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
-          </div>
-          {!group.has_uniform_price && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>מחיר עלות</Label>
-                <Input type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
-              </div>
-              <div>
-                <Label>מחיר מכירה</Label>
-                <Input type="number" value={form.sell_price} onChange={e => setForm({ ...form, sell_price: Number(e.target.value) })} />
-              </div>
+
+        {step === 1 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-center">בחר מידה</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {SIZES.map(size => (
+                <button
+                  key={size}
+                  onClick={() => handleSizeSelect(size)}
+                  className="p-6 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
+                >
+                  {size}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button
-            onClick={() => mutation.mutate(form)}
-            className="bg-amber-500 hover:bg-amber-600"
-            disabled={!form.size || !form.cut || !form.collar}
-          >
-            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
-          </Button>
-        </DialogFooter>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-center">בחר גזרה</h3>
+            <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
+              {CUTS.map(cut => (
+                <button
+                  key={cut}
+                  onClick={() => handleCutSelect(cut)}
+                  className="p-12 text-3xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
+                >
+                  {cut}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-center">בחר צווארון</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
+              {COLLARS.map(collar => (
+                <button
+                  key={collar}
+                  onClick={() => handleCollarSelect(collar)}
+                  className="p-12 text-3xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
+                >
+                  {collar}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="bg-amber-50 p-4 rounded-xl text-center">
+              <p className="text-lg font-semibold">מידה {form.size} | {form.cut} | {form.collar}</p>
+            </div>
+            <div>
+              <Label>מלאי</Label>
+              <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
+            </div>
+            {!group.has_uniform_price && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>מחיר עלות</Label>
+                  <Input type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <Label>מחיר מכירה</Label>
+                  <Input type="number" value={form.sell_price} onChange={e => setForm({ ...form, sell_price: Number(e.target.value) })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                onClick={() => mutation.mutate(form)}
+                className="bg-amber-500 hover:bg-amber-600 w-full"
+              >
+                {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
