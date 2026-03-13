@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Banknote, CreditCard, Clock, TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { Loader2, Banknote, CreditCard, Clock, TrendingUp, TrendingDown, DollarSign, Package, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 export default function AdminSales() {
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ['sales'],
@@ -76,6 +80,23 @@ export default function AdminSales() {
   })).sort((a, b) => b.revenue - a.revenue);
 
   const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+  const deleteSaleMutation = useMutation({
+    mutationFn: (saleId) => base44.entities.Sale.delete(saleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      toast({
+        title: 'המכירה נמחקה בהצלחה',
+        duration: 3000,
+      });
+    },
+  });
+
+  const handleDeleteSale = (saleId) => {
+    if (window.confirm('האם אתה בטוח שברצונך למחוק מכירה זו?')) {
+      deleteSaleMutation.mutate(saleId);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -292,12 +313,20 @@ export default function AdminSales() {
                           {sale.created_date ? format(new Date(sale.created_date), 'dd/MM/yyyy HH:mm') : ''}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <Badge variant="outline" className={sale.payment_method === 'מזומן' ? 'text-green-600 border-green-200 bg-green-50' : 'text-blue-600 border-blue-200 bg-blue-50'}>
                           {sale.payment_method === 'מזומן' ? <Banknote className="w-3 h-3 ml-1" /> : <CreditCard className="w-3 h-3 ml-1" />}
                           {sale.payment_method}
                         </Badge>
                         <span className="font-bold text-lg text-amber-600">₪{sale.total?.toFixed(0)}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteSale(sale.id)}
+                          className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                     <div className="space-y-1">
