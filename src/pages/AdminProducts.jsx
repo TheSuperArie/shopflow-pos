@@ -7,32 +7,42 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Pencil, Trash2, FolderPlus, Loader2, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronLeft } from 'lucide-react';
+
+const SIZES = ['12', '12.5', '13', '13.5', '14', '14.5', '15', '15.5', '16', '16.5', '17', '17.5', '18'];
+const CUTS = ['צרה', 'רחבה'];
+const COLLARS = ['אמריקאי', 'כפתורים', 'רגיל'];
 
 export default function AdminProducts() {
   const [showCatForm, setShowCatForm] = useState(false);
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [showGroupForm, setShowGroupForm] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
   const [selectedCat, setSelectedCat] = useState(null);
+  const [viewingGroup, setViewingGroup] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: categories = [], isLoading: loadingCats } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: () => base44.entities.Category.list('sort_order'),
   });
 
-  const { data: products = [], isLoading: loadingProducts } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => base44.entities.Product.list(),
+  const { data: groups = [], isLoading: loadingGroups } = useQuery({
+    queryKey: ['product-groups'],
+    queryFn: () => base44.entities.ProductGroup.list(),
   });
 
-  const filteredProducts = selectedCat
-    ? products.filter(p => p.category_id === selectedCat)
-    : products;
+  const { data: variants = [] } = useQuery({
+    queryKey: ['product-variants'],
+    queryFn: () => base44.entities.ProductVariant.list(),
+  });
+
+  const filteredGroups = selectedCat
+    ? groups.filter(g => g.category_id === selectedCat)
+    : groups;
 
   return (
     <div className="space-y-6">
@@ -42,8 +52,8 @@ export default function AdminProducts() {
           <Button onClick={() => { setEditingCategory(null); setShowCatForm(true); }} variant="outline" className="gap-2">
             <FolderPlus className="w-4 h-4" /> קטגוריה
           </Button>
-          <Button onClick={() => { setEditingProduct(null); setShowProductForm(true); }} className="gap-2 bg-amber-500 hover:bg-amber-600">
-            <Plus className="w-4 h-4" /> מוצר
+          <Button onClick={() => { setEditingGroup(null); setShowGroupForm(true); }} className="gap-2 bg-amber-500 hover:bg-amber-600">
+            <Plus className="w-4 h-4" /> תיקיית מוצר
           </Button>
         </div>
       </div>
@@ -56,7 +66,7 @@ export default function AdminProducts() {
             !selectedCat ? 'bg-amber-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300'
           }`}
         >
-          הכל ({products.length})
+          הכל ({groups.length})
         </button>
         {categories.map(cat => (
           <button
@@ -77,45 +87,57 @@ export default function AdminProducts() {
         ))}
       </div>
 
-      {/* Products grid */}
-      {loadingProducts ? (
+      {/* Product Groups grid */}
+      {loadingGroups ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProducts.map(product => (
-            <Card key={product.id}>
-              <CardContent className="p-4">
-                <div className="flex gap-3">
-                  {product.image_url ? (
-                    <img src={product.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center">
-                      <Package className="w-8 h-8 text-gray-300" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{product.name}</p>
-                    <p className="text-sm text-gray-500">
-                      עלות: ₪{product.cost_price || 0} | מכירה: ₪{product.sell_price}
-                    </p>
-                    <p className="text-sm text-gray-500">מלאי: {product.stock || 0}</p>
-                    {product.is_shirt && (
-                      <p className="text-xs text-amber-600 mt-0.5">חולצה — מידות/צווארון/גזרה</p>
+          {filteredGroups.map(group => {
+            const groupVariants = variants.filter(v => v.group_id === group.id);
+            const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
+            return (
+              <Card key={group.id}>
+                <CardContent className="p-4">
+                  <div className="flex gap-3">
+                    {group.image_url ? (
+                      <img src={group.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center">
+                        <Folder className="w-8 h-8 text-amber-400" />
+                      </div>
                     )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{group.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {group.has_uniform_price ? (
+                          <>עלות: ₪{group.uniform_cost_price || 0} | מכירה: ₪{group.uniform_sell_price}</>
+                        ) : (
+                          <>מחירים משתנים</>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-500">סה"כ מלאי: {totalStock}</p>
+                      <p className="text-xs text-amber-600 mt-0.5">{groupVariants.length} וריאציות</p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => setViewingGroup(group)}
+                        className="p-2 rounded-lg hover:bg-gray-100"
+                      >
+                        <ChevronLeft className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={() => { setEditingGroup(group); setShowGroupForm(true); }}
+                        className="p-2 rounded-lg hover:bg-gray-100"
+                      >
+                        <Pencil className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <DeleteGroupButton groupId={group.id} queryClient={queryClient} toast={toast} />
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <button
-                      onClick={() => { setEditingProduct(product); setShowProductForm(true); }}
-                      className="p-2 rounded-lg hover:bg-gray-100"
-                    >
-                      <Pencil className="w-4 h-4 text-gray-500" />
-                    </button>
-                    <DeleteProductButton productId={product.id} queryClient={queryClient} toast={toast} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -127,11 +149,20 @@ export default function AdminProducts() {
         toast={toast}
       />
 
-      <ProductFormModal
-        open={showProductForm}
-        product={editingProduct}
+      <ProductGroupFormModal
+        open={showGroupForm}
+        group={editingGroup}
         categories={categories}
-        onClose={() => setShowProductForm(false)}
+        onClose={() => setShowGroupForm(false)}
+        queryClient={queryClient}
+        toast={toast}
+      />
+
+      <VariantsViewModal
+        open={!!viewingGroup}
+        group={viewingGroup}
+        variants={variants.filter(v => v.group_id === viewingGroup?.id)}
+        onClose={() => setViewingGroup(null)}
         queryClient={queryClient}
         toast={toast}
       />
@@ -139,18 +170,24 @@ export default function AdminProducts() {
   );
 }
 
-function DeleteProductButton({ productId, queryClient, toast }) {
+function DeleteGroupButton({ groupId, queryClient, toast }) {
   const deleteMut = useMutation({
-    mutationFn: () => base44.entities.Product.delete(productId),
+    mutationFn: async () => {
+      await base44.entities.ProductGroup.delete(groupId);
+      const variants = await base44.entities.ProductVariant.list();
+      const toDelete = variants.filter(v => v.group_id === groupId);
+      await Promise.all(toDelete.map(v => base44.entities.ProductVariant.delete(v.id)));
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast({ title: 'המוצר נמחק' });
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      toast({ title: 'התיקייה נמחקה' });
     },
   });
 
   return (
     <button
-      onClick={() => { if (window.confirm('למחוק מוצר?')) deleteMut.mutate(); }}
+      onClick={() => { if (window.confirm('למחוק תיקייה וכל הוריאציות?')) deleteMut.mutate(); }}
       className="p-2 rounded-lg hover:bg-red-50"
     >
       <Trash2 className="w-4 h-4 text-red-400" />
@@ -160,15 +197,12 @@ function DeleteProductButton({ productId, queryClient, toast }) {
 
 function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
   const [name, setName] = useState('');
-  const [isShirts, setIsShirts] = useState(false);
 
   React.useEffect(() => {
     if (category) {
       setName(category.name);
-      setIsShirts(category.is_shirts || false);
     } else {
       setName('');
-      setIsShirts(false);
     }
   }, [category, open]);
 
@@ -204,10 +238,6 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
             <Label>שם הקטגוריה</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="למשל: חולצות" />
           </div>
-          <div className="flex items-center gap-3">
-            <Switch checked={isShirts} onCheckedChange={setIsShirts} />
-            <Label>קטגוריית חולצות (מידות/צווארון/גזרה)</Label>
-          </div>
         </div>
         <DialogFooter className="flex gap-2">
           {category && (
@@ -216,7 +246,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
             </Button>
           )}
           <Button
-            onClick={() => mutation.mutate({ name, is_shirts: isShirts })}
+            onClick={() => mutation.mutate({ name })}
             className="bg-amber-500 hover:bg-amber-600"
             disabled={!name}
           >
@@ -228,36 +258,35 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
   );
 }
 
-function ProductFormModal({ open, product, categories, onClose, queryClient, toast }) {
+function ProductGroupFormModal({ open, group, categories, onClose, queryClient, toast }) {
   const [form, setForm] = useState({
-    name: '', category_id: '', cost_price: 0, sell_price: 0, stock: 0, is_shirt: false, image_url: '',
+    name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '',
   });
   const [uploading, setUploading] = useState(false);
 
   React.useEffect(() => {
-    if (product) {
+    if (group) {
       setForm({
-        name: product.name || '',
-        category_id: product.category_id || '',
-        cost_price: product.cost_price || 0,
-        sell_price: product.sell_price || 0,
-        stock: product.stock || 0,
-        is_shirt: product.is_shirt || false,
-        image_url: product.image_url || '',
+        name: group.name || '',
+        category_id: group.category_id || '',
+        has_uniform_price: group.has_uniform_price !== false,
+        uniform_sell_price: group.uniform_sell_price || 0,
+        uniform_cost_price: group.uniform_cost_price || 0,
+        image_url: group.image_url || '',
       });
     } else {
-      setForm({ name: '', category_id: '', cost_price: 0, sell_price: 0, stock: 0, is_shirt: false, image_url: '' });
+      setForm({ name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '' });
     }
-  }, [product, open]);
+  }, [group, open]);
 
   const mutation = useMutation({
     mutationFn: (data) =>
-      product
-        ? base44.entities.Product.update(product.id, data)
-        : base44.entities.Product.create(data),
+      group
+        ? base44.entities.ProductGroup.update(group.id, data)
+        : base44.entities.ProductGroup.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast({ title: product ? 'המוצר עודכן' : 'המוצר נוצר' });
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      toast({ title: group ? 'התיקייה עודכנה' : 'התיקייה נוצרה' });
       onClose();
     },
   });
@@ -271,18 +300,16 @@ function ProductFormModal({ open, product, categories, onClose, queryClient, toa
     setUploading(false);
   };
 
-  const selectedCategory = categories.find(c => c.id === form.category_id);
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent dir="rtl" className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{product ? 'עריכת מוצר' : 'מוצר חדש'}</DialogTitle>
+          <DialogTitle>{group ? 'עריכת תיקייה' : 'תיקיית מוצר חדשה'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>שם המוצר</Label>
-            <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+            <Label>שם התיקייה</Label>
+            <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="למשל: חולצה לבנה קלאסית" />
           </div>
           <div>
             <Label>קטגוריה</Label>
@@ -293,30 +320,26 @@ function ProductFormModal({ open, product, categories, onClose, queryClient, toa
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>מחיר עלות (ספק)</Label>
-              <Input type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
-            </div>
-            <div>
-              <Label>מחיר מכירה</Label>
-              <Input type="number" value={form.sell_price} onChange={e => setForm({ ...form, sell_price: Number(e.target.value) })} />
-            </div>
-          </div>
-          <div>
-            <Label>מלאי</Label>
-            <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
-          </div>
           <div>
             <Label>תמונה</Label>
             <Input type="file" accept="image/*" onChange={handleImageUpload} />
             {uploading && <p className="text-sm text-amber-500 mt-1">מעלה...</p>}
             {form.image_url && <img src={form.image_url} alt="" className="w-20 h-20 rounded-xl mt-2 object-cover" />}
           </div>
-          {selectedCategory?.is_shirts && (
-            <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
-              <Switch checked={form.is_shirt} onCheckedChange={v => setForm({ ...form, is_shirt: v })} />
-              <Label>מוצר חולצה (שדות מידה/צווארון/גזרה)</Label>
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <Switch checked={form.has_uniform_price} onCheckedChange={v => setForm({ ...form, has_uniform_price: v })} />
+            <Label>מחיר אחיד לכל הוריאציות</Label>
+          </div>
+          {form.has_uniform_price && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>מחיר עלות</Label>
+                <Input type="number" value={form.uniform_cost_price} onChange={e => setForm({ ...form, uniform_cost_price: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label>מחיר מכירה</Label>
+                <Input type="number" value={form.uniform_sell_price} onChange={e => setForm({ ...form, uniform_sell_price: Number(e.target.value) })} />
+              </div>
             </div>
           )}
         </div>
@@ -325,6 +348,178 @@ function ProductFormModal({ open, product, categories, onClose, queryClient, toa
             onClick={() => mutation.mutate(form)}
             className="bg-amber-500 hover:bg-amber-600"
             disabled={!form.name || !form.category_id}
+          >
+            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function VariantsViewModal({ open, group, variants, onClose, queryClient, toast }) {
+  const [editingVariant, setEditingVariant] = useState(null);
+
+  if (!group) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{group.name} — וריאציות</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Button onClick={() => setEditingVariant({ group_id: group.id })} className="gap-2 bg-amber-500 hover:bg-amber-600">
+            <Plus className="w-4 h-4" /> הוסף וריאציה
+          </Button>
+          
+          {variants.length === 0 ? (
+            <p className="text-center text-gray-400 py-8">אין וריאציות. לחץ על "הוסף וריאציה" כדי להתחיל.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {variants.map(v => (
+                <Card key={v.id}>
+                  <CardContent className="p-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold">מידה {v.size} | {v.cut} | {v.collar}</p>
+                        <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
+                        {!group.has_uniform_price && (
+                          <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => setEditingVariant(v)} className="p-1 hover:bg-gray-100 rounded">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+
+      {editingVariant && (
+        <VariantFormModal
+          variant={editingVariant}
+          group={group}
+          onClose={() => setEditingVariant(null)}
+          queryClient={queryClient}
+          toast={toast}
+        />
+      )}
+    </Dialog>
+  );
+}
+
+function DeleteVariantButton({ variantId, queryClient, toast }) {
+  const deleteMut = useMutation({
+    mutationFn: () => base44.entities.ProductVariant.delete(variantId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      toast({ title: 'הוריאציה נמחקה' });
+    },
+  });
+
+  return (
+    <button onClick={() => { if (window.confirm('למחוק?')) deleteMut.mutate(); }} className="p-1 hover:bg-red-50 rounded">
+      <Trash2 className="w-3 h-3 text-red-400" />
+    </button>
+  );
+}
+
+function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
+  const [form, setForm] = useState({
+    size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0,
+  });
+
+  React.useEffect(() => {
+    if (variant.id) {
+      setForm({
+        size: variant.size || '',
+        cut: variant.cut || '',
+        collar: variant.collar || '',
+        stock: variant.stock || 0,
+        sell_price: variant.sell_price || 0,
+        cost_price: variant.cost_price || 0,
+      });
+    } else {
+      setForm({ size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0 });
+    }
+  }, [variant]);
+
+  const mutation = useMutation({
+    mutationFn: (data) =>
+      variant.id
+        ? base44.entities.ProductVariant.update(variant.id, data)
+        : base44.entities.ProductVariant.create({ ...data, group_id: group.id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      toast({ title: variant.id ? 'הוריאציה עודכנה' : 'הוריאציה נוספה' });
+      onClose();
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent dir="rtl" className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{variant.id ? 'עריכת וריאציה' : 'וריאציה חדשה'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>מידה</Label>
+            <Select value={form.size} onValueChange={v => setForm({ ...form, size: v })}>
+              <SelectTrigger><SelectValue placeholder="בחר מידה" /></SelectTrigger>
+              <SelectContent>
+                {SIZES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>גזרה</Label>
+            <Select value={form.cut} onValueChange={v => setForm({ ...form, cut: v })}>
+              <SelectTrigger><SelectValue placeholder="בחר גזרה" /></SelectTrigger>
+              <SelectContent>
+                {CUTS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>צווארון</Label>
+            <Select value={form.collar} onValueChange={v => setForm({ ...form, collar: v })}>
+              <SelectTrigger><SelectValue placeholder="בחר צווארון" /></SelectTrigger>
+              <SelectContent>
+                {COLLARS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>מלאי</Label>
+            <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
+          </div>
+          {!group.has_uniform_price && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>מחיר עלות</Label>
+                <Input type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label>מחיר מכירה</Label>
+                <Input type="number" value={form.sell_price} onChange={e => setForm({ ...form, sell_price: Number(e.target.value) })} />
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => mutation.mutate(form)}
+            className="bg-amber-500 hover:bg-amber-600"
+            disabled={!form.size || !form.cut || !form.collar}
           >
             {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
           </Button>
