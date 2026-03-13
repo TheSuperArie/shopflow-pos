@@ -177,7 +177,7 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
         title: '🗑️ התיקייה נמחקה',
-        duration: 3000,
+        duration: 2000,
         className: 'bg-red-500 text-white border-red-600'
       });
     },
@@ -213,7 +213,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({ 
         title: category ? '✅ הקטגוריה עודכנה' : '✅ הקטגוריה נוצרה',
-        duration: 3000,
+        duration: 2000,
         className: 'bg-blue-500 text-white border-blue-600'
       });
       onClose();
@@ -226,7 +226,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({ 
         title: '🗑️ הקטגוריה נמחקה',
-        duration: 3000,
+        duration: 2000,
         className: 'bg-red-500 text-white border-red-600'
       });
       onClose();
@@ -294,7 +294,7 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
       toast({ 
         title: group ? '✅ התיקייה עודכנה' : '✅ התיקייה נוצרה',
-        duration: 3000,
+        duration: 2000,
         className: 'bg-green-500 text-white border-green-600'
       });
       onClose();
@@ -436,7 +436,7 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
         title: '🗑️ הוריאציה נמחקה',
-        duration: 3000,
+        duration: 2000,
         className: 'bg-red-500 text-white border-red-600'
       });
     },
@@ -531,7 +531,7 @@ function BulkVariantWizard({ group, onClose, queryClient, toast }) {
     queryClient.invalidateQueries({ queryKey: ['product-variants'] });
     toast({ 
       title: `✅ נוצרו ${allVariants.length} וריאציות בהצלחה!`,
-      duration: 3000,
+      duration: 2000,
       className: 'bg-green-500 text-white border-green-600'
     });
     setCreating(false);
@@ -725,7 +725,7 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
         title: variant.id ? '✅ הוריאציה עודכנה בהצלחה' : '✅ הוריאציה נוספה בהצלחה',
-        duration: 3000,
+        duration: 2000,
         className: variant.id ? 'bg-blue-500 text-white border-blue-600' : 'bg-green-500 text-white border-green-600'
       });
       onClose();
