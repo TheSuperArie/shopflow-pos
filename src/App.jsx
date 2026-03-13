@@ -16,6 +16,7 @@ import AdminStock from './pages/AdminStock';
 import AdminSettings from './pages/AdminSettings';
 import AdminDailyReport from './pages/AdminDailyReport';
 import AdminOrders from './pages/AdminOrders';
+import AdminLowStock from './pages/AdminLowStock';
 import Layout from './components/Layout';
 import AdminLayout from './components/admin/AdminLayout';
 
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
         <Route element={<AdminLayout />}>
           <Route path="/AdminDashboard" element={<AdminDashboard />} />
           <Route path="/AdminProducts" element={<AdminProducts />} />
+          <Route path="/AdminLowStock" element={<AdminLowStock />} />
           <Route path="/AdminSales" element={<AdminSales />} />
           <Route path="/AdminExpenses" element={<AdminExpenses />} />
           <Route path="/AdminStock" element={<AdminStock />} />
