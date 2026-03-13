@@ -724,8 +724,9 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
-        title: variant.id ? 'הוריאציה עודכנה' : 'הוריאציה נוספה',
-        duration: 3000
+        title: variant.id ? '✅ הוריאציה עודכנה בהצלחה' : '✅ הוריאציה נוספה בהצלחה',
+        duration: 3000,
+        className: variant.id ? 'bg-blue-500 text-white border-blue-600' : 'bg-green-500 text-white border-green-600'
       });
       onClose();
     },
