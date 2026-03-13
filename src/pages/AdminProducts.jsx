@@ -96,9 +96,9 @@ export default function AdminProducts() {
             const groupVariants = variants.filter(v => v.group_id === group.id);
             const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
             return (
-              <Card key={group.id}>
+              <Card key={group.id} className="cursor-pointer hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
-                  <div className="flex gap-3">
+                  <div className="flex gap-3" onClick={() => setViewingGroup(group)}>
                     {group.image_url ? (
                       <img src={group.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
                     ) : (
@@ -118,13 +118,7 @@ export default function AdminProducts() {
                       <p className="text-sm text-gray-500">סה"כ מלאי: {totalStock}</p>
                       <p className="text-xs text-amber-600 mt-0.5">{groupVariants.length} וריאציות</p>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <button
-                        onClick={() => setViewingGroup(group)}
-                        className="p-2 rounded-lg hover:bg-gray-100"
-                      >
-                        <ChevronLeft className="w-4 h-4 text-gray-500" />
-                      </button>
+                    <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => { setEditingGroup(group); setShowGroupForm(true); }}
                         className="p-2 rounded-lg hover:bg-gray-100"
