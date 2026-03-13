@@ -181,7 +181,10 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-      toast({ title: 'התיקייה נמחקה' });
+      toast({ 
+        title: 'התיקייה נמחקה',
+        duration: 3000
+      });
     },
   });
 
@@ -213,7 +216,10 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
         : base44.entities.Category.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast({ title: category ? 'הקטגוריה עודכנה' : 'הקטגוריה נוצרה' });
+      toast({ 
+        title: category ? 'הקטגוריה עודכנה' : 'הקטגוריה נוצרה',
+        duration: 3000
+      });
       onClose();
     },
   });
@@ -222,7 +228,10 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
     mutationFn: () => base44.entities.Category.delete(category.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast({ title: 'הקטגוריה נמחקה' });
+      toast({ 
+        title: 'הקטגוריה נמחקה',
+        duration: 3000
+      });
       onClose();
     },
   });
@@ -286,7 +295,10 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
         : base44.entities.ProductGroup.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
-      toast({ title: group ? 'התיקייה עודכנה' : 'התיקייה נוצרה' });
+      toast({ 
+        title: group ? 'התיקייה עודכנה' : 'התיקייה נוצרה',
+        duration: 3000 
+      });
       onClose();
     },
   });
@@ -421,7 +433,10 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
     mutationFn: () => base44.entities.ProductVariant.delete(variantId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-      toast({ title: 'הוריאציה נמחקה' });
+      toast({ 
+        title: 'הוריאציה נמחקה',
+        duration: 3000
+      });
     },
   });
 
@@ -459,7 +474,10 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
         : base44.entities.ProductVariant.create({ ...data, group_id: group.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-      toast({ title: variant.id ? 'הוריאציה עודכנה' : 'הוריאציה נוספה' });
+      toast({ 
+        title: variant.id ? 'הוריאציה עודכנה' : 'הוריאציה נוספה',
+        duration: 3000
+      });
       onClose();
     },
   });
