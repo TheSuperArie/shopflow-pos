@@ -375,9 +375,12 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
           <DialogTitle>{group.name} — וריאציות</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <Button onClick={() => setEditingVariant({ group_id: group.id })} className="gap-2 bg-amber-500 hover:bg-amber-600">
-            <Plus className="w-4 h-4" /> הוסף וריאציה
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setEditingVariant({ group_id: group.id })} className="gap-2 bg-amber-500 hover:bg-amber-600">
+              <Plus className="w-4 h-4" /> הוסף וריאציה בודדת
+            </Button>
+            <GenerateAllVariantsButton group={group} queryClient={queryClient} toast={toast} />
+          </div>
           
           {variants.length === 0 ? (
             <p className="text-center text-gray-400 py-8">אין וריאציות. לחץ על "הוסף וריאציה" כדי להתחיל.</p>
@@ -438,6 +441,47 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
     <button onClick={() => { if (window.confirm('למחוק?')) deleteMut.mutate(); }} className="p-1 hover:bg-red-50 rounded">
       <Trash2 className="w-3 h-3 text-red-400" />
     </button>
+  );
+}
+
+function GenerateAllVariantsButton({ group, queryClient, toast }) {
+  const [generating, setGenerating] = useState(false);
+
+  const generateAll = async () => {
+    if (!window.confirm('ליצור אוטומטית את כל הוריאציות האפשריות (מידות × גזרות × צווארונים)?')) return;
+    
+    setGenerating(true);
+    const allVariants = [];
+    
+    for (const size of SIZES) {
+      for (const cut of CUTS) {
+        for (const collar of COLLARS) {
+          allVariants.push({
+            group_id: group.id,
+            size,
+            cut,
+            collar,
+            stock: 0,
+            ...(group.has_uniform_price ? {} : { sell_price: 0, cost_price: 0 })
+          });
+        }
+      }
+    }
+
+    await base44.entities.ProductVariant.bulkCreate(allVariants);
+    queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+    toast({ 
+      title: `נוצרו ${allVariants.length} וריאציות`,
+      duration: 3000
+    });
+    setGenerating(false);
+  };
+
+  return (
+    <Button onClick={generateAll} variant="outline" className="gap-2" disabled={generating}>
+      {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+      צור את כל הוריאציות אוטומטית
+    </Button>
   );
 }
 
