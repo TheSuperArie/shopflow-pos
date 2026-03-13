@@ -61,11 +61,11 @@ export default function AdminProducts() {
       </div>
 
       {/* Category tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         <button
           onClick={() => setSelectedCat(null)}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-            !selectedCat ? 'bg-amber-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300'
+          className={`px-5 py-3 rounded-xl text-base font-medium transition-all min-h-[48px] ${
+            !selectedCat ? 'bg-amber-500 text-white' : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-amber-300'
           }`}
         >
           הכל ({groups.length})
@@ -74,24 +74,24 @@ export default function AdminProducts() {
           <button
             key={cat.id}
             onClick={() => setSelectedCat(cat.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
-              selectedCat === cat.id ? 'bg-amber-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300'
+            className={`px-5 py-3 rounded-xl text-base font-medium transition-all flex items-center gap-3 min-h-[48px] ${
+              selectedCat === cat.id ? 'bg-amber-500 text-white' : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-amber-300'
             }`}
           >
             {cat.name}
-            <div className="flex gap-1">
+            <div className="flex gap-2">
               <button
                 onClick={(e) => { e.stopPropagation(); setManagingDimensions(cat); }}
-                className="opacity-60 hover:opacity-100"
+                className="p-2 rounded-lg hover:bg-black/10 transition-colors"
                 title="ניהול ממדי וריאציות"
               >
-                <Settings className="w-3 h-3" />
+                <Settings className="w-5 h-5" />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); setShowCatForm(true); }}
-                className="opacity-60 hover:opacity-100"
+                className="p-2 rounded-lg hover:bg-black/10 transition-colors"
               >
-                <Pencil className="w-3 h-3" />
+                <Pencil className="w-5 h-5" />
               </button>
             </div>
           </button>
@@ -129,12 +129,12 @@ export default function AdminProducts() {
                       <p className="text-sm text-gray-500">סה"כ מלאי: {totalStock}</p>
                       <p className="text-xs text-amber-600 mt-0.5">{groupVariants.length} וריאציות</p>
                     </div>
-                    <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => { setEditingGroup(group); setShowGroupForm(true); }}
-                        className="p-2 rounded-lg hover:bg-gray-100"
+                        className="p-3 rounded-lg hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       >
-                        <Pencil className="w-4 h-4 text-gray-500" />
+                        <Pencil className="w-5 h-5 text-gray-500" />
                       </button>
                       <DeleteGroupButton groupId={group.id} queryClient={queryClient} toast={toast} />
                     </div>
@@ -211,9 +211,9 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
   return (
     <button
       onClick={() => { if (window.confirm('למחוק תיקייה וכל הוריאציות?')) deleteMut.mutate(); }}
-      className="p-2 rounded-lg hover:bg-red-50"
+      className="p-3 rounded-lg hover:bg-red-50 min-w-[44px] min-h-[44px] flex items-center justify-center"
     >
-      <Trash2 className="w-4 h-4 text-red-400" />
+      <Trash2 className="w-5 h-5 text-red-400" />
     </button>
   );
 }
@@ -426,9 +426,9 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
                           <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
                         )}
                       </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => setEditingVariant(v)} className="p-1 hover:bg-gray-100 rounded">
-                          <Pencil className="w-3 h-3" />
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                          <Pencil className="w-5 h-5" />
                         </button>
                         <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
                       </div>
@@ -468,8 +468,8 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
   });
 
   return (
-    <button onClick={() => { if (window.confirm('למחוק?')) deleteMut.mutate(); }} className="p-1 hover:bg-red-50 rounded">
-      <Trash2 className="w-3 h-3 text-red-400" />
+    <button onClick={() => { if (window.confirm('למחוק?')) deleteMut.mutate(); }} className="p-2.5 hover:bg-red-50 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+      <Trash2 className="w-5 h-5 text-red-400" />
     </button>
   );
 }
