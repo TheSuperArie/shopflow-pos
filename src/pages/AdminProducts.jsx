@@ -9,7 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronLeft, Settings } from 'lucide-react';
+import VariantDimensionsManager from '@/components/admin/VariantDimensionsManager';
 
 const SIZES = ['12', '12.5', '13', '13.5', '14', '14.5', '15', '15.5', '16', '16.5', '17', '17.5', '18'];
 const CUTS = ['צרה', 'רחבה'];
@@ -22,6 +23,7 @@ export default function AdminProducts() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [selectedCat, setSelectedCat] = useState(null);
   const [viewingGroup, setViewingGroup] = useState(null);
+  const [managingDimensions, setManagingDimensions] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -77,12 +79,21 @@ export default function AdminProducts() {
             }`}
           >
             {cat.name}
-            <button
-              onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); setShowCatForm(true); }}
-              className="opacity-60 hover:opacity-100"
-            >
-              <Pencil className="w-3 h-3" />
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); setManagingDimensions(cat); }}
+                className="opacity-60 hover:opacity-100"
+                title="ניהול ממדי וריאציות"
+              >
+                <Settings className="w-3 h-3" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); setShowCatForm(true); }}
+                className="opacity-60 hover:opacity-100"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            </div>
           </button>
         ))}
       </div>
@@ -160,6 +171,20 @@ export default function AdminProducts() {
         queryClient={queryClient}
         toast={toast}
       />
+
+      <Dialog open={!!managingDimensions} onOpenChange={() => setManagingDimensions(null)}>
+        <DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>ניהול ממדי וריאציות</DialogTitle>
+          </DialogHeader>
+          {managingDimensions && (
+            <VariantDimensionsManager
+              categoryId={managingDimensions.id}
+              categoryName={managingDimensions.name}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
