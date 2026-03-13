@@ -36,7 +36,7 @@ export default function AdminSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app-settings'] });
-      toast({ title: 'ההגדרות נשמרו בהצלחה' });
+      toast({ title: 'ההגדרות נשמרו בהצלחה', duration: 3000 });
     },
   });
 
