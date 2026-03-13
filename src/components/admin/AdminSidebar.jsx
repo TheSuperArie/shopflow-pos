@@ -10,7 +10,6 @@ import {
   LogOut,
   X,
   Menu,
-  FileText,
   ShoppingCart,
 } from 'lucide-react';
 
@@ -20,7 +19,6 @@ const NAV_ITEMS = [
   { path: '/AdminStock', label: 'עדכון מלאי', icon: TruckIcon },
   { path: '/AdminOrders', label: 'הזמנות לספקים', icon: ShoppingCart },
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
-  { path: '/AdminDailyReport', label: 'דו"ח יומי', icon: FileText },
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
   { path: '/AdminSettings', label: 'הגדרות', icon: Settings },
 ];
