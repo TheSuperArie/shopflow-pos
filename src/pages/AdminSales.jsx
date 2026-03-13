@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Banknote, CreditCard, Clock, TrendingUp, TrendingDown, DollarSign, Package, Trash2, Calendar, FileText } from 'lucide-react';
+import { Loader2, Banknote, CreditCard, Clock, TrendingUp, TrendingDown, DollarSign, Package, Trash2, Calendar, FileText, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import moment from 'moment';
@@ -152,7 +153,13 @@ export default function AdminSales() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-800">היסטוריית מכירות</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link to="/AdminLowStock">
+            <Button variant="outline" className="gap-2 border-orange-300 text-orange-600 hover:bg-orange-50">
+              <AlertTriangle className="w-4 h-4" />
+              מלאי חסר
+            </Button>
+          </Link>
           <Button
             variant={showDailyReport ? "default" : "outline"}
             onClick={() => setShowDailyReport(!showDailyReport)}

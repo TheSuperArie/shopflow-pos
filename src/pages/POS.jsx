@@ -9,6 +9,7 @@ import ProductGrid from '@/components/pos/ProductGrid';
 import Cart from '@/components/pos/Cart';
 import VariantSelectorModal from '@/components/pos/VariantSelectorModal';
 import CheckoutModal from '@/components/pos/CheckoutModal';
+import SmartSearch from '@/components/pos/SmartSearch';
 
 export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -135,6 +136,14 @@ export default function POS() {
       <div className="flex-1 flex overflow-hidden">
         {/* Products side */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Smart Search */}
+          <SmartSearch 
+            groups={allGroups}
+            variants={allVariants}
+            categories={categories}
+            onSelectGroup={handleGroupSelect}
+          />
+          
           {!selectedCategory ? (
             <>
               <h2 className="text-lg font-bold text-gray-700">בחר קטגוריה</h2>
