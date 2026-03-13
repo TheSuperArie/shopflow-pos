@@ -10,12 +10,14 @@ import {
   LogOut,
   X,
   Menu,
+  FileText,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/AdminDashboard', label: 'לוח בקרה', icon: LayoutDashboard },
   { path: '/AdminProducts', label: 'מוצרים וקטלוג', icon: Package },
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
+  { path: '/AdminDailyReport', label: 'דו"ח יומי', icon: FileText },
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
   { path: '/AdminStock', label: 'עדכון מלאי', icon: TruckIcon },
   { path: '/AdminSettings', label: 'הגדרות', icon: Settings },
