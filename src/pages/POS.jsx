@@ -124,7 +124,7 @@ export default function POS() {
   }, [categories, allGroups, allVariants, isOnline]);
 
   const groups = selectedCategory
-    ? allGroups.filter(g => g.category_id === selectedCategory.id)
+    ? allGroups.filter(g => g.category_id === selectedCategory)
     : [];
 
   const saleMutation = useMutation({
