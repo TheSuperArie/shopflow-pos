@@ -17,16 +17,22 @@ export default function AdminLowStock() {
   const { data: groups = [], isLoading: groupsLoading } = useQuery({
     queryKey: ['product-groups'],
     queryFn: () => base44.entities.ProductGroup.list(),
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 
   const { data: variants = [], isLoading: variantsLoading } = useQuery({
     queryKey: ['product-variants'],
     queryFn: () => base44.entities.ProductVariant.list(),
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: () => base44.entities.Category.list(),
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 
   const isLoading = groupsLoading || variantsLoading;
