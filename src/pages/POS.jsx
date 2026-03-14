@@ -60,6 +60,22 @@ export default function POS() {
     };
   }, [queryClient, toast]);
 
+  // Force check connection status every 5 seconds
+  useEffect(() => {
+    const checkStatus = () => {
+      const online = navigator.onLine;
+      setIsOnline(online);
+      if (!online) {
+        setUseCache(true);
+      } else {
+        setUseCache(false);
+      }
+    };
+
+    const interval = setInterval(checkStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Fetch from API or cache - always fallback to cache on error
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
