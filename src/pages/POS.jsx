@@ -192,6 +192,15 @@ export default function POS() {
     setSelectedGroup(null);
   };
 
+  const handleBarcodeSelect = (variant, group) => {
+    handleVariantConfirm(variant, group);
+    toast({ 
+      title: '✅ נוסף לעגלה',
+      description: `${group.name} - מידה ${variant.size}`,
+      duration: 1500,
+    });
+  };
+
   const updateCartQty = (idx, newQty) => {
     if (newQty <= 0) {
       setCartItems(prev => prev.filter((_, i) => i !== idx));
@@ -243,6 +252,7 @@ export default function POS() {
             variants={allVariants}
             categories={categories}
             onSelectGroup={handleGroupSelect}
+            onSelectVariant={handleBarcodeSelect}
           />
           
           {!selectedCategory ? (
