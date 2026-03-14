@@ -290,7 +290,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
           </div>
 
           <Button onClick={onClose} variant="outline" className="w-full">
-            סגור
+            שמור
           </Button>
         </div>
       </DialogContent>
