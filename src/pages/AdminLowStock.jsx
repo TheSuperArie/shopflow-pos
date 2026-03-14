@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Package, Loader2, ChevronLeft } from 'lucide-react';
+import { AlertTriangle, Package, Loader2, ChevronDown } from 'lucide-react';
 
 export default function AdminLowStock() {
   const [expandedCategory, setExpandedCategory] = useState(null);
@@ -134,7 +134,7 @@ export default function AdminLowStock() {
                 {/* Category Header - Clickable */}
                 <button
                   onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
-                  className="w-full bg-red-200 p-4 flex items-center justify-between border-b-2 border-red-300 hover:bg-red-250 transition-colors"
+                  className="sticky top-0 z-10 w-full bg-red-200 p-4 flex items-center justify-between border-b-2 border-red-300 hover:bg-red-250 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
@@ -149,7 +149,7 @@ export default function AdminLowStock() {
                     <Badge className="bg-red-700 text-white text-sm px-3 py-1">
                       {totalVariants} חסרות
                     </Badge>
-                    <ChevronLeft className={`w-5 h-5 transition-transform ${isExpanded ? '-rotate-90' : 'rotate-180'}`} />
+                    <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
                 
