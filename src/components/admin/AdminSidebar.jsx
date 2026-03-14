@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   AlertTriangle,
   Building2,
+  RotateCcw,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { path: '/AdminSuppliers', label: 'ניהול ספקים', icon: Building2 },
   { path: '/AdminOrders', label: 'הזמנות לספקים', icon: ShoppingCart },
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
+  { path: '/AdminReturns', label: 'החזרות', icon: RotateCcw },
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
   { path: '/AdminSettings', label: 'הגדרות', icon: Settings },
 ];
