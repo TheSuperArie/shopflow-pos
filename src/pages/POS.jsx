@@ -175,6 +175,28 @@ export default function POS() {
     setSelectedGroup(group);
   };
 
+  const handleBarcodeSelect = (variant, group) => {
+    const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
+    const costPrice = group.has_uniform_price ? group.uniform_cost_price : variant.cost_price;
+    
+    setCartItems(prev => [...prev, {
+      variant_id: variant.id,
+      product_name: `${group.name} - מידה ${variant.size}, ${variant.cut}, ${variant.collar}`,
+      quantity: 1,
+      sell_price: sellPrice,
+      cost_price: costPrice || 0,
+      shirt_size: variant.size,
+      shirt_collar: variant.collar,
+      shirt_cut: variant.cut,
+    }]);
+    
+    toast({ 
+      title: '✅ נוסף לעגלה',
+      description: `${group.name} - מידה ${variant.size}`,
+      duration: 1500,
+    });
+  };
+
   const handleVariantConfirm = (variant, group) => {
     const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
     const costPrice = group.has_uniform_price ? group.uniform_cost_price : variant.cost_price;
@@ -252,6 +274,7 @@ export default function POS() {
             variants={allVariants}
             categories={categories}
             onSelectGroup={handleGroupSelect}
+            onSelectVariant={handleBarcodeSelect}
             onSelectVariant={handleBarcodeSelect}
           />
           

@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Package, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
-export default function SmartSearch({ groups, variants, onSelectGroup, categories }) {
+export default function SmartSearch({ groups, variants, onSelectGroup, onSelectVariant, categories }) {
   const [query, setQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef(null);
@@ -18,6 +18,29 @@ export default function SmartSearch({ groups, variants, onSelectGroup, categorie
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Check if query is exactly 4 digits (barcode scan)
+  const isBarcodeSearch = /^\d{4}$/.test(query);
+  
+  // Find exact variant by last 4 digits of barcode
+  useEffect(() => {
+    if (isBarcodeSearch && onSelectVariant) {
+      const exactVariant = variants.find(v => 
+        v.barcode && 
+        v.barcode.slice(-4) === query && 
+        (v.stock || 0) > 0
+      );
+      
+      if (exactVariant) {
+        const group = groups.find(g => g.id === exactVariant.group_id);
+        if (group) {
+          onSelectVariant(exactVariant, group);
+          setQuery('');
+          setShowResults(false);
+        }
+      }
+    }
+  }, [query, isBarcodeSearch, variants, groups, onSelectVariant]);
+
   const searchResults = query.trim().length >= 2 ? groups.filter(group => {
     const searchLower = query.toLowerCase();
     const nameMatch = group.name.toLowerCase().includes(searchLower);
@@ -26,7 +49,13 @@ export default function SmartSearch({ groups, variants, onSelectGroup, categorie
     const groupVariants = variants.filter(v => v.group_id === group.id);
     const hasStock = groupVariants.some(v => (v.stock || 0) > 0);
     
-    return nameMatch && hasStock;
+    // Search by name or last 4 digits of barcode
+    const barcodeMatch = groupVariants.some(v => 
+      v.barcode && 
+      v.barcode.slice(-4).includes(query)
+    );
+    
+    return (nameMatch || barcodeMatch) && hasStock;
   }).slice(0, 8) : [];
 
   const handleSelectGroup = (group) => {
@@ -56,7 +85,7 @@ export default function SmartSearch({ groups, variants, onSelectGroup, categorie
             setShowResults(true);
           }}
           onFocus={() => query.trim().length >= 2 && setShowResults(true)}
-          placeholder="חיפוש מהיר - הקלד שם מוצר..."
+          placeholder="חיפוש מהיר - הקלד שם מוצר או 4 ספרות אחרונות של ברקוד..."
           className="pr-10 pl-10 h-12 text-base border-2 border-gray-300 focus:border-amber-400"
         />
         {query && (
