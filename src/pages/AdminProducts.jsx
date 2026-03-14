@@ -406,8 +406,20 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
 function VariantsViewModal({ open, group, variants, onClose, queryClient, toast }) {
   const [editingVariant, setEditingVariant] = useState(null);
   const [printingBarcode, setPrintingBarcode] = useState(null);
+  const [expandedSize, setExpandedSize] = useState(null);
 
   if (!group) return null;
+
+  // Group variants by size
+  const variantsBySize = {};
+  variants.forEach(v => {
+    if (!variantsBySize[v.size]) {
+      variantsBySize[v.size] = [];
+    }
+    variantsBySize[v.size].push(v);
+  });
+
+  const sizes = Object.keys(variantsBySize).sort((a, b) => parseFloat(a) - parseFloat(b));
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -426,40 +438,74 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
           {variants.length === 0 ? (
             <p className="text-center text-gray-400 py-8">אין וריאציות. לחץ על "הוסף וריאציה" כדי להתחיל.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {variants.map(v => (
-                <Card key={v.id}>
-                  <CardContent className="p-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-semibold">מידה {v.size} | {v.cut} | {v.collar}</p>
-                        <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
-                        {!group.has_uniform_price && (
-                          <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
-                        )}
-                        {v.barcode && (
-                          <p className="text-xs text-gray-400 mt-1">ברקוד: {v.barcode}</p>
-                        )}
+            <div className="space-y-3">
+              {sizes.map(size => {
+                const sizeVariants = variantsBySize[size];
+                const isExpanded = expandedSize === size;
+                const totalStock = sizeVariants.reduce((s, v) => s + (v.stock || 0), 0);
+                
+                return (
+                  <div key={size} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                    {/* Size Header - Clickable */}
+                    <button
+                      onClick={() => setExpandedSize(isExpanded ? null : size)}
+                      className="w-full bg-amber-50 p-3 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl font-bold text-amber-700">מידה {size}</span>
+                        <Badge className="bg-amber-600 text-white">
+                          {sizeVariants.length} וריאציות
+                        </Badge>
                       </div>
-                      <div className="flex gap-2">
-                        {v.barcode && (
-                          <button 
-                            onClick={() => setPrintingBarcode({ variant: v, group })} 
-                            className="p-2.5 hover:bg-blue-50 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
-                            title="הדפס מדבקות"
-                          >
-                            <Barcode className="w-5 h-5 text-blue-500" />
-                          </button>
-                        )}
-                        <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
-                          <Pencil className="w-5 h-5" />
-                        </button>
-                        <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-600">סה"כ מלאי: {totalStock}</span>
+                        <ChevronLeft className={`w-5 h-5 transition-transform ${isExpanded ? '-rotate-90' : 'rotate-180'}`} />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </button>
+
+                    {/* Variants Grid - Expandable */}
+                    {isExpanded && (
+                      <div className="bg-white p-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {sizeVariants.map(v => (
+                            <Card key={v.id}>
+                              <CardContent className="p-3">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-semibold">{v.cut} | {v.collar}</p>
+                                    <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
+                                    {!group.has_uniform_price && (
+                                      <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
+                                    )}
+                                    {v.barcode && (
+                                      <p className="text-xs text-gray-400 mt-1">ברקוד: {v.barcode}</p>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {v.barcode && (
+                                      <button 
+                                        onClick={() => setPrintingBarcode({ variant: v, group })} 
+                                        className="p-2.5 hover:bg-blue-50 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                        title="הדפס מדבקות"
+                                      >
+                                        <Barcode className="w-5 h-5 text-blue-500" />
+                                      </button>
+                                    )}
+                                    <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                                      <Pencil className="w-5 h-5" />
+                                    </button>
+                                    <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -914,6 +960,17 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
                 </div>
               </div>
             )}
+            <div>
+              <Label>ברקוד (אופציונלי)</Label>
+              <Input 
+                value={form.barcode} 
+                onChange={e => setForm({ ...form, barcode: e.target.value })} 
+                placeholder="יוצר אוטומטית אם לא מוזן"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {form.barcode ? `4 ספרות אחרונות: ${form.barcode.slice(-4)}` : 'ברקוד ייווצר אוטומטית'}
+              </p>
+            </div>
             <DialogFooter>
               <Button
                 onClick={() => mutation.mutate(form)}
