@@ -35,15 +35,26 @@ export default function AdminSales() {
     queryFn: () => base44.entities.ProductGroup.list(),
   });
 
+  const { data: expenses = [] } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: () => base44.entities.Expense.list(),
+  });
+
   const filteredSales = sales.filter(s => {
     const d = s.created_date?.split('T')[0];
+    return d >= dateFrom && d <= dateTo;
+  });
+
+  const filteredExpenses = expenses.filter(e => {
+    const d = e.date;
     return d >= dateFrom && d <= dateTo;
   });
 
   // Calculate totals
   const totalRevenue = filteredSales.reduce((s, sale) => s + (sale.total || 0), 0);
   const totalCost = filteredSales.reduce((s, sale) => s + (sale.total_cost || 0), 0);
-  const totalProfit = totalRevenue - totalCost;
+  const totalExpenses = filteredExpenses.reduce((s, exp) => s + (exp.amount || 0), 0);
+  const totalProfit = totalRevenue - totalCost - totalExpenses;
   const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100) : 0;
 
   // Payment method breakdown
@@ -340,11 +351,12 @@ export default function AdminSales() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Package className="w-4 h-4" /> עלויות
+              <Package className="w-4 h-4" /> עלויות והוצאות
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-gray-600">₪{totalCost.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-600">₪{(totalCost + totalExpenses).toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">עלויות: ₪{totalCost.toLocaleString()} | הוצאות: ₪{totalExpenses.toLocaleString()}</p>
           </CardContent>
         </Card>
 
