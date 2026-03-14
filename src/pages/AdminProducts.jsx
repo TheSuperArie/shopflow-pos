@@ -405,6 +405,7 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
 
 function VariantsViewModal({ open, group, variants, onClose, queryClient, toast }) {
   const [editingVariant, setEditingVariant] = useState(null);
+  const [printingBarcode, setPrintingBarcode] = useState(null);
 
   if (!group) return null;
 
@@ -430,14 +431,26 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
                 <Card key={v.id}>
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold">מידה {v.size} | {v.cut} | {v.collar}</p>
                         <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
                         {!group.has_uniform_price && (
                           <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
                         )}
+                        {v.barcode && (
+                          <p className="text-xs text-gray-400 mt-1">ברקוד: {v.barcode}</p>
+                        )}
                       </div>
                       <div className="flex gap-2">
+                        {v.barcode && (
+                          <button 
+                            onClick={() => setPrintingBarcode({ variant: v, group })} 
+                            className="p-2.5 hover:bg-blue-50 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            title="הדפס מדבקות"
+                          >
+                            <Barcode className="w-5 h-5 text-blue-500" />
+                          </button>
+                        )}
                         <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
                           <Pencil className="w-5 h-5" />
                         </button>
@@ -459,6 +472,15 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
           onClose={() => setEditingVariant(null)}
           queryClient={queryClient}
           toast={toast}
+        />
+      )}
+
+      {printingBarcode && (
+        <BarcodePrintModal
+          open={!!printingBarcode}
+          onClose={() => setPrintingBarcode(null)}
+          variant={printingBarcode.variant}
+          group={printingBarcode.group}
         />
       )}
     </Dialog>
@@ -544,6 +566,14 @@ function BulkVariantWizard({ group, onClose, queryClient, toast }) {
     else if (step === 'confirm') setStep('collars');
   };
 
+  const generateBarcode = (groupId, size, cut, collar) => {
+    const timestamp = Date.now().toString().slice(-6);
+    const sizeCode = size.replace('.', '');
+    const cutCode = cut === 'צרה' ? '1' : '2';
+    const collarCode = collar === 'אמריקאי' ? '1' : collar === 'כפתורים' ? '2' : '3';
+    return `${timestamp}${sizeCode}${cutCode}${collarCode}`;
+  };
+
   const handleCreate = async () => {
     setCreating(true);
     const allVariants = [];
@@ -557,6 +587,7 @@ function BulkVariantWizard({ group, onClose, queryClient, toast }) {
             cut,
             collar,
             stock: 0,
+            barcode: generateBarcode(group.id, size, cut, collar),
             ...(group.has_uniform_price ? {} : { sell_price: 0, cost_price: 0 })
           });
         }
@@ -732,8 +763,16 @@ function BulkVariantWizard({ group, onClose, queryClient, toast }) {
 function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0,
+    size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0, barcode: '',
   });
+
+  const generateBarcode = (size, cut, collar) => {
+    const timestamp = Date.now().toString().slice(-6);
+    const sizeCode = size.replace('.', '');
+    const cutCode = cut === 'צרה' ? '1' : '2';
+    const collarCode = collar === 'אמריקאי' ? '1' : collar === 'כפתורים' ? '2' : '3';
+    return `${timestamp}${sizeCode}${cutCode}${collarCode}`;
+  };
 
   React.useEffect(() => {
     if (variant.id) {
@@ -744,19 +783,25 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
         stock: variant.stock || 0,
         sell_price: variant.sell_price || 0,
         cost_price: variant.cost_price || 0,
+        barcode: variant.barcode || '',
       });
       setStep(4);
     } else {
-      setForm({ size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0 });
+      setForm({ size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0, barcode: '' });
       setStep(1);
     }
   }, [variant]);
 
   const mutation = useMutation({
-    mutationFn: (data) =>
-      variant.id
-        ? base44.entities.ProductVariant.update(variant.id, data)
-        : base44.entities.ProductVariant.create({ ...data, group_id: group.id }),
+    mutationFn: (data) => {
+      const dataWithBarcode = {
+        ...data,
+        barcode: data.barcode || generateBarcode(data.size, data.cut, data.collar)
+      };
+      return variant.id
+        ? base44.entities.ProductVariant.update(variant.id, dataWithBarcode)
+        : base44.entities.ProductVariant.create({ ...dataWithBarcode, group_id: group.id });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
