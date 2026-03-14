@@ -44,8 +44,13 @@ export default function POS() {
       });
     };
 
+    // Add event listeners
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Initial check
+    setIsOnline(navigator.onLine);
+    setUseCache(!navigator.onLine);
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -245,7 +250,7 @@ export default function POS() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
-          <OnlineStatus onSync={handleSync} />
+          <OnlineStatus isOnline={isOnline} onSync={handleSync} />
           {/* Mobile cart toggle */}
           <button
             onClick={() => setShowCart(!showCart)}
