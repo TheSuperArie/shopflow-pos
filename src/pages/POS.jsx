@@ -305,28 +305,52 @@ export default function POS() {
             onSelectVariant={handleBarcodeSelect}
           />
           
-          <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
-          
-          {/* Display all categories with their products */}
-          {categories.map(category => {
-            const categoryGroups = allGroups.filter(g => g.category_id === category.id);
-            if (categoryGroups.length === 0) return null;
-            
-            return (
-              <div key={category.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                <h3 className="text-lg font-bold text-amber-600 mb-3 flex items-center gap-2">
-                  <span className="text-2xl">{category.icon || '📦'}</span>
-                  {category.name}
-                  <span className="text-sm text-gray-400 font-normal">({categoryGroups.length})</span>
-                </h3>
-                <ProductGrid 
-                  groups={categoryGroups} 
-                  variants={allVariants}
-                  onSelect={handleGroupSelect} 
-                />
+          {!selectedCategory ? (
+            <>
+              <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
+              
+              {/* Display only categories */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {categories.map(category => {
+                  const categoryGroups = allGroups.filter(g => g.category_id === category.id);
+                  if (categoryGroups.length === 0) return null;
+                  
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center"
+                    >
+                      <span className="text-4xl mb-2 block">{category.icon || '📦'}</span>
+                      <h3 className="text-lg font-bold text-gray-800">{category.name}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{categoryGroups.length} מוצרים</p>
+                    </button>
+                  );
+                })}
               </div>
-            );
-          })}
+            </>
+          ) : (
+            <>
+              {/* Back button and selected category products */}
+              <div className="flex items-center gap-3 mb-4">
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium flex items-center gap-2"
+                >
+                  ← חזור לקטגוריות
+                </button>
+                <h2 className="text-lg font-bold text-amber-600">
+                  {categories.find(c => c.id === selectedCategory)?.name}
+                </h2>
+              </div>
+              
+              <ProductGrid 
+                groups={groups} 
+                variants={allVariants}
+                onSelect={handleGroupSelect} 
+              />
+            </>
+          )}
         </div>
 
         {/* Cart side - Desktop */}
