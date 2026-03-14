@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Banknote, CreditCard, Clock, TrendingUp, TrendingDown, DollarSign, Package, Trash2, Calendar, FileText, AlertTriangle } from 'lucide-react';
+import { Loader2, Banknote, CreditCard, Clock, TrendingUp, TrendingDown, DollarSign, Package, Trash2, Calendar, FileText, AlertTriangle, Receipt } from 'lucide-react';
+import ReceiptModal from '@/components/pos/ReceiptModal';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -17,6 +18,7 @@ export default function AdminSales() {
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
   const [showDailyReport, setShowDailyReport] = useState(false);
+  const [selectedSaleForReceipt, setSelectedSaleForReceipt] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -550,6 +552,15 @@ export default function AdminSales() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => setSelectedSaleForReceipt(sale)}
+                          className="h-8 w-8 text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                          title="הצג קבלה"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDeleteSale(sale.id)}
                           className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                         >
@@ -623,6 +634,12 @@ export default function AdminSales() {
       </Card>
         </>
       )}
+
+      <ReceiptModal
+        open={!!selectedSaleForReceipt}
+        sale={selectedSaleForReceipt}
+        onClose={() => setSelectedSaleForReceipt(null)}
+      />
     </div>
   );
 }
