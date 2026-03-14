@@ -6,7 +6,10 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
 export default function VariantSelectorModal({ open, group, variants, onConfirm, onClose }) {
-  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [step, setStep] = useState(1); // 1: size, 2: cut, 3: collar
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedCut, setSelectedCut] = useState(null);
+  const [selectedCollar, setSelectedCollar] = useState(null);
 
   const { data: settings } = useQuery({
     queryKey: ['app-settings'],
@@ -18,16 +21,62 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
 
   const threshold = settings?.low_stock_threshold || 5;
 
+  // Reset on close
+  const handleClose = () => {
+    setStep(1);
+    setSelectedSize(null);
+    setSelectedCut(null);
+    setSelectedCollar(null);
+    onClose();
+  };
+
   if (!group) return null;
 
-  // Show all variants, but mark out-of-stock ones
   const allVariants = variants || [];
-  const hasAnyStock = allVariants.some(v => (v.stock || 0) > 0);
+  
+  // Get unique sizes, cuts, collars
+  const uniqueSizes = [...new Set(allVariants.map(v => v.size))].sort((a, b) => parseFloat(a) - parseFloat(b));
+  const uniqueCuts = [...new Set(allVariants.map(v => v.cut))];
+  const uniqueCollars = [...new Set(allVariants.map(v => v.collar))];
 
-  const handleConfirm = () => {
-    if (selectedVariant && (selectedVariant.stock || 0) > 0) {
-      onConfirm(selectedVariant, group);
-      setSelectedVariant(null);
+  // Filter variants based on current selections
+  const availableVariants = allVariants.filter(v => {
+    if (selectedSize && v.size !== selectedSize) return false;
+    if (selectedCut && v.cut !== selectedCut) return false;
+    return true;
+  });
+
+  const handleSizeSelect = (size) => {
+    setSelectedSize(size);
+    setStep(2);
+  };
+
+  const handleCutSelect = (cut) => {
+    setSelectedCut(cut);
+    setStep(3);
+  };
+
+  const handleCollarSelect = (collar) => {
+    setSelectedCollar(collar);
+    // Find the exact variant
+    const variant = allVariants.find(v => 
+      v.size === selectedSize && 
+      v.cut === selectedCut && 
+      v.collar === collar
+    );
+    if (variant && (variant.stock || 0) > 0) {
+      onConfirm(variant, group);
+      handleClose();
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 3) {
+      setStep(2);
+      setSelectedCollar(null);
+    } else if (step === 2) {
+      setStep(1);
+      setSelectedCut(null);
     }
   };
 
