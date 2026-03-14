@@ -58,41 +58,62 @@ export default function POS() {
     };
   }, [queryClient, toast]);
 
-  // Fetch from API or cache
-  const { data: categories = [], isLoading: loadingCat } = useQuery({
+  // Fetch from API or cache - always fallback to cache on error
+  const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
       if (useCache || !isOnline) {
         const cached = offlineManager.getCachedInventory();
         return cached.categories;
       }
-      const data = await base44.entities.Category.list('sort_order');
-      return data;
+      try {
+        const data = await base44.entities.Category.list('sort_order');
+        return data;
+      } catch (error) {
+        const cached = offlineManager.getCachedInventory();
+        return cached.categories;
+      }
     },
+    retry: false,
+    staleTime: Infinity,
   });
 
-  const { data: allGroups = [], isLoading: loadingGroups } = useQuery({
+  const { data: allGroups = [] } = useQuery({
     queryKey: ['product-groups'],
     queryFn: async () => {
       if (useCache || !isOnline) {
         const cached = offlineManager.getCachedInventory();
         return cached.groups;
       }
-      const data = await base44.entities.ProductGroup.list();
-      return data;
+      try {
+        const data = await base44.entities.ProductGroup.list();
+        return data;
+      } catch (error) {
+        const cached = offlineManager.getCachedInventory();
+        return cached.groups;
+      }
     },
+    retry: false,
+    staleTime: Infinity,
   });
 
-  const { data: allVariants = [], isLoading: loadingVar } = useQuery({
+  const { data: allVariants = [] } = useQuery({
     queryKey: ['product-variants'],
     queryFn: async () => {
       if (useCache || !isOnline) {
         const cached = offlineManager.getCachedInventory();
         return cached.variants;
       }
-      const data = await base44.entities.ProductVariant.list();
-      return data;
+      try {
+        const data = await base44.entities.ProductVariant.list();
+        return data;
+      } catch (error) {
+        const cached = offlineManager.getCachedInventory();
+        return cached.variants;
+      }
     },
+    retry: false,
+    staleTime: Infinity,
   });
 
   // Cache data when online
