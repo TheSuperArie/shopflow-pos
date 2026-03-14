@@ -70,7 +70,7 @@ export default function AdminStock() {
         </Button>
       </div>
 
-      {/* Low Stock Alert - Organized by Categories */}
+      {/* Low Stock Alert - Organized by Categories as Folders */}
       {totalLowStock > 0 && (
         <Card className="border-red-200 bg-red-50">
           <CardHeader>
@@ -79,28 +79,35 @@ export default function AdminStock() {
               התראות מלאי נמוך ({totalLowStock} פריטים)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {Object.entries(lowStockByCategory).map(([categoryName, items]) => (
-              <div key={categoryName}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Folder className="w-4 h-4 text-red-600" />
-                  <h3 className="font-semibold text-red-800">{categoryName}</h3>
-                  <Badge variant="outline" className="text-red-600 border-red-300">
+              <div key={categoryName} className="border-2 border-red-300 rounded-xl overflow-hidden">
+                {/* Category Folder Header */}
+                <div className="bg-red-200 p-3 flex items-center justify-between border-b-2 border-red-300">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📁</span>
+                    <h3 className="font-bold text-red-900">{categoryName}</h3>
+                  </div>
+                  <Badge className="bg-red-700 text-white">
                     {items.length}
                   </Badge>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {items.map((item, idx) => (
-                    <div key={idx} className="p-3 bg-white rounded-lg border border-red-200">
-                      <p className="font-semibold text-sm">{item.groupName}</p>
-                      <p className="text-xs text-gray-600">
-                        {item.variant.size} | {item.variant.cut} | {item.variant.collar}
-                      </p>
-                      <Badge className="mt-2 bg-red-600">
-                        מלאי: {item.stock} יחידות
-                      </Badge>
-                    </div>
-                  ))}
+                
+                {/* Items inside category folder */}
+                <div className="bg-white p-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {items.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-red-50 rounded-lg border-2 border-red-200">
+                        <p className="font-semibold text-sm">{item.groupName}</p>
+                        <p className="text-xs text-gray-600">
+                          {item.variant.size} | {item.variant.cut} | {item.variant.collar}
+                        </p>
+                        <Badge className="mt-2 bg-red-600">
+                          מלאי: {item.stock} יחידות
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
