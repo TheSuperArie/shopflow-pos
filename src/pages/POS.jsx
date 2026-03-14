@@ -340,11 +340,10 @@ export default function POS() {
             <>
               <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
               
-              {/* Display only categories */}
+              {/* Display all categories */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {categories.map(category => {
                   const categoryGroups = allGroups.filter(g => g.category_id === category.id);
-                  if (categoryGroups.length === 0) return null;
                   
                   return (
                     <button
