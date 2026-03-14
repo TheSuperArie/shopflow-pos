@@ -37,7 +37,7 @@ export default function AdminReturns() {
       });
 
       // Update inventory
-      const { data: variants } = await base44.entities.ProductVariant.list();
+      const variants = await base44.entities.ProductVariant.list();
       for (const item of returnData.items) {
         const variant = variants.find(v => v.id === item.variant_id);
         if (variant) {
@@ -50,7 +50,7 @@ export default function AdminReturns() {
       // Create credit if refund method is זיכוי
       if (returnData.refund_method === 'זיכוי') {
         const expiryDate = new Date();
-        expiryDate.setMonth(expiryDate.getMonth() + 6); // 6 months validity
+        expiryDate.setMonth(expiryDate.getMonth() + 6);
         
         await base44.entities.Credit.create({
           customer_name: returnData.customer_name,
@@ -63,11 +63,21 @@ export default function AdminReturns() {
           status: 'פעיל',
         });
       }
+
+      // Create expense record
+      await base44.entities.Expense.create({
+        description: `החזרה - ${returnData.customer_name || 'לקוח'}`,
+        amount: returnData.total_amount,
+        category: 'אחר',
+        custom_category: 'החזרות מוצרים',
+        date: format(new Date(), 'yyyy-MM-dd'),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns'] });
       queryClient.invalidateQueries({ queryKey: ['credits'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
       toast({ 
         title: '✅ ההחזרה אושרה',
         description: 'המלאי עודכן והזיכוי נוצר',
@@ -96,7 +106,6 @@ export default function AdminReturns() {
     ? returns 
     : returns.filter(r => r.status === filterStatus);
 
-  const pendingCount = returns.filter(r => r.status === 'ממתין').length;
   const approvedCount = returns.filter(r => r.status === 'אושר').length;
   const totalRefundAmount = returns
     .filter(r => r.status === 'אושר')
@@ -134,19 +143,10 @@ export default function AdminReturns() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">ממתינות לאישור</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-yellow-600">{pendingCount}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">אושרו</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">סה"כ החזרות</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-green-600">{approvedCount}</p>
@@ -174,7 +174,7 @@ export default function AdminReturns() {
 
       {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {['all', 'ממתין', 'אושר', 'נדחה'].map(status => (
+        {['all', 'אושר', 'נדחה'].map(status => (
           <Button
             key={status}
             onClick={() => setFilterStatus(status)}
@@ -230,33 +230,6 @@ export default function AdminReturns() {
                     >
                       פרטים
                     </Button>
-                    {returnItem.status === 'ממתין' && (
-                      <>
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                          onClick={() => approveReturnMutation.mutate({ 
-                            returnId: returnItem.id, 
-                            returnData: returnItem 
-                          })}
-                          disabled={approveReturnMutation.isPending}
-                        >
-                          {approveReturnMutation.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            'אשר'
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => rejectReturnMutation.mutate(returnItem.id)}
-                          disabled={rejectReturnMutation.isPending}
-                        >
-                          דחה
-                        </Button>
-                      </>
-                    )}
                   </div>
                 </div>
               </CardContent>

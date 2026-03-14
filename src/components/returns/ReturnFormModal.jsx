@@ -40,18 +40,61 @@ export default function ReturnFormModal({ open, onClose }) {
         sum + (item.sell_price * item.quantity), 0
       );
 
-      await base44.entities.Return.create({
+      // Create return with approved status
+      const returnRecord = await base44.entities.Return.create({
         ...data,
         items: selectedItems,
         total_amount: totalAmount,
-        status: 'ממתין',
+        status: 'אושר',
+        approval_date: new Date().toISOString().split('T')[0],
+        processed_by: 'system',
+      });
+
+      // Update inventory immediately
+      const variants = await base44.entities.ProductVariant.list();
+      for (const item of selectedItems) {
+        const variant = variants.find(v => v.id === item.variant_id);
+        if (variant) {
+          await base44.entities.ProductVariant.update(variant.id, {
+            stock: (variant.stock || 0) + item.quantity,
+          });
+        }
+      }
+
+      // Create credit if refund method is זיכוי
+      if (data.refund_method === 'זיכוי') {
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + 6);
+        
+        await base44.entities.Credit.create({
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          customer_phone: data.customer_phone,
+          amount: totalAmount,
+          balance: totalAmount,
+          return_id: returnRecord.id,
+          expiry_date: expiryDate.toISOString().split('T')[0],
+          status: 'פעיל',
+        });
+      }
+
+      // Create expense record for return
+      await base44.entities.Expense.create({
+        description: `החזרה - ${data.customer_name || 'לקוח'}`,
+        amount: totalAmount,
+        category: 'אחר',
+        custom_category: 'החזרות מוצרים',
+        date: new Date().toISOString().split('T')[0],
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns'] });
+      queryClient.invalidateQueries({ queryKey: ['credits'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
       toast({ 
-        title: '✅ החזרה נוצרה בהצלחה',
-        description: 'ממתינה לאישור',
+        title: '✅ החזרה בוצעה בהצלחה',
+        description: 'המלאי עודכן והזיכוי נוצר',
         duration: 3000,
       });
       handleClose();
