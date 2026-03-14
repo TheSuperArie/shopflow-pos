@@ -349,9 +349,9 @@ export default function POS() {
                     <button
                       key={category.id}
                       onClick={() => setSelectedCategory(category.id)}
-                      className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center"
+                      className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center min-h-[140px]"
                     >
-                      <span className="text-4xl mb-2 block">{category.icon || '📦'}</span>
+                      <div className="text-4xl mb-2">📦</div>
                       <h3 className="text-lg font-bold text-gray-800">{category.name}</h3>
                       <p className="text-sm text-gray-500 mt-1">{categoryGroups.length} מוצרים</p>
                     </button>
