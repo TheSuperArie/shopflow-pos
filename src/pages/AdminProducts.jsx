@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronDown, Settings, Barcode } from 'lucide-react';
 import VariantDimensionsManager from '@/components/admin/VariantDimensionsManager';
