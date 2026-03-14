@@ -114,8 +114,25 @@ export default function POS() {
         created_date: new Date().toISOString(),
       };
 
-      // If offline, save to pending sales
-      if (!isOnline) {
+      // Check if online
+      if (isOnline) {
+        // Online: proceed with API call
+        const sale = await base44.entities.Sale.create(saleData);
+
+        for (const item of cartItems) {
+          if (item.variant_id) {
+            const variant = allVariants.find(v => v.id === item.variant_id);
+            if (variant) {
+              await base44.entities.ProductVariant.update(variant.id, {
+                stock: Math.max(0, (variant.stock || 0) - item.quantity),
+              });
+            }
+          }
+        }
+
+        return sale;
+      } else {
+        // Offline: DO NOT call API, only save locally
         offlineManager.addPendingSale(saleData);
         
         // Update local cache
@@ -132,22 +149,6 @@ export default function POS() {
         
         return { ...saleData, id: 'offline_' + Date.now() };
       }
-
-      // If online, save normally
-      const sale = await base44.entities.Sale.create(saleData);
-
-      for (const item of cartItems) {
-        if (item.variant_id) {
-          const variant = allVariants.find(v => v.id === item.variant_id);
-          if (variant) {
-            await base44.entities.ProductVariant.update(variant.id, {
-              stock: Math.max(0, (variant.stock || 0) - item.quantity),
-            });
-          }
-        }
-      }
-
-      return sale;
     },
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
