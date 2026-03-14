@@ -278,32 +278,28 @@ export default function POS() {
             onSelectVariant={handleBarcodeSelect}
           />
           
-          {!selectedCategory ? (
-            <>
-              <h2 className="text-lg font-bold text-gray-700">בחר קטגוריה</h2>
-              <CategoryGrid
-                categories={categories}
-                selectedCategory={selectedCategory}
-                onSelect={setSelectedCategory}
-              />
-            </>
-          ) : (
-            <>
-              <CategoryGrid
-                categories={categories}
-                selectedCategory={selectedCategory}
-                onSelect={(cat) => setSelectedCategory(cat)}
-              />
-              <div className="mt-4">
-                <h2 className="text-lg font-bold text-gray-700 mb-3">{selectedCategory.name}</h2>
+          <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
+          
+          {/* Display all categories with their products */}
+          {categories.map(category => {
+            const categoryGroups = allGroups.filter(g => g.category_id === category.id);
+            if (categoryGroups.length === 0) return null;
+            
+            return (
+              <div key={category.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-bold text-amber-600 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">{category.icon || '📦'}</span>
+                  {category.name}
+                  <span className="text-sm text-gray-400 font-normal">({categoryGroups.length})</span>
+                </h3>
                 <ProductGrid 
-                  groups={groups} 
+                  groups={categoryGroups} 
                   variants={allVariants}
                   onSelect={handleGroupSelect} 
                 />
               </div>
-            </>
-          )}
+            );
+          })}
         </div>
 
         {/* Cart side - Desktop */}
