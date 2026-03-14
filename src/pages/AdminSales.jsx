@@ -519,21 +519,23 @@ export default function AdminSales() {
         </CardContent>
       </Card>
 
-      {/* Sales History */}
+      {/* Combined Sales and Expenses History */}
       <Card>
         <CardHeader>
-          <CardTitle>רשימת עסקאות</CardTitle>
+          <CardTitle>רשימת עסקאות והוצאות</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
           ) : (
             <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {/* Sales */}
               {filteredSales.map(sale => (
-                <Card key={sale.id}>
+                <Card key={`sale-${sale.id}`} className="border-l-4 border-l-green-400">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
+                        <div className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">מכירה</div>
                         <Clock className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-gray-500">
                           {sale.created_date ? format(new Date(sale.created_date), 'dd/MM/yyyy HH:mm') : ''}
@@ -544,7 +546,7 @@ export default function AdminSales() {
                           {sale.payment_method === 'מזומן' ? <Banknote className="w-3 h-3 ml-1" /> : <CreditCard className="w-3 h-3 ml-1" />}
                           {sale.payment_method}
                         </Badge>
-                        <span className="font-bold text-lg text-amber-600">₪{sale.total?.toFixed(0)}</span>
+                        <span className="font-bold text-lg text-green-600">+₪{sale.total?.toFixed(0)}</span>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -571,18 +573,49 @@ export default function AdminSales() {
                       ))}
                     </div>
                     {sale.total_cost > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs">
-                        <span className="text-gray-500">רווח:</span>
-                        <span className={`font-semibold ${(sale.total - sale.total_cost) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ₪{(sale.total - sale.total_cost).toFixed(0)}
-                        </span>
+                      <div className="mt-2 pt-2 border-t border-gray-100 grid grid-cols-2 gap-3 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">עלות:</span>
+                          <span className="font-semibold text-gray-700">₪{sale.total_cost.toFixed(0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">רווח גולמי:</span>
+                          <span className={`font-semibold ${(sale.total - sale.total_cost) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            ₪{(sale.total - sale.total_cost).toFixed(0)}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </CardContent>
                 </Card>
               ))}
-              {filteredSales.length === 0 && (
-                <p className="text-center text-gray-400 py-12">אין מכירות בטווח התאריכים</p>
+
+              {/* Expenses */}
+              {filteredExpenses.map(expense => (
+                <Card key={`expense-${expense.id}`} className="border-l-4 border-l-red-400">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded">הוצאה</div>
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-500">
+                          {expense.date ? format(new Date(expense.date), 'dd/MM/yyyy') : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="text-gray-600 border-gray-300">
+                          {expense.category === 'אחר' && expense.custom_category ? expense.custom_category : expense.category}
+                        </Badge>
+                        <span className="font-bold text-lg text-red-600">-₪{expense.amount?.toFixed(0)}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-700 mt-2">{expense.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {filteredSales.length === 0 && filteredExpenses.length === 0 && (
+                <p className="text-center text-gray-400 py-12">אין נתונים בטווח התאריכים</p>
               )}
             </div>
           )}
