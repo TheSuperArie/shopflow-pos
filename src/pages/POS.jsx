@@ -188,6 +188,7 @@ export default function POS() {
       shirt_size: variant.size,
       shirt_collar: variant.collar,
       shirt_cut: variant.cut,
+      variant_stock: variant.stock || 0,
     }]);
     
     toast({ 
@@ -210,6 +211,7 @@ export default function POS() {
       shirt_size: variant.size,
       shirt_collar: variant.collar,
       shirt_cut: variant.cut,
+      variant_stock: variant.stock || 0,
     }]);
     
     toast({ 
