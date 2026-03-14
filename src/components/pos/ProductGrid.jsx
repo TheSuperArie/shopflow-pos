@@ -33,19 +33,18 @@ export default function ProductGrid({ groups, variants, onSelect }) {
         return (
           <button
             key={group.id}
-            onClick={() => !outOfStock && onSelect(group)}
-            disabled={outOfStock}
+            onClick={() => onSelect(group)}
             className={`relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all active:scale-95 ${
               outOfStock
-                ? 'border-red-200 bg-red-50 opacity-60 cursor-not-allowed'
+                ? 'border-red-200 bg-red-50 hover:border-red-300 hover:shadow-md'
                 : isLowStock
                 ? 'border-orange-200 bg-orange-50 hover:border-orange-300 hover:shadow-md'
                 : 'border-gray-200 bg-white hover:border-amber-300 hover:shadow-md'
             }`}
           >
             {outOfStock && (
-              <div className="absolute top-2 left-2">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
+              <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-semibold">
+                אזל מהמלאי
               </div>
             )}
             {isLowStock && !outOfStock && (

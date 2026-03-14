@@ -64,7 +64,7 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
       v.cut === selectedCut && 
       v.collar === collar
     );
-    if (variant && (variant.stock || 0) > 0) {
+    if (variant) {
       onConfirm(variant, group);
       handleClose();
     }
@@ -123,14 +123,18 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
                       <button
                         key={size}
                         onClick={() => handleSizeSelect(size)}
-                        disabled={!hasStock}
-                        className={`p-6 text-2xl font-bold rounded-xl border-2 transition-all ${
+                        className={`relative p-6 text-2xl font-bold rounded-xl border-2 transition-all ${
                           hasStock
                             ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
-                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                            : 'border-red-200 bg-red-50 hover:border-red-300'
                         }`}
                       >
                         {size}
+                        {!hasStock && (
+                          <div className="absolute top-1 left-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded">
+                            אזל
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -150,14 +154,18 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
                       <button
                         key={cut}
                         onClick={() => handleCutSelect(cut)}
-                        disabled={!hasStock}
-                        className={`p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
+                        className={`relative p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
                           hasStock
                             ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
-                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                            : 'border-red-200 bg-red-50 hover:border-red-300'
                         }`}
                       >
                         {cut}
+                        {!hasStock && (
+                          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                            אזל
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -185,24 +193,23 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
                       <button
                         key={collar}
                         onClick={() => handleCollarSelect(collar)}
-                        disabled={!hasStock}
                         className={`relative p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
                           hasStock
                             ? isLowStock
                               ? 'border-orange-300 bg-orange-50 hover:border-orange-500'
                               : 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
-                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed line-through'
+                            : 'border-red-200 bg-red-50 hover:border-red-300'
                         }`}
                       >
                         {collar}
-                        {hasStock && (
-                          <p className={`text-xs mt-2 font-semibold ${isLowStock ? 'text-orange-600' : 'text-gray-400'}`}>
-                            מלאי: {stock}
-                          </p>
-                        )}
+                        <p className={`text-xs mt-2 font-semibold ${
+                          !hasStock ? 'text-red-600' : isLowStock ? 'text-orange-600' : 'text-gray-400'
+                        }`}>
+                          מלאי: {stock}
+                        </p>
                         {!hasStock && (
-                          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                            אזל
+                          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-semibold">
+                            אזל מהמלאי
                           </div>
                         )}
                       </button>
