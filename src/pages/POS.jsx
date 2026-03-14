@@ -111,6 +111,7 @@ export default function POS() {
         total,
         total_cost: totalCost,
         payment_method: paymentMethod,
+        created_date: new Date().toISOString(),
       };
 
       // If offline, save to pending sales
