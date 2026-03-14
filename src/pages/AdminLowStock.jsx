@@ -28,6 +28,7 @@ export default function AdminLowStock() {
     queryKey: ['product-groups'],
     queryFn: () => base44.entities.ProductGroup.list(),
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     staleTime: 0,
   });
 
@@ -35,6 +36,7 @@ export default function AdminLowStock() {
     queryKey: ['product-variants'],
     queryFn: () => base44.entities.ProductVariant.list(),
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     staleTime: 0,
   });
 
@@ -42,6 +44,7 @@ export default function AdminLowStock() {
     queryKey: ['categories'],
     queryFn: () => base44.entities.Category.list('sort_order'),
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     staleTime: 0,
   });
 

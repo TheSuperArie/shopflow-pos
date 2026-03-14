@@ -77,7 +77,9 @@ export default function POS() {
       }
     },
     retry: false,
-    staleTime: Infinity,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const { data: allGroups = [] } = useQuery({
@@ -96,7 +98,9 @@ export default function POS() {
       }
     },
     retry: false,
-    staleTime: Infinity,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const { data: allVariants = [] } = useQuery({
@@ -115,7 +119,9 @@ export default function POS() {
       }
     },
     retry: false,
-    staleTime: Infinity,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Cache data when online
