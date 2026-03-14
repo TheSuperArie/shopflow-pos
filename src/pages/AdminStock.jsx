@@ -222,9 +222,13 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
   const mutation = useMutation({
     mutationFn: async (data) => {
       const supplier = suppliers.find(s => s.id === data.supplier_id);
+      const productName = selectedVariant.barcode 
+        ? `${selectedGroup.name} - מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar} [${selectedVariant.barcode.slice(-4)}]`
+        : `${selectedGroup.name} - מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar}`;
+      
       await base44.entities.StockUpdate.create({
         product_id: selectedVariant.id,
-        product_name: `${selectedGroup.name} - מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar}`,
+        product_name: productName,
         quantity_added: data.quantity_added,
         supplier_id: data.supplier_id,
         supplier_name: supplier?.name || '',
@@ -360,6 +364,9 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
                 מידה {selectedVariant?.size} | {selectedVariant?.cut} | {selectedVariant?.collar}
               </p>
               <p className="text-xs text-gray-500 mt-1">מלאי נוכחי: {selectedVariant?.stock || 0}</p>
+              {selectedVariant?.barcode && (
+                <p className="text-xs text-gray-400 mt-1">ברקוד: {selectedVariant.barcode} (4 ספרות: {selectedVariant.barcode.slice(-4)})</p>
+              )}
             </div>
 
             <div><Label>כמות שהגיעה</Label><Input type="number" value={form.quantity_added} onChange={e => setForm({ ...form, quantity_added: Number(e.target.value) })} /></div>
