@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronLeft, Settings, Barcode } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronDown, Settings, Barcode } from 'lucide-react';
 import VariantDimensionsManager from '@/components/admin/VariantDimensionsManager';
 import BarcodePrintModal from '@/components/admin/BarcodePrintModal';
 
@@ -22,7 +22,7 @@ export default function AdminProducts() {
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [selectedCat, setSelectedCat] = useState(null);
+  const [expandedCategory, setExpandedCategory] = useState(null);
   const [viewingGroup, setViewingGroup] = useState(null);
   const [managingDimensions, setManagingDimensions] = useState(null);
   const [printingBarcode, setPrintingBarcode] = useState(null);
@@ -44,9 +44,16 @@ export default function AdminProducts() {
     queryFn: () => base44.entities.ProductVariant.list(),
   });
 
-  const filteredGroups = selectedCat
-    ? groups.filter(g => g.category_id === selectedCat)
-    : groups;
+  // Group products by category
+  const categorizedGroups = {};
+  categories.forEach(cat => {
+    categorizedGroups[cat.id] = {
+      category: cat,
+      groups: groups.filter(g => g.category_id === cat.id),
+    };
+  });
+
+  const categorizedData = Object.values(categorizedGroups).filter(({ groups }) => groups.length > 0);
 
   return (
     <div className="space-y-6">
@@ -62,87 +69,99 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* Category tabs */}
-      <div className="flex flex-wrap gap-3">
-        <button
-          onClick={() => setSelectedCat(null)}
-          className={`px-5 py-3 rounded-xl text-base font-medium transition-all min-h-[48px] ${
-            !selectedCat ? 'bg-amber-500 text-white' : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-amber-300'
-          }`}
-        >
-          הכל ({groups.length})
-        </button>
-        {categories.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCat(cat.id)}
-            className={`px-5 py-3 rounded-xl text-base font-medium transition-all flex items-center gap-3 min-h-[48px] ${
-              selectedCat === cat.id ? 'bg-amber-500 text-white' : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-amber-300'
-            }`}
-          >
-            {cat.name}
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => { e.stopPropagation(); setManagingDimensions(cat); }}
-                className="p-2 rounded-lg hover:bg-black/10 transition-colors"
-                title="ניהול ממדי וריאציות"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); setShowCatForm(true); }}
-                className="p-2 rounded-lg hover:bg-black/10 transition-colors"
-              >
-                <Pencil className="w-5 h-5" />
-              </button>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* Product Groups grid */}
+      {/* Collapsible Categories */}
       {loadingGroups ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredGroups.map(group => {
-            const groupVariants = variants.filter(v => v.group_id === group.id);
-            const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
+        <div className="space-y-3">
+          {categorizedData.map(({ category, groups: catGroups }) => {
+            const isExpanded = expandedCategory === category.id;
+            const totalVariants = catGroups.reduce((sum, g) => {
+              return sum + variants.filter(v => v.group_id === g.id).length;
+            }, 0);
+            
             return (
-              <Card key={group.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex gap-3" onClick={() => setViewingGroup(group)}>
-                    {group.image_url ? (
-                      <img src={group.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center">
-                        <Folder className="w-8 h-8 text-amber-400" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{group.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {group.has_uniform_price ? (
-                          <>עלות: ₪{group.uniform_cost_price || 0} | מכירה: ₪{group.uniform_sell_price}</>
-                        ) : (
-                          <>מחירים משתנים</>
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-500">סה"כ מלאי: {totalStock}</p>
-                      <p className="text-xs text-amber-600 mt-0.5">{groupVariants.length} וריאציות</p>
+              <div key={category.id} className="border-2 border-amber-200 rounded-xl overflow-hidden">
+                {/* Category Header - Sticky */}
+                <button
+                  onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
+                  className="sticky top-0 z-10 w-full bg-amber-100 p-4 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-150 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                      <Folder className="w-5 h-5 text-white" />
                     </div>
-                    <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => { setEditingGroup(group); setShowGroupForm(true); }}
-                        className="p-3 rounded-lg hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      >
-                        <Pencil className="w-5 h-5 text-gray-500" />
-                      </button>
-                      <DeleteGroupButton groupId={group.id} queryClient={queryClient} toast={toast} />
+                    <div className="text-right">
+                      <h3 className="font-bold text-amber-900 text-lg">{category.name}</h3>
+                      <p className="text-sm text-amber-700">{catGroups.length} מוצרים • {totalVariants} וריאציות</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setManagingDimensions(category); }}
+                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors"
+                      title="ניהול ממדי וריאציות"
+                    >
+                      <Settings className="w-5 h-5 text-amber-700" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditingCategory(category); setShowCatForm(true); }}
+                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors"
+                    >
+                      <Pencil className="w-5 h-5 text-amber-700" />
+                    </button>
+                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+                
+                {/* Products Grid - Expandable */}
+                {isExpanded && (
+                  <div className="bg-white p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {catGroups.map(group => {
+                        const groupVariants = variants.filter(v => v.group_id === group.id);
+                        const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
+                        return (
+                          <Card key={group.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="flex gap-3" onClick={() => setViewingGroup(group)}>
+                                {group.image_url ? (
+                                  <img src={group.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                                ) : (
+                                  <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center">
+                                    <Folder className="w-8 h-8 text-amber-400" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold truncate">{group.name}</p>
+                                  <p className="text-sm text-gray-500">
+                                    {group.has_uniform_price ? (
+                                      <>עלות: ₪{group.uniform_cost_price || 0} | מכירה: ₪{group.uniform_sell_price}</>
+                                    ) : (
+                                      <>מחירים משתנים</>
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-gray-500">סה"כ מלאי: {totalStock}</p>
+                                  <p className="text-xs text-amber-600 mt-0.5">{groupVariants.length} וריאציות</p>
+                                </div>
+                                <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => { setEditingGroup(group); setShowGroupForm(true); }}
+                                    className="p-3 rounded-lg hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                  >
+                                    <Pencil className="w-5 h-5 text-gray-500" />
+                                  </button>
+                                  <DeleteGroupButton groupId={group.id} queryClient={queryClient} toast={toast} />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -449,7 +468,7 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
                     {/* Size Header - Clickable */}
                     <button
                       onClick={() => setExpandedSize(isExpanded ? null : size)}
-                      className="w-full bg-amber-50 p-3 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-100 transition-colors"
+                      className="sticky top-0 z-10 w-full bg-amber-50 p-3 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-100 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-2xl font-bold text-amber-700">מידה {size}</span>
@@ -459,7 +478,7 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-600">סה"כ מלאי: {totalStock}</span>
-                        <ChevronLeft className={`w-5 h-5 transition-transform ${isExpanded ? '-rotate-90' : 'rotate-180'}`} />
+                        <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </div>
                     </button>
 
