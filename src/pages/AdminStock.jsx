@@ -114,7 +114,7 @@ export default function AdminStock() {
 
 function StockFormModal({ open, onClose, queryClient, toast }) {
   const [form, setForm] = useState({
-    product_id: '', quantity_added: 0, supplier_name: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '',
+    product_id: '', quantity_added: 0, supplier_id: '', order_id: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '',
   });
 
   const { data: products = [] } = useQuery({
@@ -122,31 +122,50 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
     queryFn: () => base44.entities.Product.list(),
   });
 
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers'],
+    queryFn: () => base44.entities.Supplier.list(),
+  });
+
+  const { data: orders = [] } = useQuery({
+    queryKey: ['supplier-orders'],
+    queryFn: () => base44.entities.SupplierOrder.list(),
+    enabled: !!form.supplier_id,
+  });
+
+  const supplierOrders = orders.filter(o => o.supplier_id === form.supplier_id && o.status !== 'התקבל' && o.status !== 'בוטל');
+
   const mutation = useMutation({
     mutationFn: async (data) => {
       const product = products.find(p => p.id === data.product_id);
+      const supplier = suppliers.find(s => s.id === data.supplier_id);
       await base44.entities.StockUpdate.create({
         ...data,
         product_name: product?.name || '',
+        supplier_name: supplier?.name || '',
       });
       if (product) {
         await base44.entities.Product.update(product.id, {
           stock: (product.stock || 0) + data.quantity_added,
         });
       }
+      if (data.order_id) {
+        await base44.entities.SupplierOrder.update(data.order_id, { status: 'התקבל חלקית' });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-updates'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['supplier-orders'] });
       toast({ title: 'המלאי עודכן' });
       onClose();
-      setForm({ product_id: '', quantity_added: 0, supplier_name: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '' });
+      setForm({ product_id: '', quantity_added: 0, supplier_id: '', order_id: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '' });
     },
   });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-sm">
+      <DialogContent dir="rtl" className="max-w-lg">
         <DialogHeader><DialogTitle>סחורה חדשה</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div>
@@ -159,7 +178,31 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
             </Select>
           </div>
           <div><Label>כמות שהגיעה</Label><Input type="number" value={form.quantity_added} onChange={e => setForm({ ...form, quantity_added: Number(e.target.value) })} /></div>
-          <div><Label>שם ספק</Label><Input value={form.supplier_name} onChange={e => setForm({ ...form, supplier_name: e.target.value })} /></div>
+          <div>
+            <Label>ספק</Label>
+            <Select value={form.supplier_id} onValueChange={v => setForm({ ...form, supplier_id: v, order_id: '' })}>
+              <SelectTrigger><SelectValue placeholder="בחר ספק" /></SelectTrigger>
+              <SelectContent>
+                {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {form.supplier_id && supplierOrders.length > 0 && (
+            <div>
+              <Label>קשר להזמנה (אופציונלי)</Label>
+              <Select value={form.order_id} onValueChange={v => setForm({ ...form, order_id: v })}>
+                <SelectTrigger><SelectValue placeholder="ללא קישור" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>ללא קישור</SelectItem>
+                  {supplierOrders.map(o => (
+                    <SelectItem key={o.id} value={o.id}>
+                      הזמנה #{o.order_number || o.id.slice(0, 8)} - {o.status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div><Label>תאריך הגעה</Label><Input type="date" value={form.arrival_date} onChange={e => setForm({ ...form, arrival_date: e.target.value })} /></div>
           <div><Label>הערות</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
