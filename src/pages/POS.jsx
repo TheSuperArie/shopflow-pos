@@ -211,6 +211,13 @@ export default function POS() {
       shirt_collar: variant.collar,
       shirt_cut: variant.cut,
     }]);
+    
+    toast({ 
+      title: '✅ נוסף לעגלה',
+      description: `${group.name} - מידה ${variant.size}`,
+      duration: 1500,
+    });
+    
     setSelectedGroup(null);
   };
 
