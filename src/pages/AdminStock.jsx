@@ -9,17 +9,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Loader2, TruckIcon, AlertTriangle, Package } from 'lucide-react';
+import { Plus, Loader2, TruckIcon, AlertTriangle, Package, ChevronLeft, Folder } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function AdminStock() {
   const [showForm, setShowForm] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: updates = [], isLoading } = useQuery({
     queryKey: ['stock-updates'],
     queryFn: () => base44.entities.StockUpdate.list('-arrival_date'),
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => base44.entities.Category.list('sort_order'),
   });
 
   const { data: groups = [] } = useQuery({
@@ -32,13 +38,19 @@ export default function AdminStock() {
     queryFn: () => base44.entities.ProductVariant.list(),
   });
 
-  // Calculate low stock items
-  const lowStockItems = [];
+  // Calculate low stock items by category
+  const lowStockByCategory = {};
   groups.forEach(group => {
+    const category = categories.find(c => c.id === group.category_id);
+    const categoryName = category?.name || 'אחר';
+    
     const groupVariants = variants.filter(v => v.group_id === group.id);
     groupVariants.forEach(variant => {
       if ((variant.stock || 0) < 5) {
-        lowStockItems.push({
+        if (!lowStockByCategory[categoryName]) {
+          lowStockByCategory[categoryName] = [];
+        }
+        lowStockByCategory[categoryName].push({
           groupName: group.name,
           variant,
           stock: variant.stock || 0,
@@ -46,6 +58,8 @@ export default function AdminStock() {
       }
     });
   });
+
+  const totalLowStock = Object.values(lowStockByCategory).reduce((sum, items) => sum + items.length, 0);
 
   return (
     <div className="space-y-6">
@@ -56,29 +70,40 @@ export default function AdminStock() {
         </Button>
       </div>
 
-      {/* Low Stock Alert */}
-      {lowStockItems.length > 0 && (
+      {/* Low Stock Alert - Organized by Categories */}
+      {totalLowStock > 0 && (
         <Card className="border-red-200 bg-red-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-700">
               <AlertTriangle className="w-5 h-5" />
-              התראות מלאי נמוך ({lowStockItems.length} פריטים)
+              התראות מלאי נמוך ({totalLowStock} פריטים)
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {lowStockItems.map((item, idx) => (
-                <div key={idx} className="p-3 bg-white rounded-lg border border-red-200">
-                  <p className="font-semibold text-sm">{item.groupName}</p>
-                  <p className="text-xs text-gray-600">
-                    {item.variant.size} | {item.variant.cut} | {item.variant.collar}
-                  </p>
-                  <Badge className="mt-2 bg-red-600">
-                    מלאי: {item.stock} יחידות
+          <CardContent className="space-y-4">
+            {Object.entries(lowStockByCategory).map(([categoryName, items]) => (
+              <div key={categoryName}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Folder className="w-4 h-4 text-red-600" />
+                  <h3 className="font-semibold text-red-800">{categoryName}</h3>
+                  <Badge variant="outline" className="text-red-600 border-red-300">
+                    {items.length}
                   </Badge>
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {items.map((item, idx) => (
+                    <div key={idx} className="p-3 bg-white rounded-lg border border-red-200">
+                      <p className="font-semibold text-sm">{item.groupName}</p>
+                      <p className="text-xs text-gray-600">
+                        {item.variant.size} | {item.variant.cut} | {item.variant.collar}
+                      </p>
+                      <Badge className="mt-2 bg-red-600">
+                        מלאי: {item.stock} יחידות
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
@@ -113,13 +138,27 @@ export default function AdminStock() {
 }
 
 function StockFormModal({ open, onClose, queryClient, toast }) {
+  const [step, setStep] = useState('category'); // 'category' | 'group' | 'variant' | 'details'
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null);
   const [form, setForm] = useState({
-    product_id: '', quantity_added: 0, supplier_id: '', order_id: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '',
+    quantity_added: 0, supplier_id: '', order_id: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '',
   });
 
-  const { data: products = [] } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => base44.entities.Product.list(),
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => base44.entities.Category.list('sort_order'),
+  });
+
+  const { data: groups = [] } = useQuery({
+    queryKey: ['product-groups'],
+    queryFn: () => base44.entities.ProductGroup.list(),
+  });
+
+  const { data: variants = [] } = useQuery({
+    queryKey: ['product-variants'],
+    queryFn: () => base44.entities.ProductVariant.list(),
   });
 
   const { data: suppliers = [] } = useQuery({
@@ -133,84 +172,234 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
     enabled: !!form.supplier_id,
   });
 
+  const categoryGroups = selectedCategory 
+    ? groups.filter(g => g.category_id === selectedCategory.id)
+    : [];
+
+  const groupVariants = selectedGroup
+    ? variants.filter(v => v.group_id === selectedGroup.id)
+    : [];
+
   const supplierOrders = orders.filter(o => o.supplier_id === form.supplier_id && o.status !== 'התקבל' && o.status !== 'בוטל');
+
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    setStep('group');
+  };
+
+  const handleGroupSelect = (group) => {
+    setSelectedGroup(group);
+    setStep('variant');
+  };
+
+  const handleVariantSelect = (variant) => {
+    setSelectedVariant(variant);
+    setStep('details');
+  };
+
+  const handleBack = () => {
+    if (step === 'details') {
+      setStep('variant');
+      setSelectedVariant(null);
+    } else if (step === 'variant') {
+      setStep('group');
+      setSelectedGroup(null);
+    } else if (step === 'group') {
+      setStep('category');
+      setSelectedCategory(null);
+    }
+  };
+
+  const handleClose = () => {
+    setStep('category');
+    setSelectedCategory(null);
+    setSelectedGroup(null);
+    setSelectedVariant(null);
+    setForm({ quantity_added: 0, supplier_id: '', order_id: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '' });
+    onClose();
+  };
 
   const mutation = useMutation({
     mutationFn: async (data) => {
-      const product = products.find(p => p.id === data.product_id);
       const supplier = suppliers.find(s => s.id === data.supplier_id);
       await base44.entities.StockUpdate.create({
-        ...data,
-        product_name: product?.name || '',
+        product_id: selectedVariant.id,
+        product_name: `${selectedGroup.name} - מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar}`,
+        quantity_added: data.quantity_added,
+        supplier_id: data.supplier_id,
         supplier_name: supplier?.name || '',
+        order_id: data.order_id,
+        arrival_date: data.arrival_date,
+        notes: data.notes,
       });
-      if (product) {
-        await base44.entities.Product.update(product.id, {
-          stock: (product.stock || 0) + data.quantity_added,
-        });
-      }
+
+      await base44.entities.ProductVariant.update(selectedVariant.id, {
+        stock: (selectedVariant.stock || 0) + data.quantity_added,
+      });
+
       if (data.order_id) {
         await base44.entities.SupplierOrder.update(data.order_id, { status: 'התקבל חלקית' });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-updates'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       queryClient.invalidateQueries({ queryKey: ['supplier-orders'] });
-      toast({ title: 'המלאי עודכן' });
-      onClose();
-      setForm({ product_id: '', quantity_added: 0, supplier_id: '', order_id: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '' });
+      toast({ 
+        title: '✅ המלאי עודכן בהצלחה',
+        duration: 2000,
+      });
+      handleClose();
     },
   });
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-lg">
-        <DialogHeader><DialogTitle>סחורה חדשה</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label>מוצר</Label>
-            <Select value={form.product_id} onValueChange={v => setForm({ ...form, product_id: v })}>
-              <SelectTrigger><SelectValue placeholder="בחר מוצר" /></SelectTrigger>
-              <SelectContent>
-                {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name} (מלאי: {p.stock || 0})</SelectItem>)}
-              </SelectContent>
-            </Select>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent dir="rtl" className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            {step !== 'category' && (
+              <button onClick={handleBack} className="p-1 hover:bg-gray-100 rounded">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            <DialogTitle>
+              {step === 'category' && 'בחר קטגוריה'}
+              {step === 'group' && `קטגוריה: ${selectedCategory?.name}`}
+              {step === 'variant' && `${selectedGroup?.name}`}
+              {step === 'details' && 'פרטי המשלוח'}
+            </DialogTitle>
           </div>
-          <div><Label>כמות שהגיעה</Label><Input type="number" value={form.quantity_added} onChange={e => setForm({ ...form, quantity_added: Number(e.target.value) })} /></div>
-          <div>
-            <Label>ספק</Label>
-            <Select value={form.supplier_id} onValueChange={v => setForm({ ...form, supplier_id: v, order_id: '' })}>
-              <SelectTrigger><SelectValue placeholder="בחר ספק" /></SelectTrigger>
-              <SelectContent>
-                {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        </DialogHeader>
+
+        {/* Step 1: Select Category */}
+        {step === 'category' && (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">בחר את הקטגוריה של המוצר:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {categories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => handleCategorySelect(cat)}
+                  className="p-6 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-center"
+                >
+                  <p className="font-semibold">{cat.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {groups.filter(g => g.category_id === cat.id).length} תיקיות
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
-          {form.supplier_id && supplierOrders.length > 0 && (
+        )}
+
+        {/* Step 2: Select Group */}
+        {step === 'group' && (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">בחר תיקיית מוצר:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {categoryGroups.map(group => {
+                const groupVars = variants.filter(v => v.group_id === group.id);
+                const totalStock = groupVars.reduce((s, v) => s + (v.stock || 0), 0);
+                return (
+                  <button
+                    key={group.id}
+                    onClick={() => handleGroupSelect(group)}
+                    className="p-4 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-right"
+                  >
+                    <div className="flex gap-3">
+                      {group.image_url ? (
+                        <img src={group.image_url} alt="" className="w-12 h-12 rounded object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center">
+                          <Package className="w-6 h-6 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="font-semibold">{group.name}</p>
+                        <p className="text-xs text-gray-500">מלאי כולל: {totalStock}</p>
+                        <p className="text-xs text-gray-400">{groupVars.length} וריאציות</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Select Variant */}
+        {step === 'variant' && (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">בחר וריאציה:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {groupVariants.map(variant => (
+                <button
+                  key={variant.id}
+                  onClick={() => handleVariantSelect(variant)}
+                  className="p-4 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-center"
+                >
+                  <p className="font-bold text-lg">מידה {variant.size}</p>
+                  <p className="text-sm text-gray-600">{variant.cut}</p>
+                  <p className="text-sm text-gray-600">{variant.collar}</p>
+                  <Badge className="mt-2" variant="outline">
+                    מלאי: {variant.stock || 0}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Enter Details */}
+        {step === 'details' && (
+          <div className="space-y-4">
+            <div className="bg-amber-50 p-3 rounded-lg">
+              <p className="font-semibold">{selectedGroup?.name}</p>
+              <p className="text-sm text-gray-600">
+                מידה {selectedVariant?.size} | {selectedVariant?.cut} | {selectedVariant?.collar}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">מלאי נוכחי: {selectedVariant?.stock || 0}</p>
+            </div>
+
+            <div><Label>כמות שהגיעה</Label><Input type="number" value={form.quantity_added} onChange={e => setForm({ ...form, quantity_added: Number(e.target.value) })} /></div>
+            
             <div>
-              <Label>קשר להזמנה (אופציונלי)</Label>
-              <Select value={form.order_id} onValueChange={v => setForm({ ...form, order_id: v })}>
-                <SelectTrigger><SelectValue placeholder="ללא קישור" /></SelectTrigger>
+              <Label>ספק</Label>
+              <Select value={form.supplier_id} onValueChange={v => setForm({ ...form, supplier_id: v, order_id: '' })}>
+                <SelectTrigger><SelectValue placeholder="בחר ספק" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>ללא קישור</SelectItem>
-                  {supplierOrders.map(o => (
-                    <SelectItem key={o.id} value={o.id}>
-                      הזמנה #{o.order_number || o.id.slice(0, 8)} - {o.status}
-                    </SelectItem>
-                  ))}
+                  {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-          )}
-          <div><Label>תאריך הגעה</Label><Input type="date" value={form.arrival_date} onChange={e => setForm({ ...form, arrival_date: e.target.value })} /></div>
-          <div><Label>הערות</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-        </div>
-        <DialogFooter>
-          <Button onClick={() => mutation.mutate(form)} disabled={!form.product_id || !form.quantity_added} className="bg-amber-500 hover:bg-amber-600">
-            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
-          </Button>
-        </DialogFooter>
+
+            {form.supplier_id && supplierOrders.length > 0 && (
+              <div>
+                <Label>קשר להזמנה (אופציונלי)</Label>
+                <Select value={form.order_id} onValueChange={v => setForm({ ...form, order_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="ללא קישור" /></SelectTrigger>
+                  <SelectContent>
+                    {supplierOrders.map(o => (
+                      <SelectItem key={o.id} value={o.id}>
+                        הזמנה #{o.order_number || o.id.slice(0, 8)} - {o.status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div><Label>תאריך הגעה</Label><Input type="date" value={form.arrival_date} onChange={e => setForm({ ...form, arrival_date: e.target.value })} /></div>
+            <div><Label>הערות</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+
+            <DialogFooter>
+              <Button onClick={() => mutation.mutate(form)} disabled={!form.quantity_added} className="bg-amber-500 hover:bg-amber-600 w-full">
+                {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור ועדכן מלאי'}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
