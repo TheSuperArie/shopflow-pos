@@ -20,10 +20,12 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
 
   if (!group) return null;
 
-  const availableVariants = variants.filter(v => (v.stock || 0) > 0);
+  // Show all variants, but mark out-of-stock ones
+  const allVariants = variants || [];
+  const hasAnyStock = allVariants.some(v => (v.stock || 0) > 0);
 
   const handleConfirm = () => {
-    if (selectedVariant) {
+    if (selectedVariant && (selectedVariant.stock || 0) > 0) {
       onConfirm(selectedVariant, group);
       setSelectedVariant(null);
     }
@@ -39,40 +41,59 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
           )}
         </DialogHeader>
 
-        {availableVariants.length === 0 ? (
+        {allVariants.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <AlertTriangle className="w-12 h-12 mb-3 text-red-400" />
-            <p className="text-lg">אין מלאי זמין</p>
+            <p className="text-lg">אין וריאציות מוגדרות למוצר זה</p>
           </div>
         ) : (
           <div className="space-y-4">
+            {!hasAnyStock && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+                <AlertTriangle className="w-4 h-4 inline ml-2" />
+                כל הוריאציות אזלו מהמלאי
+              </div>
+            )}
             <p className="text-sm text-gray-600">בחר מידה, גזרה וצווארון:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {availableVariants.map(variant => {
+              {allVariants.map(variant => {
                 const stock = variant.stock || 0;
-                const isLowStock = stock < threshold;
+                const isOutOfStock = stock === 0;
+                const isLowStock = stock > 0 && stock < threshold;
                 return (
                   <button
                     key={variant.id}
                     onClick={() => setSelectedVariant(variant)}
+                    disabled={isOutOfStock}
                     className={`relative p-4 rounded-xl border-2 text-right transition-all ${
-                      selectedVariant?.id === variant.id
+                      isOutOfStock
+                        ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                        : selectedVariant?.id === variant.id
                         ? 'border-amber-500 bg-amber-50'
                         : isLowStock
                         ? 'border-orange-200 bg-orange-50 hover:border-orange-300'
                         : 'border-gray-200 bg-white hover:border-amber-300'
                     }`}
                   >
-                    {isLowStock && (
+                    {isLowStock && !isOutOfStock && (
                       <div className="absolute top-2 left-2">
                         <AlertTriangle className="w-4 h-4 text-orange-500" />
                       </div>
                     )}
+                    {isOutOfStock && (
+                      <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                        אזל
+                      </div>
+                    )}
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-bold text-lg">מידה {variant.size}</p>
+                        <p className={`font-bold text-lg ${isOutOfStock ? 'line-through' : ''}`}>
+                          מידה {variant.size}
+                        </p>
                         <p className="text-sm text-gray-600">{variant.cut} | {variant.collar}</p>
-                        <p className={`text-xs mt-1 font-semibold ${isLowStock ? 'text-orange-600' : 'text-gray-400'}`}>
+                        <p className={`text-xs mt-1 font-semibold ${
+                          isOutOfStock ? 'text-red-600' : isLowStock ? 'text-orange-600' : 'text-gray-400'
+                        }`}>
                           מלאי: {stock}
                         </p>
                       </div>
