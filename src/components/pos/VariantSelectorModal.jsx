@@ -81,7 +81,7 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent dir="rtl" className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">{group.name}</DialogTitle>
@@ -97,74 +97,124 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
           </div>
         ) : (
           <div className="space-y-4">
-            {!hasAnyStock && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-                <AlertTriangle className="w-4 h-4 inline ml-2" />
-                כל הוריאציות אזלו מהמלאי
+            {/* Progress indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 1 ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
+                1. מידה
               </div>
-            )}
-            <p className="text-sm text-gray-600">בחר מידה, גזרה וצווארון:</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {allVariants.map(variant => {
-                const stock = variant.stock || 0;
-                const isOutOfStock = stock === 0;
-                const isLowStock = stock > 0 && stock < threshold;
-                return (
-                  <button
-                    key={variant.id}
-                    onClick={() => setSelectedVariant(variant)}
-                    disabled={isOutOfStock}
-                    className={`relative p-4 rounded-xl border-2 text-right transition-all ${
-                      isOutOfStock
-                        ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                        : selectedVariant?.id === variant.id
-                        ? 'border-amber-500 bg-amber-50'
-                        : isLowStock
-                        ? 'border-orange-200 bg-orange-50 hover:border-orange-300'
-                        : 'border-gray-200 bg-white hover:border-amber-300'
-                    }`}
-                  >
-                    {isLowStock && !isOutOfStock && (
-                      <div className="absolute top-2 left-2">
-                        <AlertTriangle className="w-4 h-4 text-orange-500" />
-                      </div>
-                    )}
-                    {isOutOfStock && (
-                      <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                        אזל
-                      </div>
-                    )}
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className={`font-bold text-lg ${isOutOfStock ? 'line-through' : ''}`}>
-                          מידה {variant.size}
-                        </p>
-                        <p className="text-sm text-gray-600">{variant.cut} | {variant.collar}</p>
-                        <p className={`text-xs mt-1 font-semibold ${
-                          isOutOfStock ? 'text-red-600' : isLowStock ? 'text-orange-600' : 'text-gray-400'
-                        }`}>
-                          מלאי: {stock}
-                        </p>
-                      </div>
-                      {!group.has_uniform_price && (
-                        <span className="text-amber-600 font-bold">₪{variant.sell_price}</span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+              <div className="w-8 h-0.5 bg-gray-300"></div>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 2 ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
+                2. גזרה
+              </div>
+              <div className="w-8 h-0.5 bg-gray-300"></div>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 3 ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
+                3. צווארון
+              </div>
             </div>
 
+            {/* Step 1: Select Size */}
+            {step === 1 && (
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-center">בחר מידה</h3>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {uniqueSizes.map(size => {
+                    const hasStock = allVariants.some(v => v.size === size && (v.stock || 0) > 0);
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => handleSizeSelect(size)}
+                        disabled={!hasStock}
+                        className={`p-6 text-2xl font-bold rounded-xl border-2 transition-all ${
+                          hasStock
+                            ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
+                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Select Cut */}
+            {step === 2 && (
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-center">בחר גזרה</h3>
+                <p className="text-sm text-gray-500 text-center">מידה: {selectedSize}</p>
+                <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
+                  {uniqueCuts.map(cut => {
+                    const hasStock = availableVariants.some(v => v.cut === cut && (v.stock || 0) > 0);
+                    return (
+                      <button
+                        key={cut}
+                        onClick={() => handleCutSelect(cut)}
+                        disabled={!hasStock}
+                        className={`p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
+                          hasStock
+                            ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
+                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        {cut}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Select Collar */}
+            {step === 3 && (
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-center">בחר צווארון</h3>
+                <p className="text-sm text-gray-500 text-center">מידה: {selectedSize} | גזרה: {selectedCut}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {uniqueCollars.map(collar => {
+                    const variant = allVariants.find(v => 
+                      v.size === selectedSize && 
+                      v.cut === selectedCut && 
+                      v.collar === collar
+                    );
+                    const hasStock = variant && (variant.stock || 0) > 0;
+                    const stock = variant?.stock || 0;
+                    const isLowStock = stock > 0 && stock < threshold;
+                    
+                    return (
+                      <button
+                        key={collar}
+                        onClick={() => handleCollarSelect(collar)}
+                        disabled={!hasStock}
+                        className={`relative p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
+                          hasStock
+                            ? isLowStock
+                              ? 'border-orange-300 bg-orange-50 hover:border-orange-500'
+                              : 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
+                            : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed line-through'
+                        }`}
+                      >
+                        {collar}
+                        {hasStock && (
+                          <p className={`text-xs mt-2 font-semibold ${isLowStock ? 'text-orange-600' : 'text-gray-400'}`}>
+                            מלאי: {stock}
+                          </p>
+                        )}
+                        {!hasStock && (
+                          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                            אזל
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 pt-4">
-              <Button onClick={onClose} variant="outline" className="flex-1">
-                ביטול
-              </Button>
-              <Button
-                onClick={handleConfirm}
-                disabled={!selectedVariant}
-                className="flex-1 bg-amber-500 hover:bg-amber-600"
-              >
-                הוסף לעגלה
+              <Button onClick={step === 1 ? handleClose : handleBack} variant="outline" className="flex-1">
+                {step === 1 ? 'ביטול' : 'חזור'}
               </Button>
             </div>
           </div>
