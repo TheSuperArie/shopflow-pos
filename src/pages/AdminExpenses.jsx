@@ -102,12 +102,14 @@ function ExpenseItem({ expense, queryClient, toast }) {
     },
   });
 
+  const displayCategory = expense.category === 'אחר' && expense.custom_category ? expense.custom_category : expense.category;
+
   return (
     <Card>
       <CardContent className="p-4 flex items-center justify-between">
         <div>
           <p className="font-semibold">{expense.description}</p>
-          <p className="text-sm text-gray-500">{expense.category} • {expense.date}</p>
+          <p className="text-sm text-gray-500">{displayCategory} • {expense.date}</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-bold text-red-600">₪{expense.amount?.toFixed(0)}</span>
@@ -125,7 +127,7 @@ function ExpenseItem({ expense, queryClient, toast }) {
 
 function ExpenseFormModal({ open, onClose, queryClient, toast }) {
   const [form, setForm] = useState({
-    description: '', amount: 0, category: '', date: format(new Date(), 'yyyy-MM-dd'),
+    description: '', amount: 0, category: '', custom_category: '', date: format(new Date(), 'yyyy-MM-dd'),
   });
 
   const mutation = useMutation({
@@ -134,7 +136,7 @@ function ExpenseFormModal({ open, onClose, queryClient, toast }) {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       toast({ title: 'ההוצאה נוספה' });
       onClose();
-      setForm({ description: '', amount: 0, category: '', date: format(new Date(), 'yyyy-MM-dd') });
+      setForm({ description: '', amount: 0, category: '', custom_category: '', date: format(new Date(), 'yyyy-MM-dd') });
     },
   });
 
@@ -147,13 +149,16 @@ function ExpenseFormModal({ open, onClose, queryClient, toast }) {
           <div><Label>סכום</Label><Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} /></div>
           <div>
             <Label>קטגוריה</Label>
-            <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+            <Select value={form.category} onValueChange={v => setForm({ ...form, category: v, custom_category: v === 'אחר' ? form.custom_category : '' })}>
               <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
               <SelectContent>
                 {EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+          {form.category === 'אחר' && (
+            <div><Label>שם הקטגוריה</Label><Input value={form.custom_category} onChange={e => setForm({ ...form, custom_category: e.target.value })} placeholder="למשל: אחזקת מבנה, ביטוח..." /></div>
+          )}
           <div><Label>תאריך</Label><Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
         </div>
         <DialogFooter>
