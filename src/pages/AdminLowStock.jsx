@@ -51,36 +51,38 @@ export default function AdminLowStock() {
   const isLoading = groupsLoading || variantsLoading;
   const threshold = settings?.low_stock_threshold || 5;
 
-  // Filter low stock variants
+  // Filter low stock variants - include ALL variants below threshold
   const lowStockVariants = variants.filter(v => (v.stock || 0) < threshold);
 
   // Group by category first, then by product group
   const categorizedLowStock = {};
+  
+  // First, process all variants
   lowStockVariants.forEach(variant => {
     const group = groups.find(g => g.id === variant.group_id);
-    if (group) {
-      const category = categories.find(c => c.id === group.category_id);
-      const categoryId = category?.id || 'no-category';
-      const categoryName = category?.name || 'ללא קטגוריה';
+    if (!group) return; // Skip if group not found
+    
+    const category = categories.find(c => c.id === group.category_id);
+    const categoryId = category?.id || 'no-category';
+    const categoryName = category?.name || 'ללא קטגוריה';
 
-      if (!categorizedLowStock[categoryId]) {
-        categorizedLowStock[categoryId] = {
-          category: { id: categoryId, name: categoryName },
-          groups: {},
-          totalVariants: 0,
-        };
-      }
-
-      if (!categorizedLowStock[categoryId].groups[group.id]) {
-        categorizedLowStock[categoryId].groups[group.id] = {
-          group,
-          variants: [],
-        };
-      }
-
-      categorizedLowStock[categoryId].groups[group.id].variants.push(variant);
-      categorizedLowStock[categoryId].totalVariants++;
+    if (!categorizedLowStock[categoryId]) {
+      categorizedLowStock[categoryId] = {
+        category: { id: categoryId, name: categoryName },
+        groups: {},
+        totalVariants: 0,
+      };
     }
+
+    if (!categorizedLowStock[categoryId].groups[group.id]) {
+      categorizedLowStock[categoryId].groups[group.id] = {
+        group,
+        variants: [],
+      };
+    }
+
+    categorizedLowStock[categoryId].groups[group.id].variants.push(variant);
+    categorizedLowStock[categoryId].totalVariants++;
   });
 
   const categorizedData = Object.values(categorizedLowStock).map(cat => ({
