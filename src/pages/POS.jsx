@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ShoppingCart } from 'lucide-react';
+import { Settings, ShoppingCart, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import CategoryGrid from '@/components/pos/CategoryGrid';
@@ -13,6 +13,7 @@ import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import OnlineStatus from '@/components/pos/OnlineStatus';
 import { offlineManager } from '@/components/pos/offlineManager';
+import ReturnFormModal from '@/components/returns/ReturnFormModal';
 
 export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -23,6 +24,7 @@ export default function POS() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showReturnForm, setShowReturnForm] = useState(false);
   const [useCache, setUseCache] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -272,6 +274,13 @@ export default function POS() {
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
           <OnlineStatus isOnline={isOnline} onSync={handleSync} />
+          <button
+            onClick={() => setShowReturnForm(true)}
+            className="p-2 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+            title="החזרת מוצר"
+          >
+            <RotateCcw className="w-5 h-5" />
+          </button>
           {/* Mobile cart toggle */}
           <button
             onClick={() => setShowCart(!showCart)}
@@ -410,6 +419,11 @@ export default function POS() {
           setShowReceipt(false);
           setLastSale(null);
         }}
+      />
+
+      <ReturnFormModal
+        open={showReturnForm}
+        onClose={() => setShowReturnForm(false)}
       />
     </div>
   );
