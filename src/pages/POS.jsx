@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, ShoppingCart } from 'lucide-react';
@@ -11,6 +11,8 @@ import VariantSelectorModal from '@/components/pos/VariantSelectorModal';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
+import OnlineStatus from '@/components/pos/OnlineStatus';
+import { offlineManager } from '@/components/pos/offlineManager';
 
 export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -20,23 +22,80 @@ export default function POS() {
   const [showCart, setShowCart] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [useCache, setUseCache] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: categories = [] } = useQuery({
+  // Online/Offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setUseCache(false);
+      queryClient.invalidateQueries();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setUseCache(true);
+      toast({
+        title: '⚠️ מצב לא מקוון',
+        description: 'עובד עם מלאי שמור מקומית',
+        duration: 4000,
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [queryClient, toast]);
+
+  // Fetch from API or cache
+  const { data: categories = [], isLoading: loadingCat } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.list('sort_order'),
+    queryFn: async () => {
+      if (useCache || !isOnline) {
+        const cached = offlineManager.getCachedInventory();
+        return cached.categories;
+      }
+      const data = await base44.entities.Category.list('sort_order');
+      return data;
+    },
   });
 
-  const { data: allGroups = [] } = useQuery({
+  const { data: allGroups = [], isLoading: loadingGroups } = useQuery({
     queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryFn: async () => {
+      if (useCache || !isOnline) {
+        const cached = offlineManager.getCachedInventory();
+        return cached.groups;
+      }
+      const data = await base44.entities.ProductGroup.list();
+      return data;
+    },
   });
 
-  const { data: allVariants = [] } = useQuery({
+  const { data: allVariants = [], isLoading: loadingVar } = useQuery({
     queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
+    queryFn: async () => {
+      if (useCache || !isOnline) {
+        const cached = offlineManager.getCachedInventory();
+        return cached.variants;
+      }
+      const data = await base44.entities.ProductVariant.list();
+      return data;
+    },
   });
+
+  // Cache data when online
+  useEffect(() => {
+    if (isOnline && categories.length > 0 && allGroups.length > 0 && allVariants.length > 0) {
+      offlineManager.cacheInventoryData(categories, allGroups, allVariants);
+    }
+  }, [categories, allGroups, allVariants, isOnline]);
 
   const groups = selectedCategory
     ? allGroups.filter(g => g.category_id === selectedCategory.id)
@@ -47,12 +106,34 @@ export default function POS() {
       const totalCost = cartItems.reduce((s, i) => s + (i.cost_price || 0) * i.quantity, 0);
       const total = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
-      const sale = await base44.entities.Sale.create({
+      const saleData = {
         items: cartItems,
         total,
         total_cost: totalCost,
         payment_method: paymentMethod,
-      });
+      };
+
+      // If offline, save to pending sales
+      if (!isOnline) {
+        offlineManager.addPendingSale(saleData);
+        
+        // Update local cache
+        const cached = offlineManager.getCachedInventory();
+        const updatedVariants = cached.variants.map(v => {
+          const item = cartItems.find(i => i.variant_id === v.id);
+          if (item) {
+            return { ...v, stock: Math.max(0, (v.stock || 0) - item.quantity) };
+          }
+          return v;
+        });
+        offlineManager.cacheInventoryData(cached.categories, cached.groups, updatedVariants);
+        queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+        
+        return { ...saleData, id: 'offline_' + Date.now() };
+      }
+
+      // If online, save normally
+      const sale = await base44.entities.Sale.create(saleData);
 
       for (const item of cartItems) {
         if (item.variant_id) {
@@ -74,9 +155,21 @@ export default function POS() {
       setShowCheckout(false);
       setShowCart(false);
       setShowReceipt(true);
-      toast({ title: '✅ המכירה הושלמה בהצלחה!' });
+      
+      if (!isOnline) {
+        toast({ 
+          title: '✅ המכירה נשמרה מקומית',
+          description: 'תסונכרן אוטומטית כשתתחבר לאינטרנט',
+        });
+      } else {
+        toast({ title: '✅ המכירה הושלמה בהצלחה!' });
+      }
     },
   });
+
+  const handleSync = () => {
+    queryClient.invalidateQueries();
+  };
 
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
@@ -119,6 +212,7 @@ export default function POS() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
+          <OnlineStatus onSync={handleSync} />
           {/* Mobile cart toggle */}
           <button
             onClick={() => setShowCart(!showCart)}

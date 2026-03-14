@@ -3,7 +3,7 @@ import { Wifi, WifiOff, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { offlineManager } from '@/lib/offlineManager';
+import { offlineManager } from './offlineManager';
 import { base44 } from '@/api/base44Client';
 
 export default function OnlineStatus({ onSync }) {
