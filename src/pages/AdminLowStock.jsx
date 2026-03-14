@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Package, Loader2, ChevronLeft } from 'lucide-react';
 
 export default function AdminLowStock() {
   const [expandedCategory, setExpandedCategory] = useState(null);
+  const queryClient = useQueryClient();
+
+  // Force fresh data fetch on component mount
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+    queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+    queryClient.invalidateQueries({ queryKey: ['categories'] });
+  }, [queryClient]);
 
   const { data: settings } = useQuery({
     queryKey: ['app-settings'],
