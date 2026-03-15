@@ -27,6 +27,7 @@ export default function AdminProducts() {
   const [viewingGroup, setViewingGroup] = useState(null);
   const [managingDimensions, setManagingDimensions] = useState(null);
   const [printingBarcode, setPrintingBarcode] = useState(null);
+  const [showSimpleProductForm, setShowSimpleProductForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -63,6 +64,9 @@ export default function AdminProducts() {
         <div className="flex gap-2">
           <Button onClick={() => { setEditingCategory(null); setShowCatForm(true); }} variant="outline" className="gap-2">
             <FolderPlus className="w-4 h-4" /> קטגוריה
+          </Button>
+          <Button onClick={() => setShowSimpleProductForm(true)} variant="outline" className="gap-2 border-green-300 text-green-600 hover:bg-green-50">
+            <Plus className="w-4 h-4" /> מוצר בודד
           </Button>
           <Button onClick={() => { setEditingGroup(null); setShowGroupForm(true); }} className="gap-2 bg-amber-500 hover:bg-amber-600">
             <Plus className="w-4 h-4" /> תיקיית מוצר
@@ -216,6 +220,14 @@ export default function AdminProducts() {
           group={printingBarcode.group}
         />
       )}
+
+      <SimpleProductFormModal
+        open={showSimpleProductForm}
+        categories={categories}
+        onClose={() => setShowSimpleProductForm(false)}
+        queryClient={queryClient}
+        toast={toast}
+      />
     </div>
   );
 }
@@ -820,6 +832,123 @@ function BulkVariantWizard({ group, onClose, queryClient, toast }) {
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : `צור ${totalVariants} וריאציות`}
             </Button>
           )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SimpleProductFormModal({ open, categories, onClose, queryClient, toast }) {
+  const [form, setForm] = useState({
+    name: '',
+    category_id: '',
+    sell_price: 0,
+    cost_price: 0,
+    stock: 0,
+    image_url: '',
+  });
+  const [uploading, setUploading] = useState(false);
+
+  React.useEffect(() => {
+    if (!open) {
+      setForm({ name: '', category_id: '', sell_price: 0, cost_price: 0, stock: 0, image_url: '' });
+    }
+  }, [open]);
+
+  const mutation = useMutation({
+    mutationFn: async (data) => {
+      // Create a simple group with one variant
+      const group = await base44.entities.ProductGroup.create({
+        name: data.name,
+        category_id: data.category_id,
+        has_uniform_price: true,
+        uniform_sell_price: data.sell_price,
+        uniform_cost_price: data.cost_price,
+        image_url: data.image_url,
+      });
+
+      // Create a single variant for this product
+      await base44.entities.ProductVariant.create({
+        group_id: group.id,
+        size: 'רגיל',
+        cut: 'רגיל',
+        collar: 'רגיל',
+        stock: data.stock,
+        barcode: `SP${Date.now()}`,
+      });
+
+      return group;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      toast({ 
+        title: '✅ המוצר נוסף בהצלחה',
+        duration: 2000,
+        className: 'bg-green-500 text-white border-green-600'
+      });
+      onClose();
+    },
+  });
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(prev => ({ ...prev, image_url: file_url }));
+    setUploading(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent dir="rtl" className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>הוספת מוצר בודד</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>שם המוצר</Label>
+            <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="למשל: עט כחול" />
+          </div>
+          <div>
+            <Label>קטגוריה</Label>
+            <Select value={form.category_id} onValueChange={v => setForm({ ...form, category_id: v })}>
+              <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
+              <SelectContent>
+                {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>תמונה</Label>
+            <Input type="file" accept="image/*" onChange={handleImageUpload} />
+            {uploading && <p className="text-sm text-amber-500 mt-1">מעלה...</p>}
+            {form.image_url && <img src={form.image_url} alt="" className="w-20 h-20 rounded-xl mt-2 object-cover" />}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>מחיר עלות</Label>
+              <Input type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>מחיר מכירה</Label>
+              <Input type="number" value={form.sell_price} onChange={e => setForm({ ...form, sell_price: Number(e.target.value) })} />
+            </div>
+          </div>
+          <div>
+            <Label>מלאי</Label>
+            <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => mutation.mutate(form)}
+            className="bg-green-600 hover:bg-green-700 w-full"
+            disabled={!form.name || !form.category_id}
+          >
+            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'הוסף מוצר'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
