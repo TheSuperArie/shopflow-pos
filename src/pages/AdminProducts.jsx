@@ -14,9 +14,7 @@ import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronDown, Setting
 import VariantDimensionsManager from '@/components/admin/VariantDimensionsManager';
 import BarcodePrintModal from '@/components/admin/BarcodePrintModal';
 
-const SIZES = ['12', '12.5', '13', '13.5', '14', '14.5', '15', '15.5', '16', '16.5', '17', '17.5', '18'];
-const CUTS = ['צרה', 'רחבה'];
-const COLLARS = ['אמריקאי', 'כפתורים', 'רגיל'];
+
 
 export default function AdminProducts() {
   const [showCatForm, setShowCatForm] = useState(false);
@@ -499,9 +497,8 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
         <div className="space-y-4">
           <div className="flex gap-2">
             <Button onClick={() => setEditingVariant({ group_id: group.id })} className="gap-2 bg-amber-500 hover:bg-amber-600">
-              <Plus className="w-4 h-4" /> הוסף וריאציה בודדת
+              <Plus className="w-4 h-4" /> הוסף וריאציה
             </Button>
-            <GenerateAllVariantsButton group={group} queryClient={queryClient} toast={toast} />
           </div>
           
           {variants.length === 0 ? (
@@ -622,258 +619,7 @@ function DeleteVariantButton({ variantId, queryClient, toast }) {
   );
 }
 
-function GenerateAllVariantsButton({ group, queryClient, toast }) {
-  const [showWizard, setShowWizard] = useState(false);
 
-  return (
-    <>
-      <Button onClick={() => setShowWizard(true)} variant="outline" className="gap-2">
-        <Plus className="w-4 h-4" />
-        צור וריאציות אוטומטית
-      </Button>
-      
-      {showWizard && (
-        <BulkVariantWizard
-          group={group}
-          onClose={() => setShowWizard(false)}
-          queryClient={queryClient}
-          toast={toast}
-        />
-      )}
-    </>
-  );
-}
-
-function BulkVariantWizard({ group, onClose, queryClient, toast }) {
-  const [step, setStep] = useState('sizes'); // 'sizes' | 'cuts' | 'collars' | 'confirm'
-  const [selectedSizes, setSelectedSizes] = useState([]);
-  const [selectedCuts, setSelectedCuts] = useState([]);
-  const [selectedCollars, setSelectedCollars] = useState([]);
-  const [creating, setCreating] = useState(false);
-
-  const toggleSize = (size) => {
-    setSelectedSizes(prev => 
-      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
-    );
-  };
-
-  const toggleCut = (cut) => {
-    setSelectedCuts(prev => 
-      prev.includes(cut) ? prev.filter(c => c !== cut) : [...prev, cut]
-    );
-  };
-
-  const toggleCollar = (collar) => {
-    setSelectedCollars(prev => 
-      prev.includes(collar) ? prev.filter(c => c !== collar) : [...prev, collar]
-    );
-  };
-
-  const handleNext = () => {
-    if (step === 'sizes' && selectedSizes.length > 0) setStep('cuts');
-    else if (step === 'cuts' && selectedCuts.length > 0) setStep('collars');
-    else if (step === 'collars' && selectedCollars.length > 0) setStep('confirm');
-  };
-
-  const handleBack = () => {
-    if (step === 'cuts') setStep('sizes');
-    else if (step === 'collars') setStep('cuts');
-    else if (step === 'confirm') setStep('collars');
-  };
-
-  const generateBarcode = (groupId, size, cut, collar) => {
-    const timestamp = Date.now().toString().slice(-6);
-    const sizeCode = size.replace('.', '');
-    const cutCode = cut === 'צרה' ? '1' : '2';
-    const collarCode = collar === 'אמריקאי' ? '1' : collar === 'כפתורים' ? '2' : '3';
-    return `${timestamp}${sizeCode}${cutCode}${collarCode}`;
-  };
-
-  const handleCreate = async () => {
-    setCreating(true);
-    const allVariants = [];
-    
-    for (const size of selectedSizes) {
-      for (const cut of selectedCuts) {
-        for (const collar of selectedCollars) {
-          allVariants.push({
-            group_id: group.id,
-            size,
-            cut,
-            collar,
-            stock: 0,
-            barcode: generateBarcode(group.id, size, cut, collar),
-            ...(group.has_uniform_price ? {} : { sell_price: 0, cost_price: 0 })
-          });
-        }
-      }
-    }
-
-    await base44.entities.ProductVariant.bulkCreate(allVariants);
-    queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-    toast({ 
-      title: `✅ נוצרו ${allVariants.length} וריאציות בהצלחה!`,
-      duration: 2000,
-      className: 'bg-green-500 text-white border-green-600'
-    });
-    setCreating(false);
-    onClose();
-  };
-
-  const totalVariants = selectedSizes.length * selectedCuts.length * selectedCollars.length;
-
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>יצירת וריאציות אוטומטית - {group.name}</DialogTitle>
-        </DialogHeader>
-
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'sizes' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
-            1. מידות
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300"></div>
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'cuts' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
-            2. גזרות
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300"></div>
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'collars' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
-            3. צווארונים
-          </div>
-          <div className="w-8 h-0.5 bg-gray-300"></div>
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${step === 'confirm' ? 'bg-amber-500 text-white' : 'bg-gray-200'}`}>
-            4. אישור
-          </div>
-        </div>
-
-        {/* Sizes Selection */}
-        {step === 'sizes' && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">בחר מידות</h3>
-            <p className="text-sm text-gray-500 text-center">נבחרו: {selectedSizes.length} מידות</p>
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-              {SIZES.map(size => (
-                <button
-                  key={size}
-                  onClick={() => toggleSize(size)}
-                  className={`p-4 text-xl font-bold rounded-xl border-2 transition-all ${
-                    selectedSizes.includes(size)
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-gray-200 hover:border-amber-300'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Cuts Selection */}
-        {step === 'cuts' && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">בחר גזרות</h3>
-            <p className="text-sm text-gray-500 text-center">נבחרו: {selectedCuts.length} גזרות</p>
-            <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
-              {CUTS.map(cut => (
-                <button
-                  key={cut}
-                  onClick={() => toggleCut(cut)}
-                  className={`p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
-                    selectedCuts.includes(cut)
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-gray-200 hover:border-amber-300'
-                  }`}
-                >
-                  {cut}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Collars Selection */}
-        {step === 'collars' && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">בחר צווארונים</h3>
-            <p className="text-sm text-gray-500 text-center">נבחרו: {selectedCollars.length} צווארונים</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {COLLARS.map(collar => (
-                <button
-                  key={collar}
-                  onClick={() => toggleCollar(collar)}
-                  className={`p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
-                    selectedCollars.includes(collar)
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                      : 'border-gray-200 hover:border-amber-300'
-                  }`}
-                >
-                  {collar}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Confirmation */}
-        {step === 'confirm' && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">סיכום</h3>
-            <div className="bg-amber-50 p-6 rounded-xl space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">מידות:</span>
-                <span className="font-semibold">{selectedSizes.join(', ')}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">גזרות:</span>
-                <span className="font-semibold">{selectedCuts.join(', ')}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">צווארונים:</span>
-                <span className="font-semibold">{selectedCollars.join(', ')}</span>
-              </div>
-              <div className="pt-3 border-t border-amber-200">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">סה"כ וריאציות:</span>
-                  <span className="text-2xl font-bold text-amber-600">{totalVariants}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <DialogFooter className="flex justify-between">
-          <Button variant="outline" onClick={handleBack} disabled={step === 'sizes' || creating}>
-            חזור
-          </Button>
-          {step !== 'confirm' ? (
-            <Button 
-              onClick={handleNext}
-              className="bg-amber-500 hover:bg-amber-600"
-              disabled={
-                (step === 'sizes' && selectedSizes.length === 0) ||
-                (step === 'cuts' && selectedCuts.length === 0) ||
-                (step === 'collars' && selectedCollars.length === 0)
-              }
-            >
-              המשך
-            </Button>
-          ) : (
-            <Button 
-              onClick={handleCreate}
-              className="bg-green-600 hover:bg-green-700"
-              disabled={creating}
-            >
-              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : `צור ${totalVariants} וריאציות`}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function SimpleProductFormModal({ open, categories, onClose, queryClient, toast }) {
   const [form, setForm] = useState({
@@ -993,180 +739,123 @@ function SimpleProductFormModal({ open, categories, onClose, queryClient, toast 
 }
 
 function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
-  const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0, barcode: '',
+    dimensions: {}, stock: 0, sell_price: 0, cost_price: 0, sku: '',
   });
 
-  const generateBarcode = (size, cut, collar) => {
-    const timestamp = Date.now().toString().slice(-6);
-    const sizeCode = size.replace('.', '');
-    const cutCode = cut === 'צרה' ? '1' : '2';
-    const collarCode = collar === 'אמריקאי' ? '1' : collar === 'כפתורים' ? '2' : '3';
-    return `${timestamp}${sizeCode}${cutCode}${collarCode}`;
-  };
+  const { data: allDimensions = [] } = useQuery({
+    queryKey: ['variant-dimensions', group?.category_id],
+    queryFn: () => group?.category_id ? base44.entities.VariantDimension.filter({ category_id: group.category_id, is_active: true }) : Promise.resolve([]),
+    enabled: !!group?.category_id,
+  });
+
+  const enabledDimensions = allDimensions.filter(dim => 
+    group?.enabled_dimensions?.includes(dim.id)
+  ).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
   React.useEffect(() => {
     if (variant.id) {
       setForm({
-        size: variant.size || '',
-        cut: variant.cut || '',
-        collar: variant.collar || '',
+        dimensions: variant.dimensions || {},
         stock: variant.stock || 0,
         sell_price: variant.sell_price || 0,
         cost_price: variant.cost_price || 0,
-        barcode: variant.barcode || '',
+        sku: variant.sku || '',
       });
-      setStep(4);
     } else {
-      setForm({ size: '', cut: '', collar: '', stock: 0, sell_price: 0, cost_price: 0, barcode: '' });
-      setStep(1);
+      setForm({ dimensions: {}, stock: 0, sell_price: 0, cost_price: 0, sku: '' });
     }
   }, [variant]);
 
   const mutation = useMutation({
     mutationFn: (data) => {
-      const dataWithBarcode = {
+      const dataToSave = {
         ...data,
-        barcode: data.barcode || generateBarcode(data.size, data.cut, data.collar)
+        sku: data.sku || `SKU${Date.now()}`
       };
       return variant.id
-        ? base44.entities.ProductVariant.update(variant.id, dataWithBarcode)
-        : base44.entities.ProductVariant.create({ ...dataWithBarcode, group_id: group.id });
+        ? base44.entities.ProductVariant.update(variant.id, dataToSave)
+        : base44.entities.ProductVariant.create({ ...dataToSave, group_id: group.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
-        title: variant.id ? '✅ הוריאציה עודכנה בהצלחה' : '✅ הוריאציה נוספה בהצלחה',
+        title: variant.id ? '✅ הוריאציה עודכנה' : '✅ הוריאציה נוספה',
         duration: 2000,
-        className: variant.id ? 'bg-blue-500 text-white border-blue-600' : 'bg-green-500 text-white border-green-600'
       });
       onClose();
     },
   });
 
-  const handleSizeSelect = (size) => {
-    setForm({ ...form, size });
-    setStep(2);
-  };
-
-  const handleCutSelect = (cut) => {
-    setForm({ ...form, cut });
-    setStep(3);
-  };
-
-  const handleCollarSelect = (collar) => {
-    setForm({ ...form, collar });
-    setStep(4);
+  const handleDimensionChange = (dimName, value) => {
+    setForm(prev => ({
+      ...prev,
+      dimensions: { ...prev.dimensions, [dimName]: value }
+    }));
   };
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {variant.id ? 'עריכת וריאציה' : 'וריאציה חדשה'}
-            {step > 1 && !variant.id && (
-              <button onClick={() => setStep(step - 1)} className="mr-3 text-sm text-gray-500 hover:text-gray-700">
-                ← חזור
-              </button>
-            )}
-          </DialogTitle>
+          <DialogTitle>{variant.id ? 'עריכת וריאציה' : 'וריאציה חדשה'}</DialogTitle>
         </DialogHeader>
 
-        {step === 1 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">בחר מידה</h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-              {SIZES.map(size => (
-                <button
-                  key={size}
-                  onClick={() => handleSizeSelect(size)}
-                  className="p-6 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">בחר גזרה</h3>
-            <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
-              {CUTS.map(cut => (
-                <button
-                  key={cut}
-                  onClick={() => handleCutSelect(cut)}
-                  className="p-12 text-3xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
-                >
-                  {cut}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-center">בחר צווארון</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-              {COLLARS.map(collar => (
-                <button
-                  key={collar}
-                  onClick={() => handleCollarSelect(collar)}
-                  className="p-12 text-3xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
-                >
-                  {collar}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="space-y-4">
-            <div className="bg-amber-50 p-4 rounded-xl text-center">
-              <p className="text-lg font-semibold">מידה {form.size} | {form.cut} | {form.collar}</p>
-            </div>
-            <div>
-              <Label>מלאי</Label>
-              <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
-            </div>
-            {!group.has_uniform_price && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>מחיר עלות</Label>
-                  <Input type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
-                </div>
-                <div>
-                  <Label>מחיר מכירה</Label>
-                  <Input type="number" value={form.sell_price} onChange={e => setForm({ ...form, sell_price: Number(e.target.value) })} />
-                </div>
-              </div>
-            )}
-            <div>
-              <Label>ברקוד (אופציונלי)</Label>
-              <Input 
-                value={form.barcode} 
-                onChange={e => setForm({ ...form, barcode: e.target.value })} 
-                placeholder="יוצר אוטומטית אם לא מוזן"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {form.barcode ? `4 ספרות אחרונות: ${form.barcode.slice(-4)}` : 'ברקוד ייווצר אוטומטית'}
-              </p>
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => mutation.mutate(form)}
-                className="bg-amber-500 hover:bg-amber-600 w-full"
+        <div className="space-y-4">
+          {enabledDimensions.map(dim => (
+            <div key={dim.id}>
+              <Label>{dim.name}</Label>
+              <Select 
+                value={form.dimensions[dim.name] || ''} 
+                onValueChange={(v) => handleDimensionChange(dim.name, v)}
               >
-                {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
-              </Button>
-            </DialogFooter>
+                <SelectTrigger><SelectValue placeholder={`בחר ${dim.name}`} /></SelectTrigger>
+                <SelectContent>
+                  {dim.values.map(val => (
+                    <SelectItem key={val} value={val}>{val}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+
+          <div>
+            <Label>מלאי</Label>
+            <Input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: Number(e.target.value) })} />
           </div>
-        )}
+
+          {!group.has_uniform_price && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>מחיר עלות</Label>
+                <Input type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: Number(e.target.value) })} />
+              </div>
+              <div>
+                <Label>מחיר מכירה</Label>
+                <Input type="number" value={form.sell_price} onChange={e => setForm({ ...form, sell_price: Number(e.target.value) })} />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <Label>מק"ט (אופציונלי)</Label>
+            <Input 
+              value={form.sku} 
+              onChange={e => setForm({ ...form, sku: e.target.value })} 
+              placeholder="יוצר אוטומטית"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => mutation.mutate(form)}
+              className="bg-amber-500 hover:bg-amber-600 w-full"
+              disabled={enabledDimensions.some(dim => !form.dimensions[dim.name])}
+            >
+              {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
