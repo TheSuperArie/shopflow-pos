@@ -262,8 +262,13 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
         notes: data.notes,
       });
 
+      // Update only the stock field, keep all other fields as-is
+      const currentVariant = await base44.entities.ProductVariant.list();
+      const variant = currentVariant.find(v => v.id === selectedVariant.id);
+      
       await base44.entities.ProductVariant.update(selectedVariant.id, {
-        stock: (selectedVariant.stock || 0) + data.quantity_added,
+        ...variant,
+        stock: (variant.stock || 0) + data.quantity_added,
       });
 
       if (data.order_id) {
