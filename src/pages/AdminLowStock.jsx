@@ -57,7 +57,16 @@ export default function AdminLowStock() {
   // Group by category first, then by product group
   const categorizedLowStock = {};
   
-  // First, process all variants
+  // Initialize all categories first to ensure all are shown
+  categories.forEach(cat => {
+    categorizedLowStock[cat.id] = {
+      category: { id: cat.id, name: cat.name },
+      groups: {},
+      totalVariants: 0,
+    };
+  });
+  
+  // Then process all variants
   lowStockVariants.forEach(variant => {
     const group = groups.find(g => g.id === variant.group_id);
     if (!group) return; // Skip if group not found
@@ -85,10 +94,12 @@ export default function AdminLowStock() {
     categorizedLowStock[categoryId].totalVariants++;
   });
 
-  const categorizedData = Object.values(categorizedLowStock).map(cat => ({
-    ...cat,
-    groups: Object.values(cat.groups),
-  }));
+  const categorizedData = Object.values(categorizedLowStock)
+    .filter(cat => cat.totalVariants > 0)
+    .map(cat => ({
+      ...cat,
+      groups: Object.values(cat.groups),
+    }));
 
   if (isLoading) {
     return (
