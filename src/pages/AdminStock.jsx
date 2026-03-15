@@ -50,9 +50,20 @@ export default function AdminStock() {
         if (!lowStockByCategory[categoryName]) {
           lowStockByCategory[categoryName] = [];
         }
+        
+        // Build variant description
+        let variantDesc = '';
+        if (variant.dimensions && typeof variant.dimensions === 'object') {
+          variantDesc = Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ');
+        } else if (variant.size) {
+          variantDesc = `${variant.size} | ${variant.cut} | ${variant.collar}`;
+        } else {
+          variantDesc = 'רגיל';
+        }
+        
         lowStockByCategory[categoryName].push({
           groupName: group.name,
-          variant,
+          variantDesc,
           stock: variant.stock || 0,
         });
       }
@@ -99,9 +110,7 @@ export default function AdminStock() {
                     {items.map((item, idx) => (
                       <div key={idx} className="p-3 bg-red-50 rounded-lg border-2 border-red-200">
                         <p className="font-semibold text-sm">{item.groupName}</p>
-                        <p className="text-xs text-gray-600">
-                          {item.variant.size} | {item.variant.cut} | {item.variant.collar}
-                        </p>
+                        <p className="text-xs text-gray-600">{item.variantDesc}</p>
                         <Badge className="mt-2 bg-red-600">
                           מלאי: {item.stock} יחידות
                         </Badge>
@@ -229,9 +238,21 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
   const mutation = useMutation({
     mutationFn: async (data) => {
       const supplier = suppliers.find(s => s.id === data.supplier_id);
-      const productName = selectedVariant.barcode 
-        ? `${selectedGroup.name} - מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar} [${selectedVariant.barcode.slice(-4)}]`
-        : `${selectedGroup.name} - מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar}`;
+      
+      // Build product name from dimensions or fallback
+      let variantDesc = '';
+      if (selectedVariant.dimensions && typeof selectedVariant.dimensions === 'object') {
+        variantDesc = Object.entries(selectedVariant.dimensions)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ');
+      } else if (selectedVariant.size) {
+        // Legacy format support
+        variantDesc = `מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar}`;
+      }
+      
+      const productName = selectedVariant.sku || selectedVariant.barcode
+        ? `${selectedGroup.name} - ${variantDesc} [${(selectedVariant.sku || selectedVariant.barcode).slice(-4)}]`
+        : `${selectedGroup.name} - ${variantDesc}`;
       
       await base44.entities.StockUpdate.create({
         product_id: selectedVariant.id,
@@ -344,20 +365,25 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
           <div className="space-y-3">
             <p className="text-sm text-gray-600">בחר וריאציה:</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {groupVariants.map(variant => (
-                <button
-                  key={variant.id}
-                  onClick={() => handleVariantSelect(variant)}
-                  className="p-4 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-center"
-                >
-                  <p className="font-bold text-lg">מידה {variant.size}</p>
-                  <p className="text-sm text-gray-600">{variant.cut}</p>
-                  <p className="text-sm text-gray-600">{variant.collar}</p>
-                  <Badge className="mt-2" variant="outline">
-                    מלאי: {variant.stock || 0}
-                  </Badge>
-                </button>
-              ))}
+              {groupVariants.map(variant => {
+                // Display dimensions or legacy fields
+                const displayText = variant.dimensions && typeof variant.dimensions === 'object'
+                  ? Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ')
+                  : variant.size ? `מידה ${variant.size} | ${variant.cut} | ${variant.collar}` : 'רגיל';
+                
+                return (
+                  <button
+                    key={variant.id}
+                    onClick={() => handleVariantSelect(variant)}
+                    className="p-4 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-center"
+                  >
+                    <p className="font-semibold text-sm">{displayText}</p>
+                    <Badge className="mt-2" variant="outline">
+                      מלאי: {variant.stock || 0}
+                    </Badge>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -368,11 +394,15 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
             <div className="bg-amber-50 p-3 rounded-lg">
               <p className="font-semibold">{selectedGroup?.name}</p>
               <p className="text-sm text-gray-600">
-                מידה {selectedVariant?.size} | {selectedVariant?.cut} | {selectedVariant?.collar}
+                {selectedVariant?.dimensions && typeof selectedVariant.dimensions === 'object'
+                  ? Object.entries(selectedVariant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ')
+                  : selectedVariant?.size ? `מידה ${selectedVariant.size} | ${selectedVariant.cut} | ${selectedVariant.collar}` : 'רגיל'}
               </p>
               <p className="text-xs text-gray-500 mt-1">מלאי נוכחי: {selectedVariant?.stock || 0}</p>
-              {selectedVariant?.barcode && (
-                <p className="text-xs text-gray-400 mt-1">ברקוד: {selectedVariant.barcode} (4 ספרות: {selectedVariant.barcode.slice(-4)})</p>
+              {(selectedVariant?.sku || selectedVariant?.barcode) && (
+                <p className="text-xs text-gray-400 mt-1">
+                  מק"ט: {selectedVariant.sku || selectedVariant.barcode} (4 ספרות: {(selectedVariant.sku || selectedVariant.barcode).slice(-4)})
+                </p>
               )}
             </div>
 
