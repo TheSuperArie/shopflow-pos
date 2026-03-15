@@ -648,16 +648,15 @@ function SimpleProductFormModal({ open, categories, onClose, queryClient, toast 
         uniform_sell_price: data.sell_price,
         uniform_cost_price: data.cost_price,
         image_url: data.image_url,
+        enabled_dimensions: [],
       });
 
-      // Create a single variant for this product
+      // Create a single variant for this product (simple product - no dimensions)
       await base44.entities.ProductVariant.create({
         group_id: group.id,
-        size: 'רגיל',
-        cut: 'רגיל',
-        collar: 'רגיל',
+        dimensions: {},
         stock: data.stock,
-        barcode: `SP${Date.now()}`,
+        sku: `SP${Date.now()}`,
       });
 
       return group;
