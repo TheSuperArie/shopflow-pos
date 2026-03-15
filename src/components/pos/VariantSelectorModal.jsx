@@ -37,11 +37,21 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
   });
 
   const handleSizeSelect = (size) => {
+    // Check if any variant with this size has stock
+    const hasStock = allVariants.some(v => v.size === size && (v.stock || 0) > 0);
+    if (!hasStock) {
+      return; // Don't proceed if no stock
+    }
     setSelectedSize(size);
     setStep(2);
   };
 
   const handleCutSelect = (cut) => {
+    // Check if any variant with this size+cut has stock
+    const hasStock = availableVariants.some(v => v.cut === cut && (v.stock || 0) > 0);
+    if (!hasStock) {
+      return; // Don't proceed if no stock
+    }
     setSelectedCut(cut);
     setStep(3);
   };
@@ -54,7 +64,7 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
       v.cut === selectedCut && 
       v.collar === collar
     );
-    if (variant) {
+    if (variant && (variant.stock || 0) > 0) {
       onConfirm(variant, group);
       handleClose();
     }
@@ -107,15 +117,24 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-center">בחר מידה</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {uniqueSizes.map(size => (
-                    <button
-                      key={size}
-                      onClick={() => handleSizeSelect(size)}
-                      className="relative p-6 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {uniqueSizes.map(size => {
+                    const hasStock = allVariants.some(v => v.size === size && (v.stock || 0) > 0);
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => handleSizeSelect(size)}
+                        disabled={!hasStock}
+                        className={`relative p-6 text-2xl font-bold rounded-xl border-2 transition-all ${
+                          hasStock 
+                            ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer'
+                            : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {size}
+                        {!hasStock && <div className="absolute top-1 right-1 text-xs text-red-500">אזל</div>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -126,15 +145,24 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
                 <h3 className="text-lg font-semibold text-center">בחר גזרה</h3>
                 <p className="text-sm text-gray-500 text-center">מידה: {selectedSize}</p>
                 <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
-                  {uniqueCuts.map(cut => (
-                    <button
-                      key={cut}
-                      onClick={() => handleCutSelect(cut)}
-                      className="relative p-10 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
-                    >
-                      {cut}
-                    </button>
-                  ))}
+                  {uniqueCuts.map(cut => {
+                    const hasStock = availableVariants.some(v => v.cut === cut && (v.stock || 0) > 0);
+                    return (
+                      <button
+                        key={cut}
+                        onClick={() => handleCutSelect(cut)}
+                        disabled={!hasStock}
+                        className={`relative p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
+                          hasStock
+                            ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer'
+                            : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {cut}
+                        {!hasStock && <div className="absolute top-2 right-2 text-xs text-red-500">אזל</div>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -152,17 +180,24 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
                       v.collar === collar
                     );
                     const stock = variant?.stock || 0;
+                    const hasStock = stock > 0;
                     
                     return (
                       <button
                         key={collar}
                         onClick={() => handleCollarSelect(collar)}
-                        className="relative p-10 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
+                        disabled={!hasStock}
+                        className={`relative p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
+                          hasStock
+                            ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer'
+                            : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
                       >
                         {collar}
-                        <p className="text-xs mt-2 font-semibold text-gray-400">
+                        <p className={`text-xs mt-2 font-semibold ${hasStock ? 'text-gray-400' : 'text-red-500'}`}>
                           מלאי: {stock}
                         </p>
+                        {!hasStock && <div className="absolute top-2 right-2 text-xs text-red-500 bg-red-100 px-2 py-1 rounded">אזל</div>}
                       </button>
                     );
                   })}

@@ -334,9 +334,15 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
 
 function ProductGroupFormModal({ open, group, categories, onClose, queryClient, toast }) {
   const [form, setForm] = useState({
-    name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '',
+    name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '', barcode: '', enabled_dimensions: [],
   });
   const [uploading, setUploading] = useState(false);
+
+  const { data: dimensions = [] } = useQuery({
+    queryKey: ['variant-dimensions', form.category_id],
+    queryFn: () => form.category_id ? base44.entities.VariantDimension.filter({ category_id: form.category_id }) : Promise.resolve([]),
+    enabled: !!form.category_id,
+  });
 
   React.useEffect(() => {
     if (group) {
@@ -347,9 +353,11 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
         uniform_sell_price: group.uniform_sell_price || 0,
         uniform_cost_price: group.uniform_cost_price || 0,
         image_url: group.image_url || '',
+        barcode: group.barcode || '',
+        enabled_dimensions: group.enabled_dimensions || [],
       });
     } else {
-      setForm({ name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '' });
+      setForm({ name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '', barcode: '', enabled_dimensions: [] });
     }
   }, [group, open]);
 
@@ -404,6 +412,35 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
             {uploading && <p className="text-sm text-amber-500 mt-1">מעלה...</p>}
             {form.image_url && <img src={form.image_url} alt="" className="w-20 h-20 rounded-xl mt-2 object-cover" />}
           </div>
+          <div>
+            <Label>ברקוד (אופציונלי)</Label>
+            <Input value={form.barcode} onChange={e => setForm({ ...form, barcode: e.target.value })} placeholder="הזן ברקוד קיים מהספק" />
+          </div>
+          {dimensions.length > 0 && (
+            <div>
+              <Label>ממדי וריאציות מופעלים</Label>
+              <div className="space-y-2 mt-2">
+                {dimensions.map(dim => (
+                  <div key={dim.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={form.enabled_dimensions.includes(dim.id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setForm({ ...form, enabled_dimensions: [...form.enabled_dimensions, dim.id] });
+                        } else {
+                          setForm({ ...form, enabled_dimensions: form.enabled_dimensions.filter(id => id !== dim.id) });
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">{dim.name}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">בחר אילו ממדים יופיעו בוריאציות של מוצר זה</p>
+            </div>
+          )}
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
             <Switch checked={form.has_uniform_price} onCheckedChange={v => setForm({ ...form, has_uniform_price: v })} />
             <Label>מחיר אחיד לכל הוריאציות</Label>
