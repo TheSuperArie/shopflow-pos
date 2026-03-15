@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
 
 export default function VariantSelectorModal({ open, group, variants, onConfirm, onClose }) {
   const [step, setStep] = useState(1); // 1: size, 2: cut, 3: collar
@@ -11,15 +9,7 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
   const [selectedCut, setSelectedCut] = useState(null);
   const [selectedCollar, setSelectedCollar] = useState(null);
 
-  const { data: settings } = useQuery({
-    queryKey: ['app-settings'],
-    queryFn: async () => {
-      const list = await base44.entities.AppSettings.list();
-      return list[0] || { low_stock_threshold: 5 };
-    },
-  });
 
-  const threshold = settings?.low_stock_threshold || 5;
 
   // Reset on close
   const handleClose = () => {
@@ -117,27 +107,15 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-center">בחר מידה</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {uniqueSizes.map(size => {
-                    const hasStock = allVariants.some(v => v.size === size && (v.stock || 0) > 0);
-                    return (
-                      <button
-                        key={size}
-                        onClick={() => handleSizeSelect(size)}
-                        className={`relative p-6 text-2xl font-bold rounded-xl border-2 transition-all ${
-                          hasStock
-                            ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
-                            : 'border-red-200 bg-red-50 hover:border-red-300'
-                        }`}
-                      >
-                        {size}
-                        {!hasStock && (
-                          <div className="absolute top-1 left-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded">
-                            אזל
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                  {uniqueSizes.map(size => (
+                    <button
+                      key={size}
+                      onClick={() => handleSizeSelect(size)}
+                      className="relative p-6 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
+                    >
+                      {size}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -148,27 +126,15 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
                 <h3 className="text-lg font-semibold text-center">בחר גזרה</h3>
                 <p className="text-sm text-gray-500 text-center">מידה: {selectedSize}</p>
                 <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
-                  {uniqueCuts.map(cut => {
-                    const hasStock = availableVariants.some(v => v.cut === cut && (v.stock || 0) > 0);
-                    return (
-                      <button
-                        key={cut}
-                        onClick={() => handleCutSelect(cut)}
-                        className={`relative p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
-                          hasStock
-                            ? 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
-                            : 'border-red-200 bg-red-50 hover:border-red-300'
-                        }`}
-                      >
-                        {cut}
-                        {!hasStock && (
-                          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                            אזל
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                  {uniqueCuts.map(cut => (
+                    <button
+                      key={cut}
+                      onClick={() => handleCutSelect(cut)}
+                      className="relative p-10 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
+                    >
+                      {cut}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -185,33 +151,18 @@ export default function VariantSelectorModal({ open, group, variants, onConfirm,
                       v.cut === selectedCut && 
                       v.collar === collar
                     );
-                    const hasStock = variant && (variant.stock || 0) > 0;
                     const stock = variant?.stock || 0;
-                    const isLowStock = stock > 0 && stock < threshold;
                     
                     return (
                       <button
                         key={collar}
                         onClick={() => handleCollarSelect(collar)}
-                        className={`relative p-10 text-2xl font-bold rounded-xl border-2 transition-all ${
-                          hasStock
-                            ? isLowStock
-                              ? 'border-orange-300 bg-orange-50 hover:border-orange-500'
-                              : 'border-gray-200 hover:border-amber-500 hover:bg-amber-50'
-                            : 'border-red-200 bg-red-50 hover:border-red-300'
-                        }`}
+                        className="relative p-10 text-2xl font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
                       >
                         {collar}
-                        <p className={`text-xs mt-2 font-semibold ${
-                          !hasStock ? 'text-red-600' : isLowStock ? 'text-orange-600' : 'text-gray-400'
-                        }`}>
+                        <p className="text-xs mt-2 font-semibold text-gray-400">
                           מלאי: {stock}
                         </p>
-                        {!hasStock && (
-                          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-semibold">
-                            אזל מהמלאי
-                          </div>
-                        )}
                       </button>
                     );
                   })}
