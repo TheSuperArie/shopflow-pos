@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import CategoryGrid from '@/components/pos/CategoryGrid';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart from '@/components/pos/Cart';
-import VariantSelectorModal from '@/components/pos/VariantSelectorModal';
+import DynamicVariantSelector from '@/components/pos/DynamicVariantSelector';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
@@ -417,7 +417,7 @@ export default function POS() {
         )}
       </div>
 
-      <VariantSelectorModal
+      <DynamicVariantSelector
         open={!!selectedGroup}
         group={selectedGroup}
         variants={allVariants.filter(v => v.group_id === selectedGroup?.id)}
