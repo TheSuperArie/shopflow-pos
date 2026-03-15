@@ -55,8 +55,6 @@ export default function AdminStock() {
         let variantDesc = '';
         if (variant.dimensions && typeof variant.dimensions === 'object') {
           variantDesc = Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ');
-        } else if (variant.size) {
-          variantDesc = `${variant.size} | ${variant.cut} | ${variant.collar}`;
         } else {
           variantDesc = 'רגיל';
         }
@@ -239,15 +237,14 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
     mutationFn: async (data) => {
       const supplier = suppliers.find(s => s.id === data.supplier_id);
       
-      // Build product name from dimensions or fallback
+      // Build product name from dimensions
       let variantDesc = '';
       if (selectedVariant.dimensions && typeof selectedVariant.dimensions === 'object') {
         variantDesc = Object.entries(selectedVariant.dimensions)
           .map(([k, v]) => `${k}: ${v}`)
           .join(', ');
-      } else if (selectedVariant.size) {
-        // Legacy format support
-        variantDesc = `מידה ${selectedVariant.size}, ${selectedVariant.cut}, ${selectedVariant.collar}`;
+      } else {
+        variantDesc = 'רגיל';
       }
       
       const productName = selectedVariant.sku || selectedVariant.barcode
@@ -366,10 +363,10 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
             <p className="text-sm text-gray-600">בחר וריאציה:</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {groupVariants.map(variant => {
-                // Display dimensions or legacy fields
+                // Display dimensions
                 const displayText = variant.dimensions && typeof variant.dimensions === 'object'
                   ? Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ')
-                  : variant.size ? `מידה ${variant.size} | ${variant.cut} | ${variant.collar}` : 'רגיל';
+                  : 'רגיל';
                 
                 return (
                   <button
@@ -396,12 +393,12 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
               <p className="text-sm text-gray-600">
                 {selectedVariant?.dimensions && typeof selectedVariant.dimensions === 'object'
                   ? Object.entries(selectedVariant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ')
-                  : selectedVariant?.size ? `מידה ${selectedVariant.size} | ${selectedVariant.cut} | ${selectedVariant.collar}` : 'רגיל'}
+                  : 'רגיל'}
               </p>
               <p className="text-xs text-gray-500 mt-1">מלאי נוכחי: {selectedVariant?.stock || 0}</p>
-              {(selectedVariant?.sku || selectedVariant?.barcode) && (
+              {selectedVariant?.sku && (
                 <p className="text-xs text-gray-400 mt-1">
-                  מק"ט: {selectedVariant.sku || selectedVariant.barcode} (4 ספרות: {(selectedVariant.sku || selectedVariant.barcode).slice(-4)})
+                  מק"ט: {selectedVariant.sku} (4 ספרות: {selectedVariant.sku.slice(-4)})
                 </p>
               )}
             </div>
