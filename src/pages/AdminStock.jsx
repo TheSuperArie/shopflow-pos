@@ -251,6 +251,7 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
         ? `${selectedGroup.name} - ${variantDesc} [${(selectedVariant.sku || selectedVariant.barcode).slice(-4)}]`
         : `${selectedGroup.name} - ${variantDesc}`;
       
+      // Create stock update record
       await base44.entities.StockUpdate.create({
         product_id: selectedVariant.id,
         product_name: productName,
@@ -262,13 +263,10 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
         notes: data.notes,
       });
 
-      // Update only the stock field, keep all other fields as-is
-      const currentVariant = await base44.entities.ProductVariant.list();
-      const variant = currentVariant.find(v => v.id === selectedVariant.id);
-      
+      // Update stock directly using current known stock value
+      const currentStock = selectedVariant.stock || 0;
       await base44.entities.ProductVariant.update(selectedVariant.id, {
-        ...variant,
-        stock: (variant.stock || 0) + data.quantity_added,
+        stock: currentStock + data.quantity_added,
       });
 
       if (data.order_id) {
@@ -276,14 +274,23 @@ function StockFormModal({ open, onClose, queryClient, toast }) {
       }
     },
     onSuccess: () => {
+      // Invalidate all query keys that reference variants (including POS offline keys)
       queryClient.invalidateQueries({ queryKey: ['stock-updates'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       queryClient.invalidateQueries({ queryKey: ['supplier-orders'] });
       toast({ 
         title: '✅ המלאי עודכן בהצלחה',
-        duration: 2000,
+        description: 'כל הדפים מסונכרנים אוטומטית',
+        duration: 3000,
       });
       handleClose();
+    },
+    onError: (error) => {
+      toast({
+        title: '❌ שגיאה בעדכון המלאי',
+        description: error.message,
+        duration: 4000,
+      });
     },
   });
 
