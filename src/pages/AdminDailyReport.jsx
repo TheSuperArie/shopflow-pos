@@ -7,18 +7,22 @@ import { Label } from '@/components/ui/label';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Clock, Package } from 'lucide-react';
 import moment from 'moment';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminDailyReport() {
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
+  const user = useCurrentUser();
 
   const { data: sales = [] } = useQuery({
-    queryKey: ['sales'],
-    queryFn: () => base44.entities.Sale.list('-created_date'),
+    queryKey: ['sales', user?.email],
+    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups', user?.email],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   // Filter sales for selected date
