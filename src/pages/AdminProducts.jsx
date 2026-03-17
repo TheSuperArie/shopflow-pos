@@ -676,20 +676,6 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
     setGeneratingVariants(false);
   };
 
-  // Group variants by first dimension value for display
-  const firstDimKey = enabledDimensions[0]?.name;
-  const grouped = {};
-  variants.forEach(v => {
-    const key = v.dimensions?.[firstDimKey] ?? 'כללי';
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(v);
-  });
-  const groupedKeys = Object.keys(grouped).sort((a, b) => {
-    const nA = parseFloat(a), nB = parseFloat(b);
-    if (!isNaN(nA) && !isNaN(nB)) return nA - nB;
-    return a.localeCompare(b, 'he');
-  });
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -712,61 +698,40 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
             <p className="text-center text-gray-400 py-8">אין וריאציות. לחץ על "הוסף וריאציה" או "צור וריאציות אוטומטית".</p>
           ) : (
             <div className="space-y-3">
-              {groupedKeys.map(dimVal => {
-                const dimVariants = grouped[dimVal];
-                const isExpanded = expandedDim === dimVal;
-                const totalStock = dimVariants.reduce((s, v) => s + (v.stock || 0), 0);
-                return (
-                  <div key={dimVal} className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => setExpandedDim(isExpanded ? null : dimVal)}
-                      className="sticky top-0 z-10 w-full bg-amber-50 p-3 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold text-amber-700">{firstDimKey ? `${firstDimKey}: ${dimVal}` : dimVal}</span>
-                        <Badge className="bg-amber-600 text-white">{dimVariants.length} וריאציות</Badge>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-600">מלאי: {totalStock}</span>
-                        <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
-                    </button>
-
-                    {isExpanded && (
-                      <div className="bg-white p-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {dimVariants.map(v => {
-                            const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
-                              ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' | ')
-                              : 'רגיל';
-                            return (
-                              <Card key={v.id}>
-                                <CardContent className="p-3">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <p className="font-semibold text-sm">{dimText}</p>
-                                      <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
-                                      {!group.has_uniform_price && (
-                                        <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-1">
-                                      <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
-                                        <Pencil className="w-4 h-4" />
-                                      </button>
-                                      <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
+              <VariantDimensionFolders
+                variants={variants}
+                group={group}
+                allDimensions={allDimensions}
+                badgeColor="bg-amber-600"
+                folderBg="bg-amber-50"
+                folderBorder="border-amber-200"
+                renderVariant={(v) => {
+                  const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
+                    ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' | ')
+                    : 'רגיל';
+                  return (
+                    <Card key={v.id}>
+                      <CardContent className="p-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm">{dimText}</p>
+                            <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
+                            {!group.has_uniform_price && (
+                              <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      </CardContent>
+                    </Card>
+                  );
+                }}
+              />
             </div>
           )}
         </div>
