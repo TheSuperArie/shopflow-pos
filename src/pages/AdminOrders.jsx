@@ -10,6 +10,8 @@ import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders'
 
 export default function AdminOrders() {
   const [threshold, setThreshold] = useState(5);
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [expandedGroup, setExpandedGroup] = useState(null);
 
   const { data: groups = [], isLoading: loadingGroups } = useQuery({
     queryKey: ['product-groups'],
@@ -23,49 +25,26 @@ export default function AdminOrders() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.list(),
+    queryFn: () => base44.entities.Category.list('sort_order'),
   });
 
-  // Generate order suggestions
-  const orderSuggestions = {};
-  
+  // Build category → group → variants hierarchy
+  const byCategory = {};
+  categories.forEach(cat => { byCategory[cat.id] = { category: cat, groups: [] }; });
+
   groups.forEach(group => {
-    const groupVariants = variants.filter(v => v.group_id === group.id);
-    const lowStockVariants = groupVariants.filter(v => (v.stock || 0) < threshold);
-    
-    if (lowStockVariants.length > 0) {
-      const category = categories.find(c => c.id === group.category_id);
-      
-      if (!orderSuggestions[group.id]) {
-        orderSuggestions[group.id] = {
-          groupName: group.name,
-          categoryName: category?.name || 'אחר',
-          image_url: group.image_url,
-          variants: [],
-        };
-      }
-      
-      lowStockVariants.forEach(v => {
-        orderSuggestions[group.id].variants.push({
-          size: v.size,
-          cut: v.cut,
-          collar: v.collar,
-          currentStock: v.stock || 0,
-          suggestedOrder: Math.max(10 - (v.stock || 0), 5), // Suggest to reach 10 units or at least 5
-        });
-      });
-    }
+    const lowStockVariants = variants.filter(v => v.group_id === group.id && (v.stock || 0) < threshold);
+    if (lowStockVariants.length === 0) return;
+    const catId = group.category_id;
+    if (!byCategory[catId]) byCategory[catId] = { category: { id: catId, name: 'ללא קטגוריה' }, groups: [] };
+    byCategory[catId].groups.push({ group, variants: lowStockVariants });
   });
 
-  const orderList = Object.values(orderSuggestions);
-  const totalItemsToOrder = orderList.reduce((sum, group) => sum + group.variants.length, 0);
+  const categoryList = Object.values(byCategory).filter(c => c.groups.length > 0);
+  const totalItemsToOrder = categoryList.reduce((sum, c) => sum + c.groups.reduce((s, g) => s + g.variants.length, 0), 0);
 
   if (loadingGroups || loadingVariants) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-      </div>
-    );
+    return <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>;
   }
 
   return (
@@ -74,13 +53,7 @@ export default function AdminOrders() {
         <h1 className="text-2xl font-bold text-gray-800">ריכוז הזמנות לספקים</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">סף מלאי:</span>
-          <Input
-            type="number"
-            value={threshold}
-            onChange={e => setThreshold(Number(e.target.value))}
-            className="w-20"
-            min="1"
-          />
+          <Input type="number" value={threshold} onChange={e => setThreshold(Number(e.target.value))} className="w-20" min="1" />
         </div>
       </div>
 
@@ -94,14 +67,13 @@ export default function AdminOrders() {
             <div>
               <p className="text-sm text-gray-600">פריטים להזמנה</p>
               <p className="text-3xl font-bold text-amber-700">{totalItemsToOrder}</p>
-              <p className="text-xs text-gray-500 mt-1">מ-{orderList.length} תיקיות מוצרים</p>
+              <p className="text-xs text-gray-500 mt-1">ב-{categoryList.length} קטגוריות</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Order List */}
-      {orderList.length === 0 ? (
+      {categoryList.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
@@ -110,64 +82,106 @@ export default function AdminOrders() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {orderList.map((order, idx) => (
-            <Card key={idx}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
+        <div className="space-y-3">
+          {categoryList.map(({ category, groups: catGroups }) => {
+            const isCatOpen = expandedCategory === category.id;
+            const catTotal = catGroups.reduce((s, g) => s + g.variants.length, 0);
+            return (
+              <div key={category.id} className="border-2 border-amber-300 rounded-xl overflow-hidden">
+                {/* Category Level */}
+                <button
+                  onClick={() => setExpandedCategory(isCatOpen ? null : category.id)}
+                  className="w-full bg-amber-100 p-4 flex items-center justify-between hover:bg-amber-150 transition-colors border-b-2 border-amber-200"
+                >
                   <div className="flex items-center gap-3">
-                    {order.image_url ? (
-                      <img src={order.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                        <Package className="w-6 h-6 text-gray-400" />
-                      </div>
-                    )}
-                    <div>
-                      <CardTitle className="text-lg">{order.groupName}</CardTitle>
-                      <Badge variant="outline" className="mt-1">{order.categoryName}</Badge>
+                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                      <Package className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-right">
+                      <h3 className="font-bold text-amber-900 text-lg">{category.name}</h3>
+                      <p className="text-sm text-amber-700">{catGroups.length} מוצרים • {catTotal} וריאציות</p>
                     </div>
                   </div>
-                  <Badge className="bg-orange-500">{order.variants.length} וריאציות</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {order.variants.map((v, vIdx) => (
-                    <div key={vIdx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <AlertCircle className="w-4 h-4 text-orange-500" />
-                        <div>
-                          <p className="font-medium text-sm">
-                            מידה {v.size} | {v.cut} | {v.collar}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            מלאי נוכחי: <span className="font-semibold text-red-600">{v.currentStock}</span> יחידות
-                          </p>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-amber-600 text-white">{catTotal}</Badge>
+                    <ChevronDown className={`w-5 h-5 text-amber-700 transition-transform ${isCatOpen ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+
+                {isCatOpen && (
+                  <div className="bg-white p-4 space-y-3">
+                    {catGroups.map(({ group, variants: gVariants }) => {
+                      const isGroupOpen = expandedGroup === group.id;
+                      return (
+                        <div key={group.id} className="border-2 border-gray-200 rounded-xl overflow-hidden">
+                          {/* Group Level */}
+                          <button
+                            onClick={() => setExpandedGroup(isGroupOpen ? null : group.id)}
+                            className="w-full bg-gray-50 p-3 flex items-center justify-between hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              {group.image_url ? (
+                                <img src={group.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
+                                  <Package className="w-5 h-5 text-gray-400" />
+                                </div>
+                              )}
+                              <span className="font-semibold text-gray-800">{group.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-orange-500 text-white">{gVariants.length}</Badge>
+                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isGroupOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </button>
+
+                          {isGroupOpen && (
+                            <div className="bg-white p-3">
+                              <VariantDimensionFolders
+                                variants={gVariants}
+                                group={group}
+                                badgeColor="bg-orange-500"
+                                folderBg="bg-orange-50"
+                                folderBorder="border-orange-200"
+                                renderVariant={(v) => {
+                                  const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
+                                    ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' | ')
+                                    : 'רגיל';
+                                  const suggested = Math.max(10 - (v.stock || 0), 5);
+                                  return (
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                      <div className="flex items-center gap-3">
+                                        <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
+                                        <div>
+                                          <p className="font-medium text-sm">{dimText}</p>
+                                          <p className="text-xs text-gray-500">מלאי: <span className="font-semibold text-red-600">{v.stock || 0}</span></p>
+                                        </div>
+                                      </div>
+                                      <div className="text-left">
+                                        <p className="text-xs text-gray-500">מומלץ להזמין</p>
+                                        <p className="text-lg font-bold text-amber-600">{suggested} יח'</p>
+                                      </div>
+                                    </div>
+                                  );
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs text-gray-500">מומלץ להזמין</p>
-                        <p className="text-lg font-bold text-amber-600">{v.suggestedOrder} יחידות</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Print/Export Button */}
-      {orderList.length > 0 && (
+      {categoryList.length > 0 && (
         <div className="flex justify-center pt-4">
-          <Button
-            onClick={() => window.print()}
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
-          >
-            <Package className="w-4 h-4" />
-            הדפס רשימת הזמנות
+          <Button onClick={() => window.print()} className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <Package className="w-4 h-4" /> הדפס רשימת הזמנות
           </Button>
         </div>
       )}
