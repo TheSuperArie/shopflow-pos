@@ -53,25 +53,25 @@ const AuthenticatedApp = () => {
     <ShipmentBatchProvider>
       <Routes>
         <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/POS" replace />} />
-        <Route path="/POS" element={<POS />} />
-        <Route path="/AdminLogin" element={<AdminLogin />} />
-        <Route element={<AdminLayout />}>
-          <Route path="/AdminDashboard" element={<AdminDashboard />} />
-          <Route path="/AdminProducts" element={<AdminProducts />} />
-          <Route path="/AdminLowStock" element={<AdminLowStock />} />
-          <Route path="/AdminSales" element={<AdminSales />} />
-          <Route path="/AdminExpenses" element={<AdminExpenses />} />
-          <Route path="/AdminStock" element={<AdminStock />} />
-          <Route path="/AdminOrders" element={<AdminOrders />} />
-          <Route path="/AdminSuppliers" element={<AdminSuppliers />} />
-          <Route path="/AdminReturns" element={<AdminReturns />} />
-          <Route path="/AdminDailyReport" element={<AdminDailyReport />} />
-          <Route path="/AdminSettings" element={<AdminSettings />} />
-          <Route path="/AdminEmployees" element={<AdminEmployees />} />
-          <Route path="/AdminCashReport" element={<AdminCashReport />} />
+          <Route path="/" element={<Navigate to="/POS" replace />} />
+          <Route path="/POS" element={<POS />} />
+          <Route path="/AdminLogin" element={<AdminLogin />} />
+          <Route element={<AdminLayout />}>
+            <Route path="/AdminDashboard" element={<AdminDashboard />} />
+            <Route path="/AdminProducts" element={<AdminProducts />} />
+            <Route path="/AdminLowStock" element={<AdminLowStock />} />
+            <Route path="/AdminSales" element={<AdminSales />} />
+            <Route path="/AdminExpenses" element={<AdminExpenses />} />
+            <Route path="/AdminStock" element={<AdminStock />} />
+            <Route path="/AdminOrders" element={<AdminOrders />} />
+            <Route path="/AdminSuppliers" element={<AdminSuppliers />} />
+            <Route path="/AdminReturns" element={<AdminReturns />} />
+            <Route path="/AdminDailyReport" element={<AdminDailyReport />} />
+            <Route path="/AdminSettings" element={<AdminSettings />} />
+            <Route path="/AdminEmployees" element={<AdminEmployees />} />
+            <Route path="/AdminCashReport" element={<AdminCashReport />} />
+          </Route>
         </Route>
-      </Route>
         <Route path="/BatchShipmentEntry" element={<BatchShipmentEntry />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
