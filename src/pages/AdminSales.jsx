@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import moment from 'moment';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminSales() {
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));

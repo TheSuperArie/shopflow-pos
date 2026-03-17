@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, DollarSign, Package, Banknote, CreditCard, Loader2 } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));

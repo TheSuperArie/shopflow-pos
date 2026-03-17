@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Trash2, Loader2, Wallet, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const EXPENSE_CATEGORIES = ['שכר עובדים', 'הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 
