@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 
 export default function BatchShipmentEntry() {
   const navigate = useNavigate();
-  const { selectedItems, shipmentDetails, updateShipmentDetails, clearBatch } = useShipmentBatch();
+  const { selectedItems, shipmentDetails, updateShipmentDetails, clearBatch, removeItem } = useShipmentBatch();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [removingItem, setRemovingItem] = useState(null);
