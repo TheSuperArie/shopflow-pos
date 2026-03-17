@@ -116,8 +116,8 @@ export default function AdminSales() {
   };
 
   // Daily Report Data
-  const daySales = sales.filter(sale => 
-    moment(sale.created_date).format('YYYY-MM-DD') === selectedDate
+  const daySales = sales.filter(sale =>
+    sale.created_date?.split('T')[0] === selectedDate
   );
 
   const hourlyData = Array.from({ length: 24 }, (_, hour) => {
