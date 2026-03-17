@@ -43,9 +43,21 @@ export default function AdminEmployees() {
     },
   });
 
-  const employeeLogs = selectedEmployee
-    ? logs.filter(l => l.employee_id === selectedEmployee.id)
-    : [];
+  const getFilteredLogs = () => {
+    let filtered = selectedEmployee
+      ? logs.filter(l => l.employee_id === selectedEmployee.id)
+      : [];
+    
+    if (startDate) {
+      filtered = filtered.filter(l => l.date >= startDate);
+    }
+    if (endDate) {
+      filtered = filtered.filter(l => l.date <= endDate);
+    }
+    return filtered;
+  };
+
+  const employeeLogs = getFilteredLogs();
 
   const calcDuration = (log) => {
     if (!log.clock_out) return 'פעיל';
@@ -53,6 +65,22 @@ export default function AdminEmployees() {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return `${h}ש' ${m}ד'`;
+  };
+
+  const getTotalHours = () => {
+    let total = 0;
+    employeeLogs.forEach(log => {
+      if (log.clock_out) {
+        const mins = differenceInMinutes(parseISO(log.clock_out), parseISO(log.clock_in));
+        total += mins / 60;
+      }
+    });
+    return total.toFixed(1);
+  };
+
+  const getTotalSales = () => {
+    // Placeholder for future sales data per employee
+    return employeeLogs.length;
   };
 
   return (
