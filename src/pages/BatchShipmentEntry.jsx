@@ -347,7 +347,7 @@ export default function BatchShipmentEntry() {
           </CardContent>
         </Card>
 
-        {/* Summary */}
+        {/* Summary with Precise Debt Calculation */}
         <Card className="mb-6 bg-blue-50 border-blue-200">
           <CardContent className="pt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -370,14 +370,22 @@ export default function BatchShipmentEntry() {
                 <p className="text-sm font-bold text-gray-800">{shipmentDetails.supplier_name || '—'}</p>
               </div>
             </div>
-            {shipmentDetails.cost_price && (
+            {shipmentDetails.quantity > 0 && preciseTotalDebt > 0 && (
               <div className="mt-4 pt-4 border-t border-blue-300">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">סה״כ חוב לספק:</span>
+                  <span className="text-sm text-gray-700">סה״כ חוב לספק (עלויות מבסיס נתונים):</span>
                   <p className="text-2xl font-bold text-red-600">
-                    ₪{(parseFloat(shipmentDetails.cost_price) * shipmentDetails.quantity * selectedItems.length).toLocaleString('he-IL', { maximumFractionDigits: 2 })}
+                    ₪{preciseTotalDebt.toLocaleString('he-IL', { maximumFractionDigits: 2 })}
                   </p>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  חישוב: סכום של (עלות × {shipmentDetails.quantity} יחידות) לכל פריט
+                </p>
+              </div>
+            )}
+            {shipmentDetails.quantity > 0 && preciseTotalDebt === 0 && itemsWithMissingCost.length === 0 && (
+              <div className="mt-4 pt-4 border-t border-yellow-300 bg-yellow-50 rounded-lg p-3">
+                <p className="text-sm text-yellow-800 font-semibold">⚠️ אין חוב לספק (כל המחירים = ₪0)</p>
               </div>
             )}
           </CardContent>
