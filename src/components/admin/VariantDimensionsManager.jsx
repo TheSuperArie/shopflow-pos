@@ -90,6 +90,31 @@ export default function VariantDimensionsManager({ categoryId, categoryName, gro
         </Button>
       </div>
 
+      {group && group.enabled_dimensions && group.enabled_dimensions.length > 0 && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-4">
+            <p className="text-sm font-medium text-blue-900 mb-3">📊 ממד ראשי לארגון הוריאציות</p>
+            <div className="flex flex-wrap gap-2">
+              {dimensions
+                .filter(d => group.enabled_dimensions.includes(d.id))
+                .map(dim => (
+                  <button
+                    key={dim.id}
+                    onClick={() => setPrimaryDimension(dim.id)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      group.primary_dimension_id === dim.id
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
+                    }`}
+                  >
+                    {dim.name}
+                  </button>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {dimensions.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-gray-400">
