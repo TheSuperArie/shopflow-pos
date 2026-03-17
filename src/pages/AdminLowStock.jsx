@@ -193,44 +193,39 @@ export default function AdminLowStock() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-2">
-                            {variants
-                              .sort((a, b) => (a.stock || 0) - (b.stock || 0))
-                              .map(variant => {
-                                const stock = variant.stock || 0;
-                                const isCritical = stock === 0;
-                                return (
-                                  <div 
-                                    key={variant.id} 
-                                    className={`flex items-center justify-between p-3 rounded-lg ${
-                                      isCritical ? 'bg-red-100 border border-red-300' : 'bg-white border border-gray-200'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      {isCritical && <AlertTriangle className="w-4 h-4 text-red-600" />}
-                                      <div>
-                                        <p className="font-medium text-gray-800 text-sm">
-                                          מידה {variant.size} • {variant.cut} • {variant.collar}
-                                        </p>
-                                        {!group.has_uniform_price && (
-                                          <p className="text-xs text-gray-500">
-                                            מחיר: ₪{variant.sell_price}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="text-left">
-                                      <p className={`text-xl font-bold ${
-                                        isCritical ? 'text-red-700' : 'text-orange-600'
-                                      }`}>
-                                        {stock}
-                                      </p>
-                                      <p className="text-xs text-gray-500">במלאי</p>
+                          <VariantDimensionFolders
+                            variants={[...variants].sort((a, b) => (a.stock || 0) - (b.stock || 0))}
+                            group={group}
+                            badgeColor="bg-red-600"
+                            folderBg="bg-red-50"
+                            folderBorder="border-red-200"
+                            renderVariant={(variant) => {
+                              const stock = variant.stock || 0;
+                              const isCritical = stock === 0;
+                              const dimText = variant.dimensions && Object.keys(variant.dimensions).length > 0
+                                ? Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' • ')
+                                : 'רגיל';
+                              return (
+                                <div className={`flex items-center justify-between p-3 rounded-lg ${
+                                  isCritical ? 'bg-red-100 border border-red-300' : 'bg-white border border-gray-200'
+                                }`}>
+                                  <div className="flex items-center gap-3">
+                                    {isCritical && <AlertTriangle className="w-4 h-4 text-red-600" />}
+                                    <div>
+                                      <p className="font-medium text-gray-800 text-sm">{dimText}</p>
+                                      {!group.has_uniform_price && (
+                                        <p className="text-xs text-gray-500">מחיר: ₪{variant.sell_price}</p>
+                                      )}
                                     </div>
                                   </div>
-                                );
-                              })}
-                          </div>
+                                  <div className="text-left">
+                                    <p className={`text-xl font-bold ${isCritical ? 'text-red-700' : 'text-orange-600'}`}>{stock}</p>
+                                    <p className="text-xs text-gray-500">במלאי</p>
+                                  </div>
+                                </div>
+                              );
+                            }}
+                          />
                         </CardContent>
                       </Card>
                     ))}
