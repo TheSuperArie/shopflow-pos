@@ -168,22 +168,40 @@ export default function BatchShipmentEntry() {
           </Button>
         </div>
 
-        {/* Selected Items List */}
+        {/* Selected Items List with Cost Validation */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg">פריטים נבחרים</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {selectedItems.map(item => {
+              {selectedItems.map((item, idx) => {
                 const dimText = item.dimensions && Object.keys(item.dimensions).length > 0
                   ? Object.entries(item.dimensions).map(([k, v]) => `${k}: ${v}`).join(' • ')
                   : 'רגיל';
+                const itemCost = itemCosts[idx];
+                const hasMissingCost = !itemCost?.hasCost;
                 return (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{dimText}</p>
-                      <p className="text-xs text-gray-500">מלאי נוכחי: {item.stock || 0}</p>
+                  <div key={item.id} className={`flex items-center justify-between p-3 rounded-lg border ${
+                    hasMissingCost
+                      ? 'bg-red-50 border-red-300'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex-1 flex items-center gap-3">
+                      {hasMissingCost && (
+                        <div className="flex-shrink-0">
+                          <AlertCircle className="w-5 h-5 text-red-600" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{dimText}</p>
+                        <p className="text-xs text-gray-500">מלאי נוכחי: {item.stock || 0}</p>
+                        <p className={`text-xs font-semibold mt-1 ${
+                          hasMissingCost ? 'text-red-600' : 'text-green-600'
+                        }`}>
+                          {hasMissingCost ? '⚠️ חסר מחיר עלות בבסיס הנתונים' : `עלות: ₪${itemCost?.costPrice || 0}`}
+                        </p>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
