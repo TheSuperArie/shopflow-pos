@@ -111,19 +111,19 @@ export default function StaffPortal({ open, onClose }) {
       return;
     }
     setFoundEmployee(emp);
-    const shift = getActiveShift();
+    const employeeShift = getActiveShiftForEmployee(emp.id);
     const isCashier = emp.role === 'קופאי';
 
-    // Cashiers: require cash entry. Others: skip directly to clock in/out
-    if (shift && shift.employee.id === emp.id) {
+    // Check if THIS employee has an active shift
+    if (employeeShift) {
       // Clocking out
       if (isCashier) {
         setMode('closing_cash');
       } else {
         // Non-cashier: clock out immediately without cash
-        clockOutMutation.mutate({ logId: shift.logId, closingCash: 0 });
+        clockOutMutation.mutate({ employeeId: emp.id, logId: employeeShift.logId, closingCash: 0 });
       }
-    } else if (!shift) {
+    } else {
       // Clocking in
       if (isCashier) {
         setMode('opening_cash');
@@ -131,9 +131,6 @@ export default function StaffPortal({ open, onClose }) {
         // Non-cashier: clock in immediately without cash
         clockInMutation.mutate({ employee: emp, openingCash: 0 });
       }
-    } else {
-      toast({ title: '⚠️ משמרת פתוחה של עובד אחר', duration: 3000 });
-      setPin('');
     }
   };
 
