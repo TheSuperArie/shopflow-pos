@@ -13,6 +13,7 @@ const KEYS = {
   OFFLINE_MODE: 'pos_offline_mode',
   LAST_SYNC: 'pos_last_sync',
   SYNC_IN_PROGRESS: 'pos_sync_in_progress',
+  GLOBAL_SYNC_LOCK: 'pos_global_sync_lock', // CRITICAL: Blocks ALL queries during sync
 };
 
 // Initialize IndexedDB
