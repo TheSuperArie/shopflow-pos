@@ -9,7 +9,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { format } from 'date-fns';
 
 export default function OfflineSyncStatus() {
-  const { syncStatus, failedCount, retryFailedSync } = useOfflineSync();
+  const { syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
   const [showFailedDialog, setShowFailedDialog] = useState(false);
   const [failedSales, setFailedSales] = useState([]);
 
