@@ -140,11 +140,43 @@ export default function AdminEmployees() {
 
           {/* Attendance log for selected employee */}
           <div className="space-y-3">
-            <h2 className="font-semibold text-gray-700">
-              {selectedEmployee ? `לוג נוכחות - ${selectedEmployee.name}` : 'בחר עובד לצפייה בלוג'}
-            </h2>
+            <div className="space-y-3">
+              <h2 className="font-semibold text-gray-700">
+                {selectedEmployee ? `לוג נוכחות - ${selectedEmployee.name}` : 'בחר עובד לצפייה בלוג'}
+              </h2>
+              {selectedEmployee && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> מ-
+                    </Label>
+                    <input type="date" value={startDate || ''} onChange={e => setStartDate(e.target.value || null)} className="w-full h-8 rounded border text-xs px-2" />
+                  </div>
+                  <div>
+                    <Label className="text-xs flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> עד
+                    </Label>
+                    <input type="date" value={endDate || ''} onChange={e => setEndDate(e.target.value || null)} className="w-full h-8 rounded border text-xs px-2" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {selectedEmployee && employeeLogs.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 p-2 bg-blue-50 rounded-lg">
+                <div>
+                  <p className="text-xs text-gray-600">סה"כ שעות</p>
+                  <p className="text-lg font-bold text-blue-600">{getTotalHours()}h</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600">רשומות</p>
+                  <p className="text-lg font-bold text-blue-600">{employeeLogs.length}</p>
+                </div>
+              </div>
+            )}
+
             {selectedEmployee && employeeLogs.length === 0 && (
-              <p className="text-center text-gray-400 py-8">אין רשומות נוכחות</p>
+              <p className="text-center text-gray-400 py-8">אין רשומות נוכחות בתקופה זו</p>
             )}
             {employeeLogs.map(log => (
               <Card key={log.id}>
