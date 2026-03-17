@@ -164,7 +164,16 @@ export default function POS() {
     toast({ title: '✅ נוסף לעגלה', description: dimText ? `${group.name} - ${dimText}` : group.name, duration: 1200 });
   };
 
-  const handleGroupSelect = (group) => setSelectedGroup(group);
+  const handleGroupSelect = (group) => {
+    // Simple products (no enabled dimensions): skip selector, add directly
+    const groupVariants = allVariants.filter(v => v.group_id === group.id);
+    const isSimple = !group.enabled_dimensions || group.enabled_dimensions.length === 0;
+    if (isSimple && groupVariants.length === 1) {
+      addToCart(groupVariants[0], group);
+    } else {
+      setSelectedGroup(group);
+    }
+  };
   const handleVariantConfirm = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
   const handleBarcodeSelect = (variant, group) => addToCart(variant, group);
 
