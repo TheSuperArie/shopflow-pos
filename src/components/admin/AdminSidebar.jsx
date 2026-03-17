@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   Building2,
   RotateCcw,
+  Users,
+  DollarSign,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -26,6 +28,8 @@ const NAV_ITEMS = [
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
   { path: '/AdminReturns', label: 'החזרות', icon: RotateCcw },
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
+  { path: '/AdminEmployees', label: 'ניהול עובדים', icon: Users },
+  { path: '/AdminCashReport', label: 'דוח קופה יומי', icon: DollarSign },
   { path: '/AdminSettings', label: 'הגדרות', icon: Settings },
 ];
 
