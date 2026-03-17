@@ -90,6 +90,18 @@ export default function POS() {
     }
   }, [categories, allGroups, allVariants, isEffectivelyOffline, syncToServer]);
 
+  // Show subtle toast when using cache
+  useEffect(() => {
+    if (usingCache) {
+      toast({ 
+        title: '📦 נתונים מקאש מקומי', 
+        description: 'הנתונים טעונים מהאחסון המקומי שלך',
+        duration: 2000 
+      });
+      setUsingCache(false);
+    }
+  }, [usingCache, toast]);
+
   const groups = selectedCategory
     ? allGroups.filter(g => g.category_id === selectedCategory)
     : [];
