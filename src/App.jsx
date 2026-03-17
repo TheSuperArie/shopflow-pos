@@ -19,6 +19,8 @@ import AdminOrders from './pages/AdminOrders';
 import AdminLowStock from './pages/AdminLowStock';
 import AdminSuppliers from './pages/AdminSuppliers';
 import AdminReturns from './pages/AdminReturns';
+import AdminEmployees from './pages/AdminEmployees';
+import AdminCashReport from './pages/AdminCashReport';
 import Layout from './components/Layout';
 import AdminLayout from './components/admin/AdminLayout';
 
@@ -58,6 +60,8 @@ const AuthenticatedApp = () => {
           <Route path="/AdminReturns" element={<AdminReturns />} />
           <Route path="/AdminDailyReport" element={<AdminDailyReport />} />
           <Route path="/AdminSettings" element={<AdminSettings />} />
+          <Route path="/AdminEmployees" element={<AdminEmployees />} />
+          <Route path="/AdminCashReport" element={<AdminCashReport />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
