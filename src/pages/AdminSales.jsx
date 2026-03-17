@@ -156,9 +156,11 @@ export default function AdminSales() {
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 10);
 
-  const dailyTotalRevenue = daySales.reduce((sum, sale) => sum + sale.total, 0);
+  const dailyTotalRevenue = daySales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+  const dailyTotalCost = daySales.reduce((sum, sale) => sum + (sale.total_cost || 0), 0);
   const dailyTotalTransactions = daySales.length;
   const dailyAvgTransaction = dailyTotalTransactions > 0 ? dailyTotalRevenue / dailyTotalTransactions : 0;
+  const dailyNetProfit = dailyTotalRevenue - dailyTotalCost;
 
   const peakHour = [...hourlyData].sort((a, b) => b.revenue - a.revenue)[0];
   const busiestHour = [...hourlyData].sort((a, b) => b.count - a.count)[0];
