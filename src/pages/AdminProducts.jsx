@@ -384,6 +384,8 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
     name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '', barcode: '', enabled_dimensions: [],
   });
   const [uploading, setUploading] = useState(false);
+  const [generatedPreview, setGeneratedPreview] = useState(null); // null = not generated yet
+  const [generating, setGenerating] = useState(false);
 
   const { data: dimensions = [] } = useQuery({
     queryKey: ['variant-dimensions', form.category_id],
