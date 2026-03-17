@@ -270,4 +270,14 @@ export const offlineManager = {
   setSyncInProgress(val) {
     save(KEYS.SYNC_IN_PROGRESS, val);
   },
+
+  // CRITICAL: Global lock prevents ANY background queries during sync
+  isGlobalSyncLocked() {
+    return load(KEYS.GLOBAL_SYNC_LOCK, false);
+  },
+
+  setGlobalSyncLock(val) {
+    console.log(`[OFFLINE_MANAGER] Global Sync Lock: ${val ? 'LOCKED' : 'RELEASED'}`);
+    save(KEYS.GLOBAL_SYNC_LOCK, val);
+  },
 };
