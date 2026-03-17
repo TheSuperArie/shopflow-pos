@@ -143,6 +143,7 @@ export function useOfflineSync() {
   return {
     syncStatus,
     failedCount,
+    processedCount,
     syncToServer,
     retryFailedSync,
   };
