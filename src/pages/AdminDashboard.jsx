@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   // Real-time sync — invalidate on any sale/expense/variant change
   useEffect(() => {
@@ -28,25 +29,29 @@ export default function AdminDashboard() {
   }, [queryClient]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['dashboard-sales', dateFrom, dateTo],
-    queryFn: () => base44.entities.Sale.list('-created_date', 2000),
+    queryKey: ['dashboard-sales', dateFrom, dateTo, user?.email],
+    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000) : [],
     staleTime: 0,
+    enabled: !!user,
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['dashboard-expenses', dateFrom, dateTo],
-    queryFn: () => base44.entities.Expense.list('-date', 2000),
+    queryKey: ['dashboard-expenses', dateFrom, dateTo, user?.email],
+    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date', 2000) : [],
     staleTime: 0,
+    enabled: !!user,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups', user?.email],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
+    queryKey: ['product-variants', user?.email],
+    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const filteredSales = sales.filter(s => {
