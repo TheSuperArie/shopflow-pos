@@ -509,33 +509,79 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
           </div>
           {dimensions.length > 0 && (
             <div>
-              <Label>ממדי וריאציות מופעלים</Label>
-              <div className="space-y-2 mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <Label>ממדי וריאציות מופעלים</Label>
+                {form.enabled_dimensions.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 text-xs"
+                    onClick={handleGeneratePreview}
+                  >
+                    ⚡ צור וריאציות
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-2">
                 {dimensions.map(dim => (
                   <div key={dim.id} className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={form.enabled_dimensions.includes(dim.id)}
                       onChange={e => {
-                        if (e.target.checked) {
-                          setForm({ ...form, enabled_dimensions: [...form.enabled_dimensions, dim.id] });
-                        } else {
-                          setForm({ ...form, enabled_dimensions: form.enabled_dimensions.filter(id => id !== dim.id) });
-                        }
+                        const updated = e.target.checked
+                          ? [...form.enabled_dimensions, dim.id]
+                          : form.enabled_dimensions.filter(id => id !== dim.id);
+                        setForm({ ...form, enabled_dimensions: updated });
+                        setGeneratedPreview(null); // reset preview on change
                       }}
                       className="w-4 h-4"
                     />
                     <span className="text-sm font-medium">{dim.name}</span>
-                    <span className="text-xs text-gray-400">({dim.values?.length} ערכים)</span>
+                    <span className="text-xs text-gray-400">
+                      ({dim.values?.join(', ')})
+                    </span>
                   </div>
                 ))}
               </div>
-              {!group && form.enabled_dimensions.length > 0 && (() => {
+
+              {/* Preview of generated variations */}
+              {generatedPreview !== null && (
+                <div className="mt-3 border border-blue-200 rounded-xl overflow-hidden">
+                  <div className="bg-blue-50 px-3 py-2 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-blue-800">
+                      תצוגה מקדימה — {generatedPreview.length} וריאציות
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setGeneratedPreview(null)}
+                      className="text-blue-400 hover:text-blue-600 text-xs"
+                    >
+                      ✕ סגור
+                    </button>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto bg-white divide-y divide-gray-100">
+                    {generatedPreview.map((combo, idx) => (
+                      <div key={idx} className="px-3 py-1.5 text-xs text-gray-700 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px] shrink-0">
+                          {idx + 1}
+                        </span>
+                        {Object.entries(combo).map(([k, v]) => (
+                          <span key={k} className="bg-gray-100 px-2 py-0.5 rounded-full">{k}: <strong>{v}</strong></span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!generatedPreview && form.enabled_dimensions.length > 0 && (() => {
                 const selected = dimensions.filter(d => form.enabled_dimensions.includes(d.id));
                 const count = selected.reduce((acc, d) => acc * (d.values?.length || 1), 1);
                 return (
                   <div className="mt-2 p-2 bg-blue-50 rounded-lg text-sm text-blue-700">
-                    ⚡ ייווצרו <strong>{count}</strong> וריאציות אוטומטית
+                    ⚡ ייווצרו <strong>{count}</strong> וריאציות — לחץ "צור וריאציות" לתצוגה מקדימה
                   </div>
                 );
               })()}
