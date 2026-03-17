@@ -438,10 +438,15 @@ export default function BatchShipmentEntry() {
             <p className="font-bold text-blue-600">
               סה״כ: {shipmentDetails.quantity * selectedItems.length} יחידות
             </p>
-            {shipmentDetails.cost_price && (
-              <p className="font-bold text-red-600">
-                חוב לספק: ₪{(parseFloat(shipmentDetails.cost_price) * shipmentDetails.quantity * selectedItems.length).toLocaleString('he-IL', { maximumFractionDigits: 2 })}
-              </p>
+            <p className="font-bold text-red-600">
+              חוב לספק (עלויות מאומתות): ₪{preciseTotalDebt.toLocaleString('he-IL', { maximumFractionDigits: 2 })}
+            </p>
+            {itemsWithMissingCost.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 rounded border border-red-200">
+                <p className="text-sm font-semibold text-red-700">
+                  {itemsWithMissingCost.length} פריט(ים) ללא מחיר עלות בבסיס נתונים
+                </p>
+              </div>
             )}
           </div>
           <DialogFooter>
