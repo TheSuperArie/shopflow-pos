@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronDown, Settings, Zap } from 'lucide-react';
 import VariantDimensionsManager from '@/components/admin/VariantDimensionsManager';
+import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 import BarcodePrintModal from '@/components/admin/BarcodePrintModal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
