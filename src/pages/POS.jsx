@@ -271,6 +271,7 @@ export default function POS() {
         open={!!selectedGroup}
         group={selectedGroup}
         variants={allVariants.filter(v => v.group_id === selectedGroup?.id)}
+        allVariants={allVariants}
         onConfirm={handleVariantConfirm}
         onClose={() => setSelectedGroup(null)}
       />
