@@ -100,13 +100,8 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
-      }
+      // For public apps, auth failures are expected - don't block the app
+      // Only set auth_required error if the app actually requires auth
     }
   };
 
