@@ -71,12 +71,15 @@ export default function POS() {
     enabled: !!user,
   });
 
-  // Cache whenever we get fresh online data
+  // Cache whenever we get fresh online data and auto-sync when online
   useEffect(() => {
     if (!isEffectivelyOffline && categories.length > 0 && allGroups.length > 0 && allVariants.length > 0) {
-      offlineManager.cacheInventory(categories, allGroups, allVariants);
+      offlineManager.cacheInventory(categories, allGroups, allVariants).then(() => {
+        // Auto-sync pending sales when back online
+        syncToServer();
+      });
     }
-  }, [categories, allGroups, allVariants, isEffectivelyOffline]);
+  }, [categories, allGroups, allVariants, isEffectivelyOffline, syncToServer]);
 
   const groups = selectedCategory
     ? allGroups.filter(g => g.category_id === selectedCategory)
