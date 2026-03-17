@@ -41,12 +41,19 @@ export default function POS() {
 
   const makeQueryFn = (apiCall, cacheKey) => async () => {
     if (isEffectivelyOffline) {
-      return offlineManager.getCachedInventory()[cacheKey];
+      const cached = await offlineManager.getCachedInventory();
+      setUsingCache(true);
+      return cached[cacheKey];
     }
     try {
-      return await apiCall();
+      const result = await apiCall();
+      setUsingCache(false);
+      return result;
     } catch {
-      return offlineManager.getCachedInventory()[cacheKey];
+      // Network error: fall back to cache
+      const cached = await offlineManager.getCachedInventory();
+      setUsingCache(true);
+      return cached[cacheKey];
     }
   };
 
