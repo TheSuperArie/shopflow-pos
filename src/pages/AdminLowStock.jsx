@@ -218,6 +218,7 @@ export default function AdminLowStock() {
                                   isCritical ? 'bg-red-100 border border-red-300' : 'bg-white border border-gray-200'
                                 }`}>
                                   <div className="flex items-center gap-3">
+                                    <ShipmentCheckbox variant={variant} group={group} />
                                     {isCritical && <AlertTriangle className="w-4 h-4 text-red-600" />}
                                     <div>
                                       <p className="font-medium text-gray-800 text-sm">{dimText}</p>
