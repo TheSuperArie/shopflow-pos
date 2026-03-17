@@ -142,18 +142,21 @@ export default function AdminStock() {
                             folderBg="bg-red-50"
                             folderBorder="border-red-200"
                             renderVariant={(v) => {
-                              const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
-                                ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' • ')
-                                : v.sku || 'מוצר בודד';
-                              return (
-                                <div className="flex items-center justify-between p-2 bg-white rounded border border-red-200">
-                                  <p className="font-medium text-sm">{dimText}</p>
-                                  <div className="text-left">
-                                    <p className="text-sm font-bold text-red-600">{v.stock || 0}</p>
-                                  </div>
-                                </div>
-                              );
-                            }}
+                               const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
+                                 ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' • ')
+                                 : v.sku || 'מוצר בודד';
+                               return (
+                                 <div className="flex items-center justify-between p-2 bg-white rounded border border-red-200">
+                                   <div className="flex items-center gap-2 flex-1">
+                                     <ShipmentCheckbox variant={v} group={group} />
+                                     <p className="font-medium text-sm">{dimText}</p>
+                                   </div>
+                                   <div className="text-left">
+                                     <p className="text-sm font-bold text-red-600">{v.stock || 0}</p>
+                                   </div>
+                                 </div>
+                               );
+                             }}
                           />
                         </CardContent>
                       </Card>
