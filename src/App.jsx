@@ -50,8 +50,9 @@ const AuthenticatedApp = () => {
 
   // Always render the app - let individual pages handle their own data loading
   return (
-    <Routes>
-      <Route element={<Layout />}>
+    <ShipmentBatchProvider>
+      <Routes>
+        <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/POS" replace />} />
         <Route path="/POS" element={<POS />} />
         <Route path="/AdminLogin" element={<AdminLogin />} />
