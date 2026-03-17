@@ -100,48 +100,68 @@ export default function AdminStock() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {Object.entries(lowStockByCategory).map(([categoryName, items]) => (
-              <div key={categoryName} className="border-2 border-red-300 rounded-xl overflow-hidden">
-                {/* Category Folder Header */}
-                <div className="bg-red-200 p-3 flex items-center justify-between border-b-2 border-red-300">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">📁</span>
-                    <h3 className="font-bold text-red-900">{categoryName}</h3>
+            {lowStockData.map(({ category, groups: catGroups, totalVariants }) => {
+              const catGroupsList = Object.values(catGroups);
+              return (
+                <div key={category.id} className="border-2 border-red-300 rounded-xl overflow-hidden">
+                  {/* Category Folder Header */}
+                  <div className="bg-red-200 p-3 flex items-center justify-between border-b-2 border-red-300">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">📁</span>
+                      <div className="text-right">
+                        <h3 className="font-bold text-red-900">{category.name}</h3>
+                        <p className="text-xs text-red-700">{catGroupsList.length} מוצרים • {totalVariants} וריאציות</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-red-700 text-white">{totalVariants}</Badge>
                   </div>
-                  <Badge className="bg-red-700 text-white">
-                    {items.length}
-                  </Badge>
-                </div>
-                
-                {/* Items inside category folder */}
-                <div className="bg-white p-3">
-                  <div className="space-y-2">
-                    {items.map((item, idx) => {
-                      // Find the actual variant and group objects
-                      const variantObj = variants.find(v => 
-                        v.group_id === groups.find(g => g.name === item.groupName)?.id &&
-                        v.dimensions &&
-                        Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' | ') === item.variantDesc
-                      ) || variants.find(v => 
-                        v.group_id === groups.find(g => g.name === item.groupName)?.id &&
-                        (!v.dimensions || Object.keys(v.dimensions).length === 0) &&
-                        item.variantDesc === 'רגיל'
-                      );
-                      const groupObj = groups.find(g => g.name === item.groupName);
-                      
-                      return variantObj && groupObj ? (
-                        <VariantItemWithCheckbox
-                          key={idx}
-                          variant={variantObj}
-                          group={groupObj}
-                          showCheckbox={true}
-                        />
-                      ) : null;
-                    })}
+
+                  {/* Products inside category folder */}
+                  <div className="bg-white p-3 space-y-3">
+                    {catGroupsList.map(({ group, variants: gVariants }) => (
+                      <Card key={group.id} className="border-red-200 bg-gray-50">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              {group.image_url && (
+                                <img src={group.image_url} alt={group.name} className="w-12 h-12 object-cover rounded-lg" />
+                              )}
+                              <div>
+                                <CardTitle className="text-base">{group.name}</CardTitle>
+                                <p className="text-xs text-gray-500 mt-1">{gVariants.length} וריאציות</p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <VariantDimensionFolders
+                            variants={gVariants.sort((a, b) => (a.stock || 0) - (b.stock || 0))}
+                            group={group}
+                            allDimensions={allDimensions}
+                            badgeColor="bg-red-600"
+                            folderBg="bg-red-50"
+                            folderBorder="border-red-200"
+                            renderVariant={(v) => {
+                              const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
+                                ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' • ')
+                                : v.sku || 'מוצר בודד';
+                              return (
+                                <div className="flex items-center justify-between p-2 bg-white rounded border border-red-200">
+                                  <p className="font-medium text-sm">{dimText}</p>
+                                  <div className="text-left">
+                                    <p className="text-sm font-bold text-red-600">{v.stock || 0}</p>
+                                  </div>
+                                </div>
+                              );
+                            }}
+                          />
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}
