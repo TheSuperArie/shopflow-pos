@@ -113,6 +113,7 @@ export default function AdminProducts() {
                     >
                       <Pencil className="w-5 h-5 text-amber-700" />
                     </button>
+                    <DeleteCategoryButton categoryId={category.id} queryClient={queryClient} toast={toast} />
                     <ChevronDown className={`w-5 h-5 ml-2 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
