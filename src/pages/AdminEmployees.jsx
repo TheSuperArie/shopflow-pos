@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminEmployees() {
   const [showForm, setShowForm] = useState(false);
@@ -18,15 +19,18 @@ export default function AdminEmployees() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: employees = [], isLoading } = useQuery({
-    queryKey: ['employees'],
-    queryFn: () => base44.entities.Employee.list(),
+    queryKey: ['employees', user?.email],
+    queryFn: () => user ? base44.entities.Employee.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: logs = [] } = useQuery({
-    queryKey: ['attendance-logs'],
-    queryFn: () => base44.entities.AttendanceLog.list('-clock_in'),
+    queryKey: ['attendance-logs', user?.email],
+    queryFn: () => user ? base44.entities.AttendanceLog.filter({ created_by: user.email }, '-clock_in') : [],
+    enabled: !!user,
   });
 
   const deleteMutation = useMutation({
