@@ -208,45 +208,47 @@ export default function AdminSales() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" /> סה"כ הכנסות
+                  <DollarSign className="w-4 h-4" /> סה"כ הכנסות
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">₪{dailyTotalRevenue.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-amber-600">₪{dailyTotalRevenue.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">{dailyTotalTransactions} עסקאות</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" /> עסקאות
+                  <Package className="w-4 h-4" /> עלויות והוצאות
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{dailyTotalTransactions}</p>
+                <p className="text-2xl font-bold text-gray-600">₪{dailyTotalCost.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">עלויות: ₪{dailyTotalCost.toLocaleString()} | הוצאות: ₪0</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Package className="w-4 h-4" /> ממוצע עסקה
+                  <TrendingUp className="w-4 h-4" /> רווח נקי
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">₪{dailyAvgTransaction.toFixed(0)}</p>
+                <p className={`text-2xl font-bold ${dailyNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>₪{dailyNetProfit.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">שולי רווח: {dailyTotalRevenue > 0 ? ((dailyNetProfit / dailyTotalRevenue) * 100).toFixed(1) : 0}%</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Clock className="w-4 h-4" /> שעת שיא
+                  <Banknote className="w-4 h-4" /> ממוצע עסקה
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{peakHour?.hour || '-'}</p>
-                <p className="text-xs text-gray-500">₪{peakHour?.revenue || 0}</p>
+                <p className="text-2xl font-bold text-blue-600">₪{dailyAvgTransaction.toFixed(0)}</p>
               </CardContent>
             </Card>
           </div>
