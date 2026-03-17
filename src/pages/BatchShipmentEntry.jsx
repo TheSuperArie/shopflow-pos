@@ -266,23 +266,53 @@ export default function BatchShipmentEntry() {
               </p>
             </div>
 
-            {/* Cost Price */}
-            <div>
-              <Label>מחיר עלות ליחידה *</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={shipmentDetails.cost_price || ''}
-                onChange={e => updateShipmentDetails({ cost_price: e.target.value })}
-                placeholder="50.00"
-              />
-              {shipmentDetails.quantity > 0 && shipmentDetails.cost_price && (
-                <p className="text-xs text-amber-600 mt-1 font-semibold">
-                  סה״כ חוב: ₪{(parseFloat(shipmentDetails.cost_price) * shipmentDetails.quantity * selectedItems.length).toLocaleString('he-IL', { maximumFractionDigits: 2 })}
-                </p>
-              )}
+            {/* Cost Verification Display (Read-Only from Database) */}
+            <div className="p-4 bg-blue-50 border border-blue-300 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-blue-900 font-semibold">עלויות מבסיס הנתונים</Label>
+                <Badge variant="outline" className="bg-blue-100 text-blue-800">מאומת</Badge>
+              </div>
+              <div className="space-y-2">
+                {itemCosts.map((ic, idx) => (
+                  <div key={selectedItems[idx].id} className="text-sm">
+                    <p className="text-gray-700">
+                      פריט {idx + 1}: <span className={ic.hasCost ? 'font-bold text-green-600' : 'font-bold text-red-600'}>
+                        ₪{ic.costPrice.toFixed(2)}
+                      </span>
+                      {!ic.hasCost && <span className="text-red-600 ml-2">({ic.costPrice === 0 ? 'חסר' : 'שגיאה'})</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Missing Cost Acknowledgment */}
+            {itemsWithMissingCost.length > 0 && (
+              <div className="p-4 bg-red-50 border border-red-300 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-700 mb-2">
+                      ⚠️ {itemsWithMissingCost.length} פריט(ים) חסרים מחיר עלות
+                    </p>
+                    <p className="text-xs text-red-600 mb-3">
+                      עדכן את מחיר העלות בעמוד המוצרים לפני העדכון, או בחר להמשיך בעלות ₪0.
+                    </p>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={hasAcknowledgedMissingCost}
+                        onChange={e => updateShipmentDetails({ acknowledgeZeroCost: e.target.checked })}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm text-red-700">
+                        אני מאשר שאוודא את מחירי העלות בהמשך
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Invoice Number */}
             <div>
