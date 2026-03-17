@@ -97,12 +97,12 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
   };
 
   const getCategoryName = (categoryId) => {
-    const category = categories.find(c => c.id === categoryId);
+    const category = cachedCategories.find(c => c.id === categoryId);
     return category?.name || '';
   };
 
   const getGroupStock = (groupId) => {
-    const groupVariants = variants.filter(v => v.group_id === groupId);
+    const groupVariants = cachedVariants.filter(v => v.group_id === groupId);
     return groupVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
   };
 
