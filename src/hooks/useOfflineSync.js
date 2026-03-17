@@ -16,26 +16,27 @@ export function useOfflineSync() {
   }, []);
 
   const syncToServer = async () => {
-    // CRITICAL: Prevent any concurrent syncs or state updates during the process
-    if (offlineManager.isSyncInProgress() || syncLocked || navigator.onLine === false) {
-      console.log('[SYNC] Sync blocked - already in progress, locked, or offline');
+    // CRITICAL: Prevent concurrent syncs or if offline
+    if (offlineManager.isSyncInProgress() || offlineManager.isGlobalSyncLocked() || navigator.onLine === false) {
+      console.log('[SYNC] Sync blocked - already in progress, globally locked, or offline');
       return;
     }
 
+    // === PHASE 1: LOCK GLOBAL STATE ===
+    offlineManager.setGlobalSyncLock(true);
     offlineManager.setSyncInProgress(true);
-    setSyncLocked(true); // Lock state updates during entire sync
     setSyncStatus('syncing');
     setProcessedCount(0);
 
     try {
-      console.log('[SYNC] Starting strict sequential sync...');
+      console.log('[SYNC] ⏹️  STARTING SYNC - Global Lock Engaged');
 
-      // STEP A: Fetch ALL pending sales from IndexedDB
+      // STEP A: Fetch ALL pending sales from IndexedDB (source of truth)
       const pending = await offlineManager.getPendingSales();
-      console.log(`[SYNC] Found ${pending.length} offline sales to process`);
+      console.log(`[SYNC] 📦 Found ${pending.length} offline sales to upload`);
 
       if (pending.length === 0) {
-        console.log('[SYNC] No pending sales, sync complete');
+        console.log('[SYNC] ✅ No pending sales, sync complete');
         setSyncStatus('idle');
         return;
       }
@@ -43,72 +44,70 @@ export function useOfflineSync() {
       let successCount = 0;
       const failures = [];
 
-      // STEP B: Upload each sale sequentially and wait for server confirmation
+      // === PHASE 2: SEQUENTIAL UPLOAD (One at a time, wait for 200 OK) ===
+      console.log('[SYNC] 🔄 PHASE 2: Uploading Sales Sequentially');
       for (const sale of pending) {
         try {
-          console.log(`[SYNC] Processing sale ${sale.offline_id}...`);
+          console.log(`[SYNC] 📤 Processing sale ${sale.offline_id}...`);
           await offlineManager.markSaleAsSyncing(sale.offline_id);
 
           // Create sale record on server
           const createdSale = await base44.entities.Sale.create(sale);
-          console.log(`[SYNC] Sale ${sale.offline_id} created on server as ${createdSale.id}`);
+          console.log(`[SYNC] ✅ Sale ${sale.offline_id} UPLOADED to server as ${createdSale.id}`);
 
-          // CRITICAL: Immediately deduct stock on server for each item
-          // This ensures server consistency
+          // CRITICAL: Update stock on server immediately (before moving to next sale)
           for (const item of sale.items || []) {
             if (!item.variant_id) continue;
             const variant = await base44.entities.ProductVariant.get(item.variant_id);
             if (variant) {
               const newStock = Math.max(0, (variant.stock || 0) - item.quantity);
-              console.log(`[SYNC] Deducting ${item.quantity} from variant ${item.variant_id}, new stock: ${newStock}`);
+              console.log(`[SYNC] 📊 Stock Updated: variant ${item.variant_id} | Quantity: ${item.quantity} | New Stock: ${newStock}`);
               await base44.entities.ProductVariant.update(item.variant_id, { stock: newStock });
             }
           }
 
-          // Only mark as synced AFTER server confirms both operations
+          // Mark as synced ONLY after server confirms ALL operations
           await offlineManager.markSaleAsSynced(sale.offline_id);
           successCount++;
-          console.log(`[SYNC] Sale ${sale.offline_id} confirmed synced`);
+          console.log(`[SYNC] ✅ Sale ${sale.offline_id} CONFIRMED SYNCED`);
         } catch (error) {
-          console.error(`[SYNC] Failed to process sale ${sale.offline_id}:`, error);
+          console.error(`[SYNC] ❌ FAILED to sync sale ${sale.offline_id}:`, error.message);
           failures.push({ saleId: sale.offline_id, error: error.message });
           await offlineManager.moveSaleToFailed(sale.offline_id, error.message || 'Sync failed');
         }
       }
 
       setProcessedCount(successCount);
-      console.log(`[SYNC] Upload phase complete: ${successCount} sales successfully synced, ${failures.length} failed`);
+      console.log(`[SYNC] 📋 Upload Phase Complete: ${successCount} synced, ${failures.length} failed`);
 
-      // STEP C: Verify pending queue is EMPTY before refreshing inventory
+      // === PHASE 3: VERIFY QUEUE IS EMPTY ===
+      console.log('[SYNC] 🔍 PHASE 3: Verifying Pending Queue');
       const remainingPending = await offlineManager.getPendingSales();
       if (remainingPending.length > 0) {
-        throw new Error(`Sync incomplete: ${remainingPending.length} sales still pending`);
+        throw new Error(`SYNC INCOMPLETE: ${remainingPending.length} sales still pending`);
       }
-      console.log('[SYNC] Pending sales queue verified empty');
+      console.log('[SYNC] ✅ Pending queue is EMPTY - Safe to refresh');
 
-      // CRITICAL: Only NOW fetch corrected inventory from server
-      // Local state was LOCKED during upload, so no concurrent updates happened
-      console.log('[SYNC] Fetching corrected inventory from server...');
+      // === PHASE 4: SINGLE FINAL REFRESH (with global lock still active) ===
+      console.log('[SYNC] 🔄 PHASE 4: Final Inventory Refresh from Server');
       const [categories, groups, variants] = await Promise.all([
         base44.entities.Category.list(),
         base44.entities.ProductGroup.list(),
         base44.entities.ProductVariant.list(),
       ]);
+      console.log(`[SYNC] 📥 Server Inventory Fetched: ${variants.length} variants`);
 
-      console.log(`[SYNC] Server inventory fetched: ${variants.length} variants`);
-
-      // Cache the server state directly
+      // Cache the server state while lock is still active
       await offlineManager.cacheInventory(categories, groups, variants);
-      console.log('[SYNC] Local cache updated with server state');
+      console.log('[SYNC] 💾 Local Cache Updated with Server State');
 
       // Get final failed count
       const failed = await offlineManager.getFailedSyncs();
       setFailedCount(failed.length);
 
-      // STEP D: Confirmation Message
       const message = successCount > 0 
         ? `${successCount} מכירות אופליין עובדות. מלאי עודכן.`
-        : 'No offline sales to sync';
+        : 'אין מכירות לסנכרן';
       
       toast({
         title: '✅ סנכרון הושלם',
@@ -117,12 +116,12 @@ export function useOfflineSync() {
       });
 
       setSyncStatus(failed.length > 0 ? 'error' : 'success');
-      console.log('[SYNC] Sync completed successfully');
+      console.log('[SYNC] 🎉 SYNC COMPLETED SUCCESSFULLY');
 
       // Reset status after 2 seconds
       setTimeout(() => setSyncStatus('idle'), 2000);
     } catch (error) {
-      console.error('[SYNC] Critical sync error:', error);
+      console.error('[SYNC] ❌ CRITICAL SYNC ERROR:', error.message);
       toast({
         title: '❌ שגיאה בסנכרון',
         description: error.message,
@@ -131,10 +130,11 @@ export function useOfflineSync() {
       });
       setSyncStatus('error');
     } finally {
-      // CRITICAL: Always unlock state and end sync flag
-      setSyncLocked(false);
+      // === RELEASE ALL LOCKS ===
+      console.log('[SYNC] 🔓 Releasing Global Sync Lock');
+      offlineManager.setGlobalSyncLock(false);
       offlineManager.setSyncInProgress(false);
-      console.log('[SYNC] Sync process terminated, locks released');
+      console.log('[SYNC] 🏁 Sync Process Complete - All Locks Released');
     }
   };
 
