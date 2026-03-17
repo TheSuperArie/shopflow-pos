@@ -441,10 +441,13 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
       // Create new group
       const newGroup = await base44.entities.ProductGroup.create(data);
       
-      // Auto-generate variants from enabled dimensions
-      if (data.enabled_dimensions && data.enabled_dimensions.length > 0) {
+      // Use preview combinations if available, otherwise compute from enabled dims
+      let combinations = generatedPreview;
+      if (!combinations && data.enabled_dimensions && data.enabled_dimensions.length > 0) {
         const enabledDims = dimensions.filter(d => data.enabled_dimensions.includes(d.id));
-        const combinations = cartesianProduct(enabledDims);
+        combinations = cartesianProduct(enabledDims);
+      }
+      if (combinations && combinations.length > 0) {
         await Promise.all(combinations.map((combo, idx) =>
           base44.entities.ProductVariant.create({
             group_id: newGroup.id,
