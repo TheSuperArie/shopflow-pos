@@ -26,12 +26,6 @@ export default function AdminExpenses() {
     enabled: !!user,
   });
 
-  const { data: cashCounts = [] } = useQuery({
-    queryKey: ['cash-counts', user?.email],
-    queryFn: () => user ? base44.entities.CashCount.filter({ created_by: user.email }, '-date') : [],
-    enabled: !!user,
-  });
-
   const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
 
   return (
