@@ -146,7 +146,7 @@ export default function AdminStock() {
         </div>
       )}
 
-      <StockFormModal open={showForm} onClose={() => setShowForm(false)} queryClient={queryClient} toast={toast} />
+      <StockFormModal open={showForm} onClose={() => setShowForm(false)} />
     </div>
   );
 }
@@ -449,7 +449,7 @@ function StockFormModal({ open, onClose }) {
             <div><Label>הערות</Label><Input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
 
             <DialogFooter>
-              <Button onClick={() => mutation.mutate(form)} disabled={!form.quantity_added} className="bg-amber-500 hover:bg-amber-600 w-full">
+              <Button onClick={() => mutation.mutate(form)} disabled={!(form.quantity_added > 0) || mutation.isPending} className="bg-amber-500 hover:bg-amber-600 w-full">
                 {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור ועדכן מלאי'}
               </Button>
             </DialogFooter>
