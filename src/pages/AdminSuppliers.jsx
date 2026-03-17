@@ -476,11 +476,39 @@ function OrderFormModal({ open, supplier, onClose, queryClient, toast }) {
 }
 
 function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAddOrder, onAddPayment, queryClient, toast }) {
+  const { data: stockUpdates = [] } = useQuery({
+    queryKey: ['stock-updates'],
+    queryFn: () => base44.entities.StockUpdate.list('-arrival_date'),
+    enabled: open && !!supplier,
+  });
+
   if (!supplier) return null;
+
+  const supplierStockUpdates = stockUpdates.filter(u => u.supplier_id === supplier.id);
+
+  // Build unified transaction log: shipments (debt) + payments (credit), sorted by date desc
+  const transactions = [
+    ...supplierStockUpdates.map(u => ({
+      id: u.id,
+      date: u.arrival_date,
+      type: 'shipment',
+      label: u.product_name,
+      amount: u.quantity_added,
+      rawDate: new Date(u.arrival_date),
+    })),
+    ...payments.map(p => ({
+      id: p.id,
+      date: p.payment_date,
+      type: 'payment',
+      label: p.payment_method + (p.reference_number ? ` (#${p.reference_number})` : ''),
+      amount: p.amount,
+      rawDate: new Date(p.payment_date),
+    })),
+  ].sort((a, b) => b.rawDate - a.rawDate);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Building2 className="w-6 h-6" />
@@ -499,89 +527,86 @@ function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAdd
             </Card>
             <Card>
               <CardContent className="pt-4">
-                <p className="text-sm text-gray-500">הזמנות</p>
-                <p className="text-2xl font-bold">{orders.length}</p>
+                <p className="text-sm text-gray-500">משלוחים</p>
+                <p className="text-2xl font-bold text-amber-600">{supplierStockUpdates.length}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
                 <p className="text-sm text-gray-500">תשלומים</p>
-                <p className="text-2xl font-bold">{payments.length}</p>
+                <p className="text-2xl font-bold text-green-600">{payments.length}</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Orders */}
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <Button size="sm" variant="outline" onClick={onAddOrder} className="flex-1">
+              <Plus className="w-4 h-4 ml-2" /> הזמנה חדשה
+            </Button>
+            <Button size="sm" onClick={onAddPayment} className="flex-1 bg-green-600 hover:bg-green-700">
+              <Plus className="w-4 h-4 ml-2" /> רשום תשלום
+            </Button>
+          </div>
+
+          {/* Unified Transaction Log */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">הזמנות</h3>
-              <Button size="sm" onClick={onAddOrder}>
-                <Plus className="w-4 h-4 ml-2" />
-                הזמנה חדשה
-              </Button>
-            </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {orders.length === 0 ? (
-                <p className="text-center text-gray-400 py-4">אין הזמנות</p>
+            <h3 className="font-semibold mb-3">יומן עסקאות</h3>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {transactions.length === 0 ? (
+                <p className="text-center text-gray-400 py-4">אין עסקאות</p>
               ) : (
-                orders.map(order => (
+                transactions.map(tx => (
+                  <div key={tx.id} className={`flex items-center justify-between p-3 rounded-lg border ${
+                    tx.type === 'payment' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{tx.type === 'payment' ? '💳' : '📦'}</span>
+                      <div>
+                        <p className="font-medium text-sm">{tx.label}</p>
+                        <p className="text-xs text-gray-500">
+                          {tx.date ? format(new Date(tx.date), 'dd/MM/yyyy') : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-left">
+                      {tx.type === 'payment' ? (
+                        <p className="font-bold text-green-700">-₪{tx.amount.toLocaleString()}</p>
+                      ) : (
+                        <p className="font-bold text-red-700">+{tx.amount} יח'</p>
+                      )}
+                      <p className="text-xs text-gray-400">{tx.type === 'payment' ? 'תשלום' : 'משלוח'}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Open Orders */}
+          {orders.filter(o => o.status !== 'התקבל' && o.status !== 'בוטל').length > 0 && (
+            <div>
+              <h3 className="font-semibold mb-3">הזמנות פתוחות</h3>
+              <div className="space-y-2">
+                {orders.filter(o => o.status !== 'התקבל' && o.status !== 'בוטל').map(order => (
                   <Card key={order.id}>
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">הזמנה #{order.order_number || order.id.slice(0, 8)}</p>
-                          <p className="text-xs text-gray-500">
-                            {format(new Date(order.order_date), 'dd/MM/yyyy')}
-                          </p>
+                          <p className="text-xs text-gray-500">{format(new Date(order.order_date), 'dd/MM/yyyy')}</p>
                         </div>
                         <div className="text-left">
-                          <Badge variant={
-                            order.status === 'התקבל' ? 'default' :
-                            order.status === 'בוטל' ? 'destructive' : 'outline'
-                          }>
-                            {order.status}
-                          </Badge>
+                          <Badge variant="outline">{order.status}</Badge>
                           <p className="text-sm font-bold mt-1">₪{order.total_amount.toLocaleString()}</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              )}
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Payments */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">תשלומים</h3>
-              <Button size="sm" onClick={onAddPayment} className="bg-green-600 hover:bg-green-700">
-                <Plus className="w-4 h-4 ml-2" />
-                תשלום חדש
-              </Button>
-            </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {payments.length === 0 ? (
-                <p className="text-center text-gray-400 py-4">אין תשלומים</p>
-              ) : (
-                payments.map(payment => (
-                  <Card key={payment.id}>
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{payment.payment_method}</p>
-                          <p className="text-xs text-gray-500">
-                            {format(new Date(payment.payment_date), 'dd/MM/yyyy')}
-                          </p>
-                        </div>
-                        <p className="text-lg font-bold text-green-600">₪{payment.amount.toLocaleString()}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
