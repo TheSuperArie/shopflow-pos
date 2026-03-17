@@ -423,14 +423,27 @@ function StockFormModal({ open, onClose }) {
                   : 'רגיל'}
               </p>
               <p className="text-xs text-gray-500 mt-1">מלאי נוכחי: {selectedVariant?.stock || 0}</p>
-              {selectedVariant?.sku && (
-                <p className="text-xs text-gray-400 mt-1">
-                  מק"ט: {selectedVariant.sku} (4 ספרות: {selectedVariant.sku.slice(-4)})
+              {selectedGroup && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  מחיר עלות: ₪{selectedGroup.has_uniform_price ? (selectedGroup.uniform_cost_price || 0) : (selectedVariant?.cost_price || 0)}
                 </p>
               )}
             </div>
 
             <div><Label>כמות שהגיעה</Label><Input type="number" value={form.quantity_added} onChange={e => setForm({ ...form, quantity_added: Number(e.target.value) })} /></div>
+
+            {form.quantity_added > 0 && form.supplier_id && (() => {
+              const costPrice = selectedGroup?.has_uniform_price
+                ? (selectedGroup?.uniform_cost_price || 0)
+                : (selectedVariant?.cost_price || 0);
+              const debtAmount = form.quantity_added * costPrice;
+              return debtAmount > 0 ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
+                  <p className="text-red-700 font-semibold">חוב שיתווסף לספק: ₪{debtAmount.toLocaleString()}</p>
+                  <p className="text-red-500 text-xs">{form.quantity_added} × ₪{costPrice}</p>
+                </div>
+              ) : null;
+            })()}
             
             <div>
               <Label>ספק</Label>
