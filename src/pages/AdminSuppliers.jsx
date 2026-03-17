@@ -481,10 +481,11 @@ function OrderFormModal({ open, supplier, onClose, queryClient, toast }) {
 }
 
 function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAddOrder, onAddPayment, queryClient, toast }) {
+  const user = useCurrentUser();
   const { data: stockUpdates = [] } = useQuery({
-    queryKey: ['stock-updates'],
-    queryFn: () => base44.entities.StockUpdate.list('-arrival_date'),
-    enabled: open && !!supplier,
+    queryKey: ['stock-updates', user?.email],
+    queryFn: () => user ? base44.entities.StockUpdate.filter({ created_by: user.email }, '-arrival_date') : [],
+    enabled: open && !!supplier && !!user,
   });
 
   if (!supplier) return null;
