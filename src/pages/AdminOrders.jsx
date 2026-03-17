@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, ShoppingCart, AlertCircle, Package, CheckCircle } from 'lucide-react';
+import { Loader2, ShoppingCart, AlertCircle, Package, CheckCircle, ChevronDown } from 'lucide-react';
+import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 
 export default function AdminOrders() {
   const [threshold, setThreshold] = useState(5);

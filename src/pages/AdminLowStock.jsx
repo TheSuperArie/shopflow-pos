@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Package, Loader2, ChevronDown } from 'lucide-react';
+import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 
 export default function AdminLowStock() {
   const [expandedCategory, setExpandedCategory] = useState(null);
