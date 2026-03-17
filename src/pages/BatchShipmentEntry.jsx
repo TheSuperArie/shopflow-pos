@@ -27,6 +27,11 @@ export default function BatchShipmentEntry() {
     queryFn: () => base44.entities.Supplier.list(),
   });
 
+  const { data: groups = [] } = useQuery({
+    queryKey: ['product-groups'],
+    queryFn: () => base44.entities.ProductGroup.list(),
+  });
+
   // Batch update mutation
   const batchUpdateMutation = useMutation({
     mutationFn: async () => {
