@@ -87,7 +87,6 @@ export default function AdminExpenses() {
       )}
 
       <ExpenseFormModal open={showForm} onClose={() => setShowForm(false)} queryClient={queryClient} toast={toast} />
-      <CashCountModal open={showCashCount} onClose={() => setShowCashCount(false)} queryClient={queryClient} toast={toast} />
     </div>
   );
 }
