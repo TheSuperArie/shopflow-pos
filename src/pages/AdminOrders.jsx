@@ -159,6 +159,7 @@ export default function AdminOrders() {
                                   return (
                                     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                                       <div className="flex items-center gap-3">
+                                        <ShipmentCheckbox variant={v} group={group} />
                                         <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
                                         <div>
                                           <p className="font-medium text-sm">{dimText}</p>
