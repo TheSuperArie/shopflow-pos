@@ -318,6 +318,16 @@ function PaymentFormModal({ open, supplier, onClose, queryClient, toast }) {
   const [form, setForm] = useState({
     amount: 0, payment_date: format(new Date(), 'yyyy-MM-dd'), payment_method: 'מזומן', reference_number: '', notes: '',
   });
+  const [showHistory, setShowHistory] = useState(false);
+  const user = useCurrentUser();
+
+  const { data: allPayments = [] } = useQuery({
+    queryKey: ['supplier-payments', user?.email],
+    queryFn: () => user ? base44.entities.SupplierPayment.filter({ created_by: user.email }, '-payment_date') : [],
+    enabled: open && !!supplier && !!user,
+  });
+
+  const supplierPayments = allPayments.filter(p => p.supplier_id === supplier?.id);
 
   React.useEffect(() => {
     if (open) {
@@ -328,6 +338,7 @@ function PaymentFormModal({ open, supplier, onClose, queryClient, toast }) {
         reference_number: '',
         notes: '',
       });
+      setShowHistory(false);
     }
   }, [open]);
 
@@ -348,56 +359,159 @@ function PaymentFormModal({ open, supplier, onClose, queryClient, toast }) {
 
   if (!supplier) return null;
 
+  const handlePrint = (payment) => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    const html = `
+      <html dir="rtl">
+        <head>
+          <title>אישור תשלום</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            .section { margin-bottom: 20px; }
+            .label { font-weight: bold; color: #333; }
+            .value { color: #666; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ccc; text-align: center; font-size: 12px; }
+            .amount-box { background: #f0f0f0; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; }
+            .amount { font-size: 28px; font-weight: bold; color: #2c5aa0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">אישור תשלום</div>
+          </div>
+          <div class="section">
+            <span class="label">שם הספק:</span> <span class="value">${supplier.name}</span>
+          </div>
+          <div class="section">
+            <span class="label">תאריך תשלום:</span> <span class="value">${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</span>
+          </div>
+          <div class="section">
+            <span class="label">אמצעי תשלום:</span> <span class="value">${payment.payment_method}</span>
+          </div>
+          <div class="section">
+            <span class="label">מספר אסמכתא:</span> <span class="value">${payment.reference_number || '—'}</span>
+          </div>
+          <div class="amount-box">
+            <div>סכום התשלום:</div>
+            <div class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</div>
+          </div>
+          ${payment.notes ? `<div class="section"><span class="label">הערות:</span> <span class="value">${payment.notes}</span></div>` : ''}
+          <div class="footer">
+            <p>אישור זה נוצר בתאריך ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+          </div>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl">
+      <DialogContent dir="rtl" className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>רישום תשלום - {supplier.name}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>רישום תשלום - {supplier.name}</DialogTitle>
+            {supplierPayments.length > 0 && (
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              >
+                <History className="w-4 h-4" />
+                היסטוריה ({supplierPayments.length})
+              </button>
+            )}
+          </div>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="p-3 bg-red-50 rounded-lg">
-            <p className="text-sm text-gray-600">חוב נוכחי</p>
-            <p className="text-xl font-bold text-red-600">₪{(supplier.total_debt || 0).toLocaleString()}</p>
+
+        {!showHistory ? (
+          <div className="space-y-4">
+            <div className="p-3 bg-red-50 rounded-lg">
+              <p className="text-sm text-gray-600">חוב נוכחי</p>
+              <p className="text-xl font-bold text-red-600">₪{(supplier.total_debt || 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <Label>סכום תשלום</Label>
+              <Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>תאריך תשלום</Label>
+              <Input type="date" value={form.payment_date} onChange={e => setForm({ ...form, payment_date: e.target.value })} />
+            </div>
+            <div>
+              <Label>אמצעי תשלום</Label>
+              <select
+                value={form.payment_method}
+                onChange={e => setForm({ ...form, payment_method: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3"
+              >
+                <option value="מזומן">מזומן</option>
+                <option value="אשראי">אשראי</option>
+                <option value="העברה בנקאית">העברה בנקאית</option>
+                <option value="צ'ק">צ'ק</option>
+              </select>
+            </div>
+            <div>
+              <Label>מספר אסמכתא</Label>
+              <Input value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} />
+            </div>
+            <div>
+              <Label>הערות</Label>
+              <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => mutation.mutate({ ...form, supplier_id: supplier.id })}
+                disabled={form.amount <= 0}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                שמור תשלום
+              </Button>
+            </DialogFooter>
           </div>
-          <div>
-            <Label>סכום תשלום</Label>
-            <Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
+        ) : (
+          <div className="space-y-3">
+            {supplierPayments.length === 0 ? (
+              <p className="text-center text-gray-400 py-8">אין היסטוריה של תשלומים</p>
+            ) : (
+              supplierPayments.map(payment => (
+                <Card key={payment.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="font-bold text-lg text-green-600">₪{payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</p>
+                          <Badge variant="outline">{payment.payment_method}</Badge>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {format(new Date(payment.payment_date), 'dd/MM/yyyy')}
+                        </p>
+                        {payment.reference_number && (
+                          <p className="text-xs text-gray-500 mt-1">אסמכתא: {payment.reference_number}</p>
+                        )}
+                        {payment.notes && (
+                          <p className="text-xs text-gray-400 italic mt-1">{payment.notes}</p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handlePrint(payment)}
+                        className="gap-1"
+                      >
+                        <Printer className="w-4 h-4" />
+                        הדפס
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
-          <div>
-            <Label>תאריך תשלום</Label>
-            <Input type="date" value={form.payment_date} onChange={e => setForm({ ...form, payment_date: e.target.value })} />
-          </div>
-          <div>
-            <Label>אמצעי תשלום</Label>
-            <select
-              value={form.payment_method}
-              onChange={e => setForm({ ...form, payment_method: e.target.value })}
-              className="w-full h-9 rounded-md border border-input bg-transparent px-3"
-            >
-              <option value="מזומן">מזומן</option>
-              <option value="אשראי">אשראי</option>
-              <option value="העברה בנקאית">העברה בנקאית</option>
-              <option value="צ'ק">צ'ק</option>
-            </select>
-          </div>
-          <div>
-            <Label>מספר אסמכתא</Label>
-            <Input value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} />
-          </div>
-          <div>
-            <Label>הערות</Label>
-            <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            onClick={() => mutation.mutate({ ...form, supplier_id: supplier.id })}
-            disabled={form.amount <= 0}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            שמור תשלום
-          </Button>
-        </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
