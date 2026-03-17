@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, ShoppingCart, RotateCcw, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import CategoryGrid from '@/components/pos/CategoryGrid';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart from '@/components/pos/Cart';
 import DynamicVariantSelector from '@/components/pos/DynamicVariantSelector';
@@ -13,7 +12,6 @@ import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import OnlineStatus from '@/components/pos/OnlineStatus';
 import { offlineManager } from '@/components/pos/offlineManager';
-import { useQueryClient } from '@tanstack/react-query';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 
@@ -25,134 +23,70 @@ export default function POS() {
   const [showCart, setShowCart] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState(null);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
-  const [useCache, setUseCache] = useState(false);
+  // isOfflineMode = true means we use local cache only
+  const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Online/Offline detection
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setUseCache(false);
-      queryClient.invalidateQueries();
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      setUseCache(true);
-      toast({
-        title: '⚠️ מצב לא מקוון',
-        description: 'עובד עם מלאי שמור מקומית',
-        duration: 4000,
-      });
-    };
+  const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
 
-    // Add event listeners
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+  // Query factory: online → API, offline → localStorage
+  const makeQueryFn = (apiCall, cacheKey) => async () => {
+    if (isEffectivelyOffline) {
+      return offlineManager.getCachedInventory()[cacheKey];
+    }
+    try {
+      const data = await apiCall();
+      return data;
+    } catch {
+      return offlineManager.getCachedInventory()[cacheKey];
+    }
+  };
 
-    // Initial check
-    setIsOnline(navigator.onLine);
-    setUseCache(!navigator.onLine);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [queryClient, toast]);
-
-  // Force check connection status every 5 seconds
-  useEffect(() => {
-    const checkStatus = () => {
-      const online = navigator.onLine;
-      setIsOnline(online);
-      if (!online) {
-        setUseCache(true);
-      } else {
-        setUseCache(false);
-      }
-    };
-
-    const interval = setInterval(checkStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch from API or cache - always fallback to cache on error
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      if (useCache || !isOnline) {
-        const cached = offlineManager.getCachedInventory();
-        return cached.categories;
-      }
-      try {
-        const data = await base44.entities.Category.list('sort_order');
-        return data;
-      } catch (error) {
-        const cached = offlineManager.getCachedInventory();
-        return cached.categories;
-      }
-    },
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    queryKey: ['categories', isOfflineMode],
+    queryFn: makeQueryFn(() => base44.entities.Category.list('sort_order'), 'categories'),
+    staleTime: isEffectivelyOffline ? Infinity : 0,
   });
 
   const { data: allGroups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: async () => {
-      if (useCache || !isOnline) {
-        const cached = offlineManager.getCachedInventory();
-        return cached.groups;
-      }
-      try {
-        const data = await base44.entities.ProductGroup.list();
-        return data;
-      } catch (error) {
-        const cached = offlineManager.getCachedInventory();
-        return cached.groups;
-      }
-    },
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    queryKey: ['product-groups', isOfflineMode],
+    queryFn: makeQueryFn(() => base44.entities.ProductGroup.list(), 'groups'),
+    staleTime: isEffectivelyOffline ? Infinity : 0,
   });
 
-  const { data: allVariants = [] } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: async () => {
-      if (useCache || !isOnline) {
-        const cached = offlineManager.getCachedInventory();
-        return cached.variants;
-      }
-      try {
-        const data = await base44.entities.ProductVariant.list();
-        return data;
-      } catch (error) {
-        const cached = offlineManager.getCachedInventory();
-        return cached.variants;
-      }
-    },
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+  const { data: allVariants = [], refetch: refetchVariants } = useQuery({
+    queryKey: ['product-variants', isOfflineMode],
+    queryFn: makeQueryFn(() => base44.entities.ProductVariant.list(), 'variants'),
+    staleTime: isEffectivelyOffline ? Infinity : 0,
   });
 
-  // Cache data when online
+  // Cache whenever we get fresh online data
   useEffect(() => {
-    if (isOnline && categories.length > 0 && allGroups.length > 0 && allVariants.length > 0) {
-      offlineManager.cacheInventoryData(categories, allGroups, allVariants);
+    if (!isEffectivelyOffline && categories.length > 0 && allGroups.length > 0 && allVariants.length > 0) {
+      offlineManager.cacheInventory(categories, allGroups, allVariants);
     }
-  }, [categories, allGroups, allVariants, isOnline]);
+  }, [categories, allGroups, allVariants, isEffectivelyOffline]);
 
   const groups = selectedCategory
     ? allGroups.filter(g => g.category_id === selectedCategory)
     : [];
+
+  const handleModeChange = (offline) => {
+    setIsOfflineMode(offline);
+    // Invalidate so queries re-run with new mode
+    queryClient.invalidateQueries({ queryKey: ['categories'] });
+    queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+    queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+  };
+
+  const handleSync = () => {
+    queryClient.invalidateQueries({ queryKey: ['categories'] });
+    queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+    queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+  };
 
   const saleMutation = useMutation({
     mutationFn: async ({ paymentMethod, cashDetails }) => {
@@ -169,116 +103,79 @@ export default function POS() {
         created_date: new Date().toISOString(),
       };
 
-      // Check if online
-      if (isOnline) {
-        // Online: proceed with API call
+      if (isEffectivelyOffline) {
+        // Offline: queue sale & deduct local stock
+        offlineManager.addPendingSale(saleData);
+        const updatedVariants = offlineManager.deductLocalStock(cartItems);
+        // Update react-query cache directly so UI reflects immediately
+        queryClient.setQueryData(['product-variants', isOfflineMode], updatedVariants);
+        return { ...saleData, id: 'offline_' + Date.now() };
+      } else {
+        // Online: save to DB and update stock
         const sale = await base44.entities.Sale.create(saleData);
-
         for (const item of cartItems) {
-          if (item.variant_id) {
-            const variant = allVariants.find(v => v.id === item.variant_id);
-            if (variant) {
-              await base44.entities.ProductVariant.update(variant.id, {
-                stock: Math.max(0, (variant.stock || 0) - item.quantity),
-              });
-            }
+          if (!item.variant_id) continue;
+          const variant = allVariants.find(v => v.id === item.variant_id);
+          if (variant) {
+            await base44.entities.ProductVariant.update(variant.id, {
+              stock: Math.max(0, (variant.stock || 0) - item.quantity),
+            });
           }
         }
-
         return sale;
-      } else {
-        // Offline: DO NOT call API, only save locally
-        offlineManager.addPendingSale(saleData);
-        
-        // Update local cache
-        const cached = offlineManager.getCachedInventory();
-        const updatedVariants = cached.variants.map(v => {
-          const item = cartItems.find(i => i.variant_id === v.id);
-          if (item) {
-            return { ...v, stock: Math.max(0, (v.stock || 0) - item.quantity) };
-          }
-          return v;
-        });
-        offlineManager.cacheInventoryData(cached.categories, cached.groups, updatedVariants);
-        queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-        
-        return { ...saleData, id: 'offline_' + Date.now() };
       }
     },
     onSuccess: (sale) => {
-      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      if (!isEffectivelyOffline) {
+        queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      }
       setLastSale(sale);
       setCartItems([]);
       setShowCheckout(false);
       setShowCart(false);
       setShowReceipt(true);
-      
-      if (!isOnline) {
-        toast({ 
-          title: '✅ המכירה נשמרה מקומית',
-          description: 'תסונכרן אוטומטית כשתתחבר לאינטרנט',
-        });
+      if (isEffectivelyOffline) {
+        toast({ title: '✅ המכירה נשמרה מקומית', description: 'תסונכרן כשיחזור החיבור', duration: 3000 });
       } else {
-        toast({ title: '✅ המכירה הושלמה בהצלחה!' });
+        toast({ title: '✅ המכירה הושלמה!' });
       }
     },
   });
 
-  const handleSync = () => {
-    queryClient.invalidateQueries();
-  };
+  const addToCart = (variant, group) => {
+    // Block if stock is zero
+    const liveVariant = allVariants.find(v => v.id === variant.id);
+    if ((liveVariant?.stock || 0) <= 0) {
+      toast({ title: '⛔ אין מלאי', description: 'הפריט אזל מהמלאי', duration: 2000 });
+      return;
+    }
 
-  const handleGroupSelect = (group) => {
-    setSelectedGroup(group);
-  };
-
-  const handleBarcodeSelect = (variant, group) => {
     const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
     const costPrice = group.has_uniform_price ? group.uniform_cost_price : variant.cost_price;
-    
+    const dimText = variant.dimensions && Object.keys(variant.dimensions).length > 0
+      ? Object.values(variant.dimensions).join(' / ')
+      : '';
+
     setCartItems(prev => [...prev, {
       variant_id: variant.id,
-      product_name: `${group.name} - מידה ${variant.size}, ${variant.cut}, ${variant.collar}`,
+      product_name: dimText ? `${group.name} - ${dimText}` : group.name,
       quantity: 1,
       sell_price: sellPrice,
       cost_price: costPrice || 0,
-      shirt_size: variant.size,
-      shirt_collar: variant.collar,
-      shirt_cut: variant.cut,
-      variant_stock: variant.stock || 0,
+      variant_stock: liveVariant?.stock || 0,
     }]);
-    
-    toast({ 
-      title: '✅ נוסף לעגלה',
-      description: `${group.name} - מידה ${variant.size}`,
-      duration: 1500,
-    });
+
+    toast({ title: '✅ נוסף לעגלה', description: dimText ? `${group.name} - ${dimText}` : group.name, duration: 1200 });
   };
+
+  const handleGroupSelect = (group) => setSelectedGroup(group);
 
   const handleVariantConfirm = (variant, group) => {
-    const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
-    const costPrice = group.has_uniform_price ? group.uniform_cost_price : variant.cost_price;
-    
-    setCartItems(prev => [...prev, {
-      variant_id: variant.id,
-      product_name: `${group.name} - מידה ${variant.size}, ${variant.cut}, ${variant.collar}`,
-      quantity: 1,
-      sell_price: sellPrice,
-      cost_price: costPrice || 0,
-      shirt_size: variant.size,
-      shirt_collar: variant.collar,
-      shirt_cut: variant.cut,
-      variant_stock: variant.stock || 0,
-    }]);
-    
-    toast({ 
-      title: '✅ נוסף לעגלה',
-      description: `${group.name} - מידה ${variant.size}`,
-      duration: 1500,
-    });
-    
+    addToCart(variant, group);
     setSelectedGroup(null);
   };
+
+  const handleBarcodeSelect = (variant, group) => addToCart(variant, group);
 
   const updateCartQty = (idx, newQty) => {
     if (newQty <= 0) {
@@ -288,9 +185,7 @@ export default function POS() {
     }
   };
 
-  const removeCartItem = (idx) => {
-    setCartItems(prev => prev.filter((_, i) => i !== idx));
-  };
+  const removeCartItem = (idx) => setCartItems(prev => prev.filter((_, i) => i !== idx));
 
   const cartTotal = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
@@ -300,26 +195,17 @@ export default function POS() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
-          <OnlineStatus isOnline={isOnline} onSync={handleSync} />
-          <button
-            onClick={() => setShowStaffPortal(true)}
-            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-            title="פורטל עובדים"
-          >
+          <OnlineStatus onModeChange={handleModeChange} onSync={handleSync} />
+          <button onClick={() => setShowStaffPortal(true)}
+            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="פורטל עובדים">
             <Users className="w-5 h-5" />
           </button>
-          <button
-            onClick={() => setShowReturnForm(true)}
-            className="p-2 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-            title="החזרת מוצר"
-          >
+          <button onClick={() => setShowReturnForm(true)}
+            className="p-2 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors" title="החזרת מוצר">
             <RotateCcw className="w-5 h-5" />
           </button>
-          {/* Mobile cart toggle */}
-          <button
-            onClick={() => setShowCart(!showCart)}
-            className="lg:hidden relative p-2 rounded-xl bg-amber-50 text-amber-600"
-          >
+          <button onClick={() => setShowCart(!showCart)}
+            className="lg:hidden relative p-2 rounded-xl bg-amber-50 text-amber-600">
             <ShoppingCart className="w-6 h-6" />
             {cartItems.length > 0 && (
               <span className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
@@ -327,10 +213,7 @@ export default function POS() {
               </span>
             )}
           </button>
-          <Link
-            to="/AdminLogin"
-            className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-          >
+          <Link to="/AdminLogin" className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
             <Settings className="w-5 h-5" />
           </Link>
         </div>
@@ -339,33 +222,26 @@ export default function POS() {
       <div className="flex-1 flex overflow-hidden">
         {/* Products side */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Smart Search */}
-          <SmartSearch 
+          <SmartSearch
             groups={allGroups}
             variants={allVariants}
             categories={categories}
             onSelectGroup={handleGroupSelect}
             onSelectVariant={handleBarcodeSelect}
           />
-          
+
           {!selectedCategory ? (
             <>
               <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
-              
-              {/* Display all categories */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {categories.map(category => {
-                  const categoryGroups = allGroups.filter(g => g.category_id === category.id);
-                  
+                  const catGroups = allGroups.filter(g => g.category_id === category.id);
                   return (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
-                      className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center min-h-[140px]"
-                    >
+                    <button key={category.id} onClick={() => setSelectedCategory(category.id)}
+                      className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center min-h-[140px]">
                       <div className="text-4xl mb-2">📦</div>
                       <h3 className="text-lg font-bold text-gray-800">{category.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">{categoryGroups.length} מוצרים</p>
+                      <p className="text-sm text-gray-500 mt-1">{catGroups.length} מוצרים</p>
                     </button>
                   );
                 })}
@@ -373,57 +249,37 @@ export default function POS() {
             </>
           ) : (
             <>
-              {/* Back button and selected category products */}
               <div className="flex items-center gap-3 mb-4">
-                <button
-                  onClick={() => setSelectedCategory(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium flex items-center gap-2"
-                >
+                <button onClick={() => setSelectedCategory(null)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium flex items-center gap-2">
                   ← חזור לקטגוריות
                 </button>
                 <h2 className="text-lg font-bold text-amber-600">
                   {categories.find(c => c.id === selectedCategory)?.name}
                 </h2>
               </div>
-              
-              <ProductGrid 
-                groups={groups} 
-                variants={allVariants}
-                onSelect={handleGroupSelect} 
-              />
+              <ProductGrid groups={groups} variants={allVariants} onSelect={handleGroupSelect} />
             </>
           )}
         </div>
 
-        {/* Cart side - Desktop */}
+        {/* Cart - Desktop */}
         <div className="hidden lg:flex w-[380px] border-r border-gray-200 bg-gray-50 p-4 flex-col">
           <h2 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" /> עגלת קניות
           </h2>
-          <Cart
-            items={cartItems}
-            onUpdateQty={updateCartQty}
-            onRemove={removeCartItem}
-            onCheckout={() => setShowCheckout(true)}
-          />
+          <Cart items={cartItems} onUpdateQty={updateCartQty} onRemove={removeCartItem} onCheckout={() => setShowCheckout(true)} />
         </div>
 
-        {/* Cart side - Mobile overlay */}
+        {/* Cart - Mobile overlay */}
         {showCart && (
           <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setShowCart(false)}>
-            <div
-              className="absolute left-0 top-0 bottom-0 w-[85%] max-w-[400px] bg-white p-4 shadow-xl flex flex-col"
-              onClick={e => e.stopPropagation()}
-            >
+            <div className="absolute left-0 top-0 bottom-0 w-[85%] max-w-[400px] bg-white p-4 shadow-xl flex flex-col"
+              onClick={e => e.stopPropagation()}>
               <h2 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5" /> עגלת קניות
               </h2>
-              <Cart
-                items={cartItems}
-                onUpdateQty={updateCartQty}
-                onRemove={removeCartItem}
-                onCheckout={() => setShowCheckout(true)}
-              />
+              <Cart items={cartItems} onUpdateQty={updateCartQty} onRemove={removeCartItem} onCheckout={() => setShowCheckout(true)} />
             </div>
           </div>
         )}
@@ -448,21 +304,11 @@ export default function POS() {
       <ReceiptModal
         open={showReceipt}
         sale={lastSale}
-        onClose={() => {
-          setShowReceipt(false);
-          setLastSale(null);
-        }}
+        onClose={() => { setShowReceipt(false); setLastSale(null); }}
       />
 
-      <ReturnFormModal
-        open={showReturnForm}
-        onClose={() => setShowReturnForm(false)}
-      />
-
-      <StaffPortal
-        open={showStaffPortal}
-        onClose={() => setShowStaffPortal(false)}
-      />
+      <ReturnFormModal open={showReturnForm} onClose={() => setShowReturnForm(false)} />
+      <StaffPortal open={showStaffPortal} onClose={() => setShowStaffPortal(false)} />
     </div>
   );
 }
