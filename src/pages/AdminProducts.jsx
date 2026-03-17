@@ -677,6 +677,16 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
     setGeneratingVariants(false);
   };
 
+  const handleSetPrimaryDimension = async (dimensionId) => {
+    try {
+      await base44.entities.ProductGroup.update(group.id, { primary_dimension_id: dimensionId });
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      toast({ title: '✅ ממד ראשי עודכן', duration: 2000 });
+    } catch (error) {
+      toast({ title: `❌ שגיאה: ${error.message}`, duration: 3000 });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -694,6 +704,28 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
               </Button>
             )}
           </div>
+
+          {enabledDimensions.length > 0 && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm font-semibold text-blue-900 mb-2">📊 ממד ראשי לארגון וריאציות</p>
+              <div className="flex flex-wrap gap-2">
+                {enabledDimensions.map(dim => (
+                  <button
+                    key={dim.id}
+                    onClick={() => handleSetPrimaryDimension(dim.id)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      group.primary_dimension_id === dim.id
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
+                    }`}
+                  >
+                    {dim.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-blue-600 mt-2">בחר ממד לארגון הוריאציות בתצוגת הקבוצה</p>
+            </div>
+          )}
           
           {variants.length === 0 ? (
             <p className="text-center text-gray-400 py-8">אין וריאציות. לחץ על "הוסף וריאציה" או "צור וריאציות אוטומטית".</p>
