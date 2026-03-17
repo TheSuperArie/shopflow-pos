@@ -27,12 +27,15 @@ export function getAllActiveShifts() {
   } catch { return {}; }
 }
 
+const EXPENSE_CATEGORIES = ['drawer', 'personal', 'supplies', 'other'];
+
 export default function StaffPortal({ open, onClose }) {
   const [pin, setPin] = useState('');
-  const [mode, setMode] = useState('select'); // 'select' | 'clock_in' | 'clock_out' | 'opening_cash' | 'closing_cash'
+  const [mode, setMode] = useState('select'); // 'select' | 'clock_in' | 'clock_out' | 'opening_cash' | 'closing_cash' | 'add_expense'
   const [foundEmployee, setFoundEmployee] = useState(null);
   const [cashAmount, setCashAmount] = useState('');
   const [activeShiftForEmployee, setActiveShiftForEmployee] = useState(null);
+  const [expenseForm, setExpenseForm] = useState({ amount: '', description: '', category: 'other' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
