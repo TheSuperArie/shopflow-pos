@@ -9,6 +9,7 @@ import { RotateCcw, Loader2, CheckCircle, XCircle, Clock, Package, Receipt } fro
 import { format } from 'date-fns';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import ReturnDetailsModal from '@/components/returns/ReturnDetailsModal';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminReturns() {
   const [showForm, setShowForm] = useState(false);
@@ -16,15 +17,18 @@ export default function AdminReturns() {
   const [filterStatus, setFilterStatus] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: returns = [], isLoading } = useQuery({
-    queryKey: ['returns'],
-    queryFn: () => base44.entities.Return.list('-created_date'),
+    queryKey: ['returns', user?.email],
+    queryFn: () => user ? base44.entities.Return.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const { data: credits = [] } = useQuery({
-    queryKey: ['credits'],
-    queryFn: () => base44.entities.Credit.list('-created_date'),
+    queryKey: ['credits', user?.email],
+    queryFn: () => user ? base44.entities.Credit.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const approveReturnMutation = useMutation({
