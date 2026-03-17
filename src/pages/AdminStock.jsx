@@ -458,6 +458,7 @@ function StockFormModal({ open, onClose }) {
             <VariantDimensionFolders
               variants={groupVariants}
               group={selectedGroup}
+              allDimensions={allDimensions}
               badgeColor="bg-amber-500"
               folderBg="bg-amber-50"
               folderBorder="border-amber-200"
