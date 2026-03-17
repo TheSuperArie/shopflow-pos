@@ -1,82 +1,86 @@
-// Offline Manager - handles caching and sync logic
+// Offline Manager - LocalStorage-based caching and sync queue
 
-const CACHE_KEYS = {
-  CATEGORIES: 'offline_categories',
-  GROUPS: 'offline_groups',
-  VARIANTS: 'offline_variants',
-  PENDING_SALES: 'offline_pending_sales',
-  LAST_SYNC: 'offline_last_sync',
+const KEYS = {
+  CATEGORIES: 'pos_categories',
+  GROUPS: 'pos_groups',
+  VARIANTS: 'pos_variants',
+  PENDING_SALES: 'pos_pending_sales',
+  LAST_SYNC: 'pos_last_sync',
+  OFFLINE_MODE: 'pos_offline_mode',
 };
 
+function save(key, data) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+}
+
+function load(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch(e) { return fallback; }
+}
+
 export const offlineManager = {
-  // Save data to localStorage
-  saveToCache(key, data) {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-      return true;
-    } catch (error) {
-      console.error('Failed to save to cache:', error);
-      return false;
-    }
+  // ── Mode ──────────────────────────────────────────────
+  isOfflineMode() {
+    return load(KEYS.OFFLINE_MODE, false);
+  },
+  setOfflineMode(val) {
+    save(KEYS.OFFLINE_MODE, val);
   },
 
-  // Get data from localStorage
-  getFromCache(key) {
-    try {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : null;
-    } catch (error) {
-      console.error('Failed to get from cache:', error);
-      return null;
-    }
+  // ── Inventory Cache ───────────────────────────────────
+  cacheInventory(categories, groups, variants) {
+    save(KEYS.CATEGORIES, categories);
+    save(KEYS.GROUPS, groups);
+    save(KEYS.VARIANTS, variants);
+    save(KEYS.LAST_SYNC, new Date().toISOString());
   },
 
-  // Cache all inventory data
-  async cacheInventoryData(categories, groups, variants) {
-    this.saveToCache(CACHE_KEYS.CATEGORIES, categories);
-    this.saveToCache(CACHE_KEYS.GROUPS, groups);
-    this.saveToCache(CACHE_KEYS.VARIANTS, variants);
-    this.saveToCache(CACHE_KEYS.LAST_SYNC, new Date().toISOString());
-  },
-
-  // Get cached inventory data
   getCachedInventory() {
     return {
-      categories: this.getFromCache(CACHE_KEYS.CATEGORIES) || [],
-      groups: this.getFromCache(CACHE_KEYS.GROUPS) || [],
-      variants: this.getFromCache(CACHE_KEYS.VARIANTS) || [],
+      categories: load(KEYS.CATEGORIES, []),
+      groups: load(KEYS.GROUPS, []),
+      variants: load(KEYS.VARIANTS, []),
     };
   },
 
-  // Add pending sale (to sync later)
-  addPendingSale(saleData) {
-    const pending = this.getFromCache(CACHE_KEYS.PENDING_SALES) || [];
-    pending.push({
-      ...saleData,
-      timestamp: new Date().toISOString(),
-      id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  getLastSync() {
+    return load(KEYS.LAST_SYNC, null);
+  },
+
+  // Update local variant stock after offline sale
+  deductLocalStock(cartItems) {
+    const variants = load(KEYS.VARIANTS, []);
+    const updated = variants.map(v => {
+      const item = cartItems.find(i => i.variant_id === v.id);
+      if (item) {
+        return { ...v, stock: Math.max(0, (v.stock || 0) - item.quantity) };
+      }
+      return v;
     });
-    this.saveToCache(CACHE_KEYS.PENDING_SALES, pending);
+    save(KEYS.VARIANTS, updated);
+    return updated;
+  },
+
+  // ── Pending Sales Queue ───────────────────────────────
+  addPendingSale(saleData) {
+    const pending = load(KEYS.PENDING_SALES, []);
+    const entry = {
+      ...saleData,
+      offline_id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      queued_at: new Date().toISOString(),
+    };
+    pending.push(entry);
+    save(KEYS.PENDING_SALES, pending);
     return pending.length;
   },
 
-  // Get pending sales
   getPendingSales() {
-    return this.getFromCache(CACHE_KEYS.PENDING_SALES) || [];
+    return load(KEYS.PENDING_SALES, []);
   },
 
-  // Clear pending sales after successful sync
   clearPendingSales() {
-    this.saveToCache(CACHE_KEYS.PENDING_SALES, []);
-  },
-
-  // Get last sync time
-  getLastSyncTime() {
-    return this.getFromCache(CACHE_KEYS.LAST_SYNC);
-  },
-
-  // Check if online
-  isOnline() {
-    return navigator.onLine;
+    save(KEYS.PENDING_SALES, []);
   },
 };
