@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Building2, Phone, Mail, MapPin, CreditCard, Package, Trash2, Edit, DollarSign, AlertCircle } from 'lucide-react';
+import { Plus, Building2, Phone, Mail, MapPin, CreditCard, Package, Edit, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function AdminSuppliers() {
