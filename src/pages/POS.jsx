@@ -14,6 +14,7 @@ import OnlineStatus from '@/components/pos/OnlineStatus';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
+import { useInventorySync } from '@/hooks/useInventorySync';
 
 export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState(null);

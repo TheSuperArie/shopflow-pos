@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, ShoppingCart, AlertCircle, Package, CheckCircle, ChevronDown } from 'lucide-react';
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
+import { useInventorySync } from '@/hooks/useInventorySync';
 
 export default function AdminOrders() {
   const [threshold, setThreshold] = useState(5);

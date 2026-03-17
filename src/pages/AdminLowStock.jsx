@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Package, Loader2, ChevronDown } from 'lucide-react';
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
+import { useInventorySync } from '@/hooks/useInventorySync';
 
 export default function AdminLowStock() {
   const [expandedCategory, setExpandedCategory] = useState(null);
