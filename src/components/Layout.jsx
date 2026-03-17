@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
+import BatchSummaryBar from '@/components/shipment/BatchSummaryBar';
 
 export default function Layout() {
   return (
@@ -13,6 +14,7 @@ export default function Layout() {
         }
       `}</style>
       <Outlet />
+      <BatchSummaryBar />
     </div>
   );
 }
