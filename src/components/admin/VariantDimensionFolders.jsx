@@ -54,27 +54,26 @@ export default function VariantDimensionFolders({
 
   return (
     <div className="space-y-2">
-      {sortedKeys.map(dimVal => {
-        const dimVariants = grouped[dimVal];
-        const isOpen = expandedDim === dimVal;
+      {folders.map(folder => {
+        const isOpen = expandedDim === folder.primaryValue;
         return (
-          <div key={dimVal} className={`border-2 ${folderBorder} rounded-xl overflow-hidden`}>
+          <div key={folder.primaryValue} className={`border-2 ${folderBorder} rounded-xl overflow-hidden`}>
             <button
-              onClick={() => setExpandedDim(isOpen ? null : dimVal)}
+              onClick={() => setExpandedDim(isOpen ? null : folder.primaryValue)}
               className={`w-full ${folderBg} px-4 py-3 flex items-center justify-between hover:brightness-95 transition-all`}
             >
               <div className="flex items-center gap-3">
                 <span className="text-base">📁</span>
-                <span className="font-semibold text-gray-800">{firstDimKey}: {dimVal}</span>
+                <span className="font-semibold text-gray-800">{primaryDimKey}: {folder.primaryValue}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className={`${badgeColor} text-white text-xs`}>{dimVariants.length}</Badge>
+                <Badge className={`${badgeColor} text-white text-xs`}>{folder.variants.length}</Badge>
                 <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </div>
             </button>
             {isOpen && (
               <div className="bg-white p-3 space-y-2">
-                {dimVariants.map(v => (
+                {folder.variants.map(v => (
                   <div key={v.id}>{renderVariant(v)}</div>
                 ))}
               </div>
