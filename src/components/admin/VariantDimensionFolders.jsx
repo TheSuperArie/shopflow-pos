@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle } from 'lucide-react';
 import { ChevronDown } from 'lucide-react';
+import { getVariantFolders, getPrimaryDimensionKey } from '@/lib/variantHierarchy';
 
 /**
- * Groups variants by their first enabled dimension (e.g., size),
- * then renders collapsible sub-folders for each dimension value.
+ * Groups variants by primary dimension (if set), with dynamic hierarchy.
+ * Falls back to first enabled dimension if no primary is set.
  *
  * Props:
  *   variants        - array of ProductVariant objects
- *   group           - the ProductGroup object (for uniform price / dimension config)
+ *   group           - the ProductGroup object (with primary_dimension_id)
+ *   allDimensions   - all VariantDimension records for the category
  *   renderVariant   - (variant) => ReactNode — how to render each leaf variant row
  *   badgeColor      - tailwind class for the badge bg (default: "bg-amber-500")
  *   folderBg        - tailwind class for folder header bg (default: "bg-amber-50")
@@ -18,6 +19,7 @@ import { ChevronDown } from 'lucide-react';
 export default function VariantDimensionFolders({
   variants,
   group,
+  allDimensions = [],
   renderVariant,
   badgeColor = 'bg-amber-500',
   folderBg = 'bg-amber-50',
@@ -29,18 +31,16 @@ export default function VariantDimensionFolders({
     return <p className="text-center text-gray-400 py-4 text-sm">אין וריאציות</p>;
   }
 
-  // Determine the primary grouping dimension key
-  // Use the first key found in any variant's dimensions object
-  const firstDimKey = (() => {
-    for (const v of variants) {
-      const keys = Object.keys(v.dimensions || {});
-      if (keys.length > 0) return keys[0];
-    }
-    return null;
-  })();
+  // If single variant, render flat
+  if (variants.length === 1) {
+    return <div>{renderVariant(variants[0])}</div>;
+  }
 
-  // If no dimensions at all (simple products), just render all variants flat - no folder structure needed
-  if (!firstDimKey) {
+  // Get folders organized by primary dimension
+  const folders = getVariantFolders(variants, group, allDimensions);
+  
+  // If no valid primary dimension found, render flat
+  if (folders.length === 0 || !folders[0]?.primaryDimensionKey) {
     return (
       <div className="space-y-2">
         {variants.map(v => (
@@ -50,26 +50,7 @@ export default function VariantDimensionFolders({
     );
   }
 
-  // If all variants have only 1 dimension value combination (single variant), render flat
-  if (variants.length === 1) {
-    return <div>{renderVariant(variants[0])}</div>;
-  }
-
-  // Group variants by the first dimension value
-  const grouped = {};
-  variants.forEach(v => {
-    const dimVal = v.dimensions?.[firstDimKey] ?? '—';
-    if (!grouped[dimVal]) grouped[dimVal] = [];
-    grouped[dimVal].push(v);
-  });
-
-  // Sort dimension values naturally (numeric-aware)
-  const sortedKeys = Object.keys(grouped).sort((a, b) => {
-    const nA = parseFloat(a);
-    const nB = parseFloat(b);
-    if (!isNaN(nA) && !isNaN(nB)) return nA - nB;
-    return a.localeCompare(b, 'he');
-  });
+  const primaryDimKey = folders[0].primaryDimensionKey;
 
   return (
     <div className="space-y-2">
