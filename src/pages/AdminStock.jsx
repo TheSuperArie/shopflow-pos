@@ -82,9 +82,11 @@ export default function AdminStock() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">עדכון מלאי</h1>
-        <Button onClick={() => setShowForm(true)} className="gap-2 bg-amber-500 hover:bg-amber-600">
-          <Plus className="w-4 h-4" /> סחורה חדשה
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowForm(true)} className="gap-2 bg-amber-500 hover:bg-amber-600">
+            <Plus className="w-4 h-4" /> סחורה חדשה
+          </Button>
+        </div>
       </div>
 
       {/* Low Stock Alert - Organized by Categories as Folders */}
