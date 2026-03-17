@@ -231,6 +231,43 @@ export default function AdminProducts() {
   );
 }
 
+function DeleteCategoryButton({ categoryId, queryClient, toast }) {
+  const deleteMut = useMutation({
+    mutationFn: async () => {
+      // Delete all groups and their variants in this category
+      const allGroups = await base44.entities.ProductGroup.list();
+      const catGroups = allGroups.filter(g => g.category_id === categoryId);
+      const allVariants = await base44.entities.ProductVariant.list();
+      await Promise.all(
+        catGroups.flatMap(g =>
+          allVariants.filter(v => v.group_id === g.id).map(v => base44.entities.ProductVariant.delete(v.id))
+        )
+      );
+      await Promise.all(catGroups.map(g => base44.entities.ProductGroup.delete(g.id)));
+      await base44.entities.Category.delete(categoryId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      toast({ title: '🗑️ הקטגוריה נמחקה', duration: 2000, className: 'bg-red-500 text-white border-red-600' });
+    },
+  });
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (window.confirm('למחוק קטגוריה זו וכל המוצרים בתוכה?')) deleteMut.mutate();
+      }}
+      className="p-2 rounded-lg hover:bg-red-100 transition-colors"
+      title="מחק קטגוריה"
+    >
+      {deleteMut.isPending ? <Loader2 className="w-5 h-5 animate-spin text-red-500" /> : <Trash2 className="w-5 h-5 text-red-500" />}
+    </button>
+  );
+}
+
 function DeleteGroupButton({ groupId, queryClient, toast }) {
   const deleteMut = useMutation({
     mutationFn: async () => {
