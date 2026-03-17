@@ -25,15 +25,27 @@ export function useOfflineSync() {
     setSyncStatus('syncing');
 
     try {
-      // 1. Upload pending sales (FIFO order)
+      // STEP 1: Process all pending sales FIRST (before downloading inventory)
+      // This ensures server stock is updated based on offline sales
       const pending = await offlineManager.getPendingSales();
       
       for (const sale of pending) {
         try {
           await offlineManager.markSaleAsSyncing(sale.offline_id);
           
-          // Create sale in database
+          // Create sale + deduct stock on server (atomically)
+          // The server will handle stock deduction via entity automations or create logic
           await base44.entities.Sale.create(sale);
+          
+          // Deduct stock for each item in the sale
+          for (const item of sale.items || []) {
+            if (!item.variant_id) continue;
+            const variant = await base44.entities.ProductVariant.get(item.variant_id);
+            if (variant) {
+              const newStock = Math.max(0, (variant.stock || 0) - item.quantity);
+              await base44.entities.ProductVariant.update(item.variant_id, { stock: newStock });
+            }
+          }
           
           // Mark as synced (remove from pending)
           await offlineManager.markSaleAsSynced(sale.offline_id);
@@ -46,23 +58,16 @@ export function useOfflineSync() {
         }
       }
 
-      // 2. Download latest inventory (bi-directional)
+      // STEP 2: Only AFTER all pending sales are processed, download fresh inventory
+      // This prevents server stock from overwriting our offline deductions
       const [categories, groups, variants] = await Promise.all([
         base44.entities.Category.list(),
         base44.entities.ProductGroup.list(),
         base44.entities.ProductVariant.list(),
       ]);
 
-      // Merge local stock with server stock (local takes priority if offline was on)
-      const cachedInventory = await offlineManager.getCachedInventory();
-      const mergedVariants = variants.map(serverVar => {
-        const localVar = cachedInventory.variants.find(v => v.id === serverVar.id);
-        // If we had local changes during offline, keep them
-        // Otherwise use server version
-        return localVar ? { ...serverVar, stock: localVar.stock } : serverVar;
-      });
-
-      await offlineManager.cacheInventory(categories, groups, mergedVariants);
+      // Use server stock directly (no merging) since sales have been processed
+      await offlineManager.cacheInventory(categories, groups, variants);
 
       // Update failed count
       const failed = await offlineManager.getFailedSyncs();
