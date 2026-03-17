@@ -14,6 +14,7 @@ import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders'
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import ShipmentCheckbox from '@/components/shipment/ShipmentCheckbox';
 
 export default function AdminStock() {
   const [showForm, setShowForm] = useState(false);
