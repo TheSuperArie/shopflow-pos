@@ -159,6 +159,7 @@ export default function StaffPortal({ open, onClose }) {
     setMode('select');
     setFoundEmployee(null);
     setCashAmount('');
+    setActiveShiftForEmployee(null);
     onClose();
   };
 
@@ -172,11 +173,11 @@ export default function StaffPortal({ open, onClose }) {
           </DialogTitle>
         </DialogHeader>
 
-        {/* Active shift banner */}
-        {activeShift && mode === 'select' && (
+        {/* Active shift banner for this employee */}
+        {activeShiftForEmployee && foundEmployee && mode === 'select' && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-700 flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            <span>משמרת פעילה: <strong>{activeShift.employee.name}</strong></span>
+            <span>משמרת פעילה: <strong>{foundEmployee.name}</strong></span>
           </div>
         )}
 
