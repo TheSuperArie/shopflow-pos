@@ -19,15 +19,18 @@ export default function AdminExpenses() {
   const [showCashCount, setShowCashCount] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ['expenses'],
-    queryFn: () => base44.entities.Expense.list('-date'),
+    queryKey: ['expenses', user?.email],
+    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date') : [],
+    enabled: !!user,
   });
 
   const { data: cashCounts = [] } = useQuery({
-    queryKey: ['cash-counts'],
-    queryFn: () => base44.entities.CashCount.list('-date'),
+    queryKey: ['cash-counts', user?.email],
+    queryFn: () => user ? base44.entities.CashCount.filter({ created_by: user.email }, '-date') : [],
+    enabled: !!user,
   });
 
   const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
