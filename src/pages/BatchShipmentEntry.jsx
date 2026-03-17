@@ -404,6 +404,7 @@ export default function BatchShipmentEntry() {
             onClick={() => setShowConfirm(true)}
             disabled={!isFormValid || batchUpdateMutation.isPending}
             className="flex-1 bg-green-600 hover:bg-green-700 gap-2"
+            title={!canSubmit ? 'עדכן מחירי עלות לפריטים עם אזהרה' : ''}
           >
             {batchUpdateMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
