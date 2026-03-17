@@ -160,8 +160,8 @@ export default function AdminSales() {
   const dailyTotalTransactions = daySales.length;
   const dailyAvgTransaction = dailyTotalTransactions > 0 ? dailyTotalRevenue / dailyTotalTransactions : 0;
 
-  const peakHour = hourlyData.sort((a, b) => b.revenue - a.revenue)[0];
-  const busiestHour = hourlyData.sort((a, b) => b.count - a.count)[0];
+  const peakHour = [...hourlyData].sort((a, b) => b.revenue - a.revenue)[0];
+  const busiestHour = [...hourlyData].sort((a, b) => b.count - a.count)[0];
 
   return (
     <div className="space-y-6">
