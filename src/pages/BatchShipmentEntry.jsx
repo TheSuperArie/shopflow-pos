@@ -282,6 +282,16 @@ export default function BatchShipmentEntry() {
                 <p className="text-sm font-bold text-gray-800">{shipmentDetails.supplier_name || '—'}</p>
               </div>
             </div>
+            {shipmentDetails.cost_price && (
+              <div className="mt-4 pt-4 border-t border-blue-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">סה״כ חוב לספק:</span>
+                  <p className="text-2xl font-bold text-red-600">
+                    ₪{(parseFloat(shipmentDetails.cost_price) * shipmentDetails.quantity * selectedItems.length).toLocaleString('he-IL', { maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
