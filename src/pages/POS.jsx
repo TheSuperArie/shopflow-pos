@@ -11,6 +11,7 @@ import CheckoutModal from '@/components/pos/CheckoutModal';
 import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import OnlineStatus from '@/components/pos/OnlineStatus';
+import OfflineSyncStatus from '@/components/pos/OfflineSyncStatus';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
