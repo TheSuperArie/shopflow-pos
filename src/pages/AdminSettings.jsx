@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Lock, Save } from 'lucide-react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
@@ -14,10 +15,12 @@ export default function AdminSettings() {
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: settings = [], isLoading } = useQuery({
-    queryKey: ['app-settings'],
-    queryFn: () => base44.entities.AppSettings.list(),
+    queryKey: ['app-settings', user?.email],
+    queryFn: () => user ? base44.entities.AppSettings.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   useEffect(() => {
