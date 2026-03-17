@@ -699,6 +699,11 @@ function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAdd
             <Button size="sm" onClick={onAddPayment} className="flex-1 bg-green-600 hover:bg-green-700">
               <Plus className="w-4 h-4 ml-2" /> רשום תשלום
             </Button>
+            {payments.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => setShowPaymentHistory(true)} className="flex-1 gap-2">
+                <History className="w-4 h-4" /> היסטוריית תשלומים
+              </Button>
+            )}
           </div>
 
           {/* Transaction Ledger with Running Balance */}
