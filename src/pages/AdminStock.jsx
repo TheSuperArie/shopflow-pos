@@ -232,6 +232,11 @@ function StockFormModal({ open, onClose }) {
     enabled: !!form.supplier_id,
   });
 
+  const { data: allDimensions = [] } = useQuery({
+    queryKey: ['variant-dimensions'],
+    queryFn: () => base44.entities.VariantDimension.list(),
+  });
+
   const categoryGroups = selectedCategory 
     ? groups.filter(g => g.category_id === selectedCategory.id)
     : [];
