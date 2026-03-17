@@ -64,11 +64,11 @@ export default function AdminExpenses() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        )}
-      </div>
+            </Card>
+            )}
+            </div>
 
-      {isLoading ? (
+            {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
       ) : (
         <div className="space-y-3">
