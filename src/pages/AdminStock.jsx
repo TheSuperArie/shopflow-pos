@@ -115,16 +115,29 @@ export default function AdminStock() {
                 
                 {/* Items inside category folder */}
                 <div className="bg-white p-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {items.map((item, idx) => (
-                      <div key={idx} className="p-3 bg-red-50 rounded-lg border-2 border-red-200">
-                        <p className="font-semibold text-sm">{item.groupName}</p>
-                        <p className="text-xs text-gray-600">{item.variantDesc}</p>
-                        <Badge className="mt-2 bg-red-600">
-                          מלאי: {item.stock} יחידות
-                        </Badge>
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    {items.map((item, idx) => {
+                      // Find the actual variant and group objects
+                      const variantObj = variants.find(v => 
+                        v.group_id === groups.find(g => g.name === item.groupName)?.id &&
+                        v.dimensions &&
+                        Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' | ') === item.variantDesc
+                      ) || variants.find(v => 
+                        v.group_id === groups.find(g => g.name === item.groupName)?.id &&
+                        (!v.dimensions || Object.keys(v.dimensions).length === 0) &&
+                        item.variantDesc === 'רגיל'
+                      );
+                      const groupObj = groups.find(g => g.name === item.groupName);
+                      
+                      return variantObj && groupObj ? (
+                        <VariantItemWithCheckbox
+                          key={idx}
+                          variant={variantObj}
+                          group={groupObj}
+                          showCheckbox={true}
+                        />
+                      ) : null;
+                    })}
                   </div>
                 </div>
               </div>
