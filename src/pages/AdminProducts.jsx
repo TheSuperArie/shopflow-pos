@@ -29,20 +29,24 @@ export default function AdminProducts() {
   const [showSimpleProductForm, setShowSimpleProductForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.list('sort_order'),
+    queryKey: ['categories', user?.email],
+    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [],
+    enabled: !!user,
   });
 
   const { data: groups = [], isLoading: loadingGroups } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups', user?.email],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
+    queryKey: ['product-variants', user?.email],
+    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   // Group products by category - show ALL categories even empty ones
