@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 
-export default function VariantDimensionsManager({ categoryId, categoryName }) {
+export default function VariantDimensionsManager({ categoryId, categoryName, group, onGroupUpdate }) {
   const [showForm, setShowForm] = useState(false);
   const [editingDimension, setEditingDimension] = useState(null);
   const { toast } = useToast();
@@ -20,6 +20,20 @@ export default function VariantDimensionsManager({ categoryId, categoryName }) {
     queryKey: ['variant-dimensions', categoryId],
     queryFn: () => base44.entities.VariantDimension.filter({ category_id: categoryId }),
   });
+
+  const setPrimaryDimension = async (dimensionId) => {
+    if (!group) return;
+    try {
+      await base44.entities.ProductGroup.update(group.id, { primary_dimension_id: dimensionId });
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      if (onGroupUpdate) {
+        onGroupUpdate({ ...group, primary_dimension_id: dimensionId });
+      }
+      toast({ title: '✅ ממד ראשי עודכן' });
+    } catch (error) {
+      toast({ title: `❌ שגיאה: ${error.message}`, duration: 3000 });
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.VariantDimension.create(data),
