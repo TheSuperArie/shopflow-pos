@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
-export default function DynamicVariantSelector({ open, group, variants, onConfirm, onClose }) {
+export default function DynamicVariantSelector({ open, group, variants, allVariants: allVariantsLive, onConfirm, onClose }) {
   const [currentDimensionIndex, setCurrentDimensionIndex] = useState(0);
   const [selectedValues, setSelectedValues] = useState({});
 
