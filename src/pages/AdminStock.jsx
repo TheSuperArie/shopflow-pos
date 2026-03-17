@@ -251,6 +251,12 @@ function StockFormModal({ open, onClose }) {
         ? `${selectedGroup.name} - ${variantDesc} [${(selectedVariant.sku || selectedVariant.barcode).slice(-4)}]`
         : `${selectedGroup.name} - ${variantDesc}`;
       
+      // Determine cost price: variant-level or group-level
+      const costPrice = selectedGroup.has_uniform_price
+        ? (selectedGroup.uniform_cost_price || 0)
+        : (selectedVariant.cost_price || 0);
+      const debtAmount = data.quantity_added * costPrice;
+
       // Create stock update record
       await base44.entities.StockUpdate.create({
         product_id: selectedVariant.id,
@@ -269,6 +275,14 @@ function StockFormModal({ open, onClose }) {
         stock: currentStock + data.quantity_added,
       });
 
+      // Automatically add debt to supplier if a supplier was selected
+      if (supplier && debtAmount > 0) {
+        const currentDebt = supplier.total_debt || 0;
+        await base44.entities.Supplier.update(supplier.id, {
+          total_debt: currentDebt + debtAmount,
+        });
+      }
+
       if (data.order_id) {
         await base44.entities.SupplierOrder.update(data.order_id, { status: 'התקבל חלקית' });
       }
@@ -278,6 +292,7 @@ function StockFormModal({ open, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['stock-updates'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       queryClient.invalidateQueries({ queryKey: ['supplier-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       toast({ 
         title: '✅ המלאי עודכן בהצלחה',
         description: 'כל הדפים מסונכרנים אוטומטית',
