@@ -11,12 +11,20 @@ import { Users, LogIn, LogOut, Clock, DollarSign, Delete } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-const ACTIVE_SHIFT_KEY = 'active_shift';
+const ACTIVE_SHIFTS_KEY = 'active_shifts'; // Maps employee_id -> shift data
 
-export function getActiveShift() {
+export function getActiveShiftForEmployee(employeeId) {
+  if (!employeeId) return null;
   try {
-    return JSON.parse(localStorage.getItem(ACTIVE_SHIFT_KEY) || 'null');
+    const shifts = JSON.parse(localStorage.getItem(ACTIVE_SHIFTS_KEY) || '{}');
+    return shifts[employeeId] || null;
   } catch { return null; }
+}
+
+export function getAllActiveShifts() {
+  try {
+    return JSON.parse(localStorage.getItem(ACTIVE_SHIFTS_KEY) || '{}');
+  } catch { return {}; }
 }
 
 export default function StaffPortal({ open, onClose }) {
