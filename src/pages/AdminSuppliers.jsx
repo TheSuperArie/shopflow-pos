@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Plus, Building2, Phone, Mail, MapPin, CreditCard, Package, Edit, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import TransactionLedger from '@/components/supplier/TransactionLedger';
 
 export default function AdminSuppliers() {
   const [showSupplierForm, setShowSupplierForm] = useState(false);
