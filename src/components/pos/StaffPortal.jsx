@@ -185,6 +185,7 @@ export default function StaffPortal({ open, onClose }) {
     setFoundEmployee(null);
     setCashAmount('');
     setActiveShiftForEmployee(null);
+    setExpenseForm({ amount: '', description: '', category: 'other' });
     onClose();
   };
 
