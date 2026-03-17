@@ -10,6 +10,7 @@ import { useInventorySync } from '@/hooks/useInventorySync';
 export default function AdminLowStock() {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const queryClient = useQueryClient();
+  useInventorySync();
 
   // Force fresh data fetch on component mount
   useEffect(() => {

@@ -13,6 +13,7 @@ export default function AdminOrders() {
   const [threshold, setThreshold] = useState(5);
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [expandedGroup, setExpandedGroup] = useState(null);
+  useInventorySync();
 
   const { data: groups = [], isLoading: loadingGroups } = useQuery({
     queryKey: ['product-groups'],

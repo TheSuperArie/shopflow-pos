@@ -31,6 +31,7 @@ export default function POS() {
   const queryClient = useQueryClient();
 
   const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
+  useInventorySync();
 
   const makeQueryFn = (apiCall, cacheKey) => async () => {
     if (isEffectivelyOffline) {
