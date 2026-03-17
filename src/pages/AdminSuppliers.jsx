@@ -493,26 +493,6 @@ function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAdd
 
   const supplierStockUpdates = stockUpdates.filter(u => u.supplier_id === supplier.id);
 
-  // Build unified transaction log: shipments (debt) + payments (credit), sorted by date desc
-  const transactions = [
-    ...supplierStockUpdates.map(u => ({
-      id: u.id,
-      date: u.arrival_date,
-      type: 'shipment',
-      label: u.product_name,
-      amount: u.quantity_added,
-      rawDate: new Date(u.arrival_date),
-    })),
-    ...payments.map(p => ({
-      id: p.id,
-      date: p.payment_date,
-      type: 'payment',
-      label: p.payment_method + (p.reference_number ? ` (#${p.reference_number})` : ''),
-      amount: p.amount,
-      rawDate: new Date(p.payment_date),
-    })),
-  ].sort((a, b) => b.rawDate - a.rawDate);
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-y-auto">
