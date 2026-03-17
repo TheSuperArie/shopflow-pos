@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, ChevronLeft, Trash2, Package } from 'lucide-react';
+import { Loader2, ChevronLeft, Trash2, Package, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function BatchShipmentEntry() {
