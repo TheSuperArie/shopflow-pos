@@ -22,25 +22,30 @@ export default function AdminSales() {
   const [selectedSaleForReceipt, setSelectedSaleForReceipt] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: sales = [], isLoading } = useQuery({
-    queryKey: ['sales'],
-    queryFn: () => base44.entities.Sale.list('-created_date'),
+    queryKey: ['sales', user?.email],
+    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.list(),
+    queryKey: ['categories', user?.email],
+    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups', user?.email],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: expenses = [] } = useQuery({
-    queryKey: ['expenses'],
-    queryFn: () => base44.entities.Expense.list(),
+    queryKey: ['expenses', user?.email],
+    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const filteredSales = sales.filter(s => {
