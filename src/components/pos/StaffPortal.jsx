@@ -100,6 +100,28 @@ export default function StaffPortal({ open, onClose }) {
     },
   });
 
+  const addExpenseMutation = useMutation({
+    mutationFn: async (data) => {
+      // Record expense tied to the current shift log
+      return await base44.entities.Expense.create({
+        description: data.description,
+        amount: data.amount,
+        category: data.category,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        shift_log_id: activeShiftForEmployee?.logId,
+        employee_id: foundEmployee?.id,
+        employee_name: foundEmployee?.name,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-logs'] });
+      toast({ title: `✅ הוצאה נרשמה`, duration: 2000 });
+      setExpenseForm({ amount: '', description: '', category: 'other' });
+      setMode('select');
+    },
+  });
+
   const handlePinInput = (digit) => {
     if (pin.length < 4) setPin(prev => prev + digit);
   };
