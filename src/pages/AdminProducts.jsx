@@ -408,15 +408,48 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
     }
   }, [group, open]);
 
+  // Helper: compute all combinations (cartesian product) of dimension values
+  const cartesianProduct = (dims) => {
+    if (dims.length === 0) return [{}];
+    const [first, ...rest] = dims;
+    const restCombinations = cartesianProduct(rest);
+    const result = [];
+    for (const val of first.values) {
+      for (const combo of restCombinations) {
+        result.push({ [first.name]: val, ...combo });
+      }
+    }
+    return result;
+  };
+
   const mutation = useMutation({
-    mutationFn: (data) =>
-      group
-        ? base44.entities.ProductGroup.update(group.id, data)
-        : base44.entities.ProductGroup.create(data),
-    onSuccess: () => {
+    mutationFn: async (data) => {
+      if (group) {
+        return base44.entities.ProductGroup.update(group.id, data);
+      }
+      // Create new group
+      const newGroup = await base44.entities.ProductGroup.create(data);
+      
+      // Auto-generate variants from enabled dimensions
+      if (data.enabled_dimensions && data.enabled_dimensions.length > 0) {
+        const enabledDims = dimensions.filter(d => data.enabled_dimensions.includes(d.id));
+        const combinations = cartesianProduct(enabledDims);
+        await Promise.all(combinations.map((combo, idx) =>
+          base44.entities.ProductVariant.create({
+            group_id: newGroup.id,
+            dimensions: combo,
+            stock: 0,
+            sku: `${newGroup.id.slice(-4)}-${idx + 1}`,
+          })
+        ));
+      }
+      return newGroup;
+    },
+    onSuccess: (newGroup) => {
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
-        title: group ? '✅ התיקייה עודכנה' : '✅ התיקייה נוצרה',
+        title: group ? '✅ התיקייה עודכנה' : '✅ התיקייה נוצרה עם וריאציות אוטומטיות',
         duration: 2000,
         className: 'bg-green-500 text-white border-green-600'
       });
