@@ -69,14 +69,15 @@ export default function BatchShipmentEntry() {
 
   const preciseTotalDebt = calculatePreciseDebt();
 
-  // Batch update mutation
+  // Batch update mutation with precise cost-price calculation
   const batchUpdateMutation = useMutation({
     mutationFn: async () => {
-      const costPrice = parseFloat(shipmentDetails.cost_price) || 0;
       const supplier = suppliers.find(s => s.id === shipmentDetails.supplier_id);
       
-      // Calculate total debt (quantity × cost price × items count)
-      const totalDebt = costPrice * shipmentDetails.quantity * selectedItems.length;
+      // Calculate precise total debt from database costs
+      const totalDebt = itemCosts.reduce((total, ic) => {
+        return total + (ic.costPrice * shipmentDetails.quantity);
+      }, 0);
 
       const updatePromises = selectedItems.map(item =>
         base44.entities.ProductVariant.update(item.id, {
@@ -85,11 +86,12 @@ export default function BatchShipmentEntry() {
       );
 
       // Create stock updates for tracking
-      const updates = selectedItems.map(item => {
+      const updates = selectedItems.map((item, idx) => {
         const group = groups.find(g => g.id === item.group_id);
         const dimText = item.dimensions && Object.keys(item.dimensions).length > 0
           ? Object.entries(item.dimensions).map(([k, v]) => `${k}: ${v}`).join(', ')
           : 'רגיל';
+        const itemCost = itemCosts[idx];
         return {
           product_id: item.id,
           product_name: `${group?.name || 'מוצר'} - ${dimText}`,
@@ -99,13 +101,14 @@ export default function BatchShipmentEntry() {
           order_id: shipmentDetails.order_id,
           arrival_date: format(new Date(), 'yyyy-MM-dd'),
           notes: shipmentDetails.notes,
+          cost_price: itemCost.costPrice,
         };
       });
 
       await Promise.all(updatePromises);
       await Promise.all(updates.map(u => base44.entities.StockUpdate.create(u)));
 
-      // Update supplier debt
+      // Update supplier debt with precise calculated amount
       if (supplier && totalDebt > 0) {
         const currentDebt = supplier.total_debt || 0;
         await base44.entities.Supplier.update(supplier.id, {
@@ -118,7 +121,7 @@ export default function BatchShipmentEntry() {
       queryClient.invalidateQueries({ queryKey: ['stock-updates'] });
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       toast({
-        title: `✅ ${selectedItems.length} פריטים עודכנו + חוב עודכן`,
+        title: `✅ ${selectedItems.length} פריטים עודכנו + חוב מדויק עודכן`,
         duration: 2000,
       });
       clearBatch();
