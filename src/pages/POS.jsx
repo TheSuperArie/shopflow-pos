@@ -15,6 +15,7 @@ import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 import { useInventorySync } from '@/hooks/useInventorySync';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function POS() {
