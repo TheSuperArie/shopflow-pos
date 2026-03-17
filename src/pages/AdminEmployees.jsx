@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut, Calendar } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -17,6 +17,8 @@ export default function AdminEmployees() {
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
