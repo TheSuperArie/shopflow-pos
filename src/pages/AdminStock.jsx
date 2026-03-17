@@ -389,27 +389,27 @@ function StockFormModal({ open, onClose }) {
         {step === 'variant' && (
           <div className="space-y-3">
             <p className="text-sm text-gray-600">בחר וריאציה:</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {groupVariants.map(variant => {
-                // Display dimensions
+            <VariantDimensionFolders
+              variants={groupVariants}
+              group={selectedGroup}
+              badgeColor="bg-amber-500"
+              folderBg="bg-amber-50"
+              folderBorder="border-amber-200"
+              renderVariant={(variant) => {
                 const displayText = variant.dimensions && typeof variant.dimensions === 'object'
                   ? Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ')
                   : 'רגיל';
-                
                 return (
                   <button
-                    key={variant.id}
                     onClick={() => handleVariantSelect(variant)}
-                    className="p-4 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-center"
+                    className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all text-right"
                   >
-                    <p className="font-semibold text-sm">{displayText}</p>
-                    <Badge className="mt-2" variant="outline">
-                      מלאי: {variant.stock || 0}
-                    </Badge>
+                    <span className="font-semibold text-sm">{displayText}</span>
+                    <Badge variant="outline">מלאי: {variant.stock || 0}</Badge>
                   </button>
                 );
-              })}
-            </div>
+              }}
+            />
           </div>
         )}
 
