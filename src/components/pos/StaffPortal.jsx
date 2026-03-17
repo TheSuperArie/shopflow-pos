@@ -303,6 +303,69 @@ export default function StaffPortal({ open, onClose }) {
             </Button>
           </div>
         )}
+
+        {/* Add Expense */}
+        {mode === 'add_expense' && (
+          <div className="space-y-4">
+            <div className="bg-amber-50 p-3 rounded-xl text-center">
+              <p className="font-bold text-amber-800">{foundEmployee?.name}</p>
+              <p className="text-sm text-amber-600">רישום הוצאה</p>
+            </div>
+            <div>
+              <Label>סכום (₪)</Label>
+              <Input
+                type="number"
+                value={expenseForm.amount}
+                onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                placeholder="0.00"
+                className="text-lg"
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>תיאור</Label>
+              <Input
+                value={expenseForm.description}
+                onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                placeholder="למשל: קפה, דלק..."
+              />
+            </div>
+            <div>
+              <Label>קטגוריה</Label>
+              <select
+                value={expenseForm.category}
+                onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3"
+              >
+                <option value="drawer">שק קטן</option>
+                <option value="personal">הוצאה אישית</option>
+                <option value="supplies">חומרי צריכה</option>
+                <option value="other">אחר</option>
+              </select>
+            </div>
+            <Button
+              onClick={() => {
+                const amount = parseFloat(expenseForm.amount);
+                if (isNaN(amount) || amount <= 0) {
+                  toast({ title: '⚠️ הזן סכום תקין', variant: 'destructive' });
+                  return;
+                }
+                addExpenseMutation.mutate({
+                  amount,
+                  description: expenseForm.description || 'הוצאה',
+                  category: expenseForm.category,
+                });
+              }}
+              className="w-full bg-amber-500 hover:bg-amber-600 gap-2"
+              disabled={addExpenseMutation.isPending}
+            >
+              <Wallet className="w-4 h-4" /> שמור הוצאה
+            </Button>
+            <Button variant="outline" onClick={() => setMode('select')} className="w-full">
+              חזור
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
