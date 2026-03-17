@@ -210,12 +210,13 @@ export default function POS() {
     const isSimple = !group.enabled_dimensions || group.enabled_dimensions.length === 0;
     if (isSimple && groupVariants.length === 1) {
       addToCart(groupVariants[0], group);
+      setSelectedGroup(null); // Return to category view
     } else {
       setSelectedGroup(group);
     }
   };
   const handleVariantConfirm = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
-  const handleBarcodeSelect = (variant, group) => addToCart(variant, group);
+  const handleBarcodeSelect = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
 
   const updateCartQty = (idx, newQty) => {
     if (newQty <= 0) {
