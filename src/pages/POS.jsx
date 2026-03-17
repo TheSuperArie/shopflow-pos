@@ -154,7 +154,7 @@ export default function POS() {
     : [];
 
   const saleMutation = useMutation({
-    mutationFn: async (paymentMethod) => {
+    mutationFn: async ({ paymentMethod, cashDetails }) => {
       const totalCost = cartItems.reduce((s, i) => s + (i.cost_price || 0) * i.quantity, 0);
       const total = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
@@ -163,6 +163,8 @@ export default function POS() {
         total,
         total_cost: totalCost,
         payment_method: paymentMethod,
+        cash_received: cashDetails?.received,
+        cash_change: cashDetails?.change,
         created_date: new Date().toISOString(),
       };
 
@@ -437,7 +439,7 @@ export default function POS() {
       <CheckoutModal
         open={showCheckout}
         total={cartTotal}
-        onConfirm={(method) => saleMutation.mutate(method)}
+        onConfirm={(method, cashDetails) => saleMutation.mutate({ paymentMethod: method, cashDetails })}
         onClose={() => setShowCheckout(false)}
         isProcessing={saleMutation.isPending}
       />
