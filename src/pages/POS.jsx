@@ -79,24 +79,24 @@ export default function POS() {
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', isOfflineMode, user?.email],
     queryFn: makeQueryFn(() => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [], 'categories'),
-    staleTime: isEffectivelyOffline ? Infinity : 0,
-    enabled: !!user,
+    staleTime: isEffectivelyOffline || offlineManager.isGlobalSyncLocked() ? Infinity : 0,
+    enabled: !!user && !offlineManager.isGlobalSyncLocked(),
   });
 
   const { data: allGroups = [] } = useQuery({
     queryKey: ['product-groups', isOfflineMode, user?.email],
     queryFn: makeQueryFn(() => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [], 'groups'),
-    staleTime: isEffectivelyOffline ? Infinity : 0,
-    enabled: !!user,
+    staleTime: isEffectivelyOffline || offlineManager.isGlobalSyncLocked() ? Infinity : 0,
+    enabled: !!user && !offlineManager.isGlobalSyncLocked(),
   });
 
   const { data: allVariants = [] } = useQuery({
     queryKey: ['product-variants', isOfflineMode, user?.email],
     queryFn: makeQueryFn(() => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [], 'variants'),
-    staleTime: isEffectivelyOffline ? Infinity : 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    enabled: !!user,
+    staleTime: isEffectivelyOffline || offlineManager.isGlobalSyncLocked() ? Infinity : 0,
+    refetchOnMount: !offlineManager.isGlobalSyncLocked(),
+    refetchOnWindowFocus: !offlineManager.isGlobalSyncLocked(),
+    enabled: !!user && !offlineManager.isGlobalSyncLocked(),
   });
 
   // Cache fresh online data ONLY if sync is not in progress
