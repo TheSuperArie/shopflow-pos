@@ -29,14 +29,23 @@ export default function OfflineSyncStatus() {
       <div className={`fixed top-16 right-4 z-50 p-3 rounded-lg shadow-lg flex items-center gap-2 ${
         syncStatus === 'syncing'
           ? 'bg-blue-50 text-blue-800 border border-blue-200'
-          : syncStatus === 'error' || failedCount > 0
-            ? 'bg-red-50 text-red-800 border border-red-200'
-            : 'bg-green-50 text-green-800 border border-green-200'
+          : syncStatus === 'success'
+            ? 'bg-green-50 text-green-800 border border-green-200'
+            : syncStatus === 'error' || failedCount > 0
+              ? 'bg-red-50 text-red-800 border border-red-200'
+              : 'bg-green-50 text-green-800 border border-green-200'
       }`}>
         {syncStatus === 'syncing' && (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm font-medium">סנכרון בעיצומו...</span>
+          </>
+        )}
+        
+        {syncStatus === 'success' && (
+          <>
+            <CheckCircle2 className="w-4 h-4" />
+            <span className="text-sm font-medium">✅ סנכרון הושלם: {processedCount} מכירות עובדות</span>
           </>
         )}
         
