@@ -459,11 +459,16 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
       }
       return newGroup;
     },
-    onSuccess: (newGroup) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      const count = generatedPreview?.length;
       toast({ 
-        title: group ? '✅ התיקייה עודכנה' : '✅ התיקייה נוצרה עם וריאציות אוטומטיות',
+        title: group
+          ? '✅ התיקייה עודכנה'
+          : count
+            ? `✅ התיקייה נוצרה עם ${count} וריאציות`
+            : '✅ התיקייה נוצרה',
         duration: 2000,
         className: 'bg-green-500 text-white border-green-600'
       });
