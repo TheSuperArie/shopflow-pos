@@ -596,6 +596,7 @@ function OrderFormModal({ open, supplier, onClose, queryClient, toast }) {
 }
 
 function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAddOrder, onAddPayment, queryClient, toast }) {
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const user = useCurrentUser();
   const { data: stockUpdates = [] } = useQuery({
     queryKey: ['stock-updates', user?.email],
@@ -606,6 +607,56 @@ function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAdd
   if (!supplier) return null;
 
   const supplierStockUpdates = stockUpdates.filter(u => u.supplier_id === supplier.id);
+
+  const handlePrintPayment = (payment) => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    const html = `
+      <html dir="rtl">
+        <head>
+          <title>אישור תשלום</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            .section { margin-bottom: 20px; }
+            .label { font-weight: bold; color: #333; }
+            .value { color: #666; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ccc; text-align: center; font-size: 12px; }
+            .amount-box { background: #f0f0f0; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; }
+            .amount { font-size: 28px; font-weight: bold; color: #2c5aa0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">אישור תשלום</div>
+          </div>
+          <div class="section">
+            <span class="label">שם הספק:</span> <span class="value">${supplier.name}</span>
+          </div>
+          <div class="section">
+            <span class="label">תאריך תשלום:</span> <span class="value">${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</span>
+          </div>
+          <div class="section">
+            <span class="label">אמצעי תשלום:</span> <span class="value">${payment.payment_method}</span>
+          </div>
+          <div class="section">
+            <span class="label">מספר אסמכתא:</span> <span class="value">${payment.reference_number || '—'}</span>
+          </div>
+          <div class="amount-box">
+            <div>סכום התשלום:</div>
+            <div class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</div>
+          </div>
+          ${payment.notes ? `<div class="section"><span class="label">הערות:</span> <span class="value">${payment.notes}</span></div>` : ''}
+          <div class="footer">
+            <p>אישור זה נוצר בתאריך ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+          </div>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 250);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
