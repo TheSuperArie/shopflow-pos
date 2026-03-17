@@ -223,8 +223,17 @@ function StockFormModal({ open, onClose }) {
 
   const handleBack = () => {
     if (step === 'details') {
-      setStep('variant');
-      setSelectedVariant(null);
+      // Check if variant step was skipped (simple product)
+      const gVariants = variants.filter(v => v.group_id === selectedGroup?.id);
+      const wasSkipped = (!selectedGroup?.enabled_dimensions || selectedGroup.enabled_dimensions.length === 0) && gVariants.length === 1;
+      if (wasSkipped) {
+        setStep('group');
+        setSelectedGroup(null);
+        setSelectedVariant(null);
+      } else {
+        setStep('variant');
+        setSelectedVariant(null);
+      }
     } else if (step === 'variant') {
       setStep('group');
       setSelectedGroup(null);
