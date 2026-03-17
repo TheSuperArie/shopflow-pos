@@ -161,39 +161,3 @@ function ExpenseFormModal({ open, onClose, queryClient, toast }) {
     </Dialog>
   );
 }
-
-function CashCountModal({ open, onClose, queryClient, toast }) {
-  const [amount, setAmount] = useState(0);
-  const [countDate, setCountDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [notes, setNotes] = useState('');
-
-  const mutation = useMutation({
-    mutationFn: (data) => base44.entities.CashCount.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-counts'] });
-      toast({ title: 'ספירת קופה נשמרה' });
-      onClose();
-      setAmount(0);
-      setCountDate(format(new Date(), 'yyyy-MM-dd'));
-      setNotes('');
-    },
-  });
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-sm">
-        <DialogHeader><DialogTitle>ספירת קופה</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div><Label>סכום בקופה</Label><Input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} /></div>
-          <div><Label>תאריך ושעת הספירה</Label><Input type="date" value={countDate} onChange={e => setCountDate(e.target.value)} /></div>
-          <div><Label>הערות</Label><Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="הערות נוספות..." /></div>
-        </div>
-        <DialogFooter>
-          <Button onClick={() => mutation.mutate({ amount, notes, date: countDate })} className="bg-amber-500 hover:bg-amber-600">
-            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
