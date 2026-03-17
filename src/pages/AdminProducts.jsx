@@ -514,11 +514,20 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
                       }}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm">{dim.name}</span>
+                    <span className="text-sm font-medium">{dim.name}</span>
+                    <span className="text-xs text-gray-400">({dim.values?.length} ערכים)</span>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-2">בחר אילו ממדים יופיעו בוריאציות של מוצר זה</p>
+              {!group && form.enabled_dimensions.length > 0 && (() => {
+                const selected = dimensions.filter(d => form.enabled_dimensions.includes(d.id));
+                const count = selected.reduce((acc, d) => acc * (d.values?.length || 1), 1);
+                return (
+                  <div className="mt-2 p-2 bg-blue-50 rounded-lg text-sm text-blue-700">
+                    ⚡ ייווצרו <strong>{count}</strong> וריאציות אוטומטית
+                  </div>
+                );
+              })()}
             </div>
           )}
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
