@@ -111,7 +111,8 @@ export default function BatchShipmentEntry() {
   const isFormValid =
     selectedItems.length > 0 &&
     shipmentDetails.supplier_name &&
-    shipmentDetails.quantity > 0;
+    shipmentDetails.quantity > 0 &&
+    shipmentDetails.cost_price > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 pb-24">
