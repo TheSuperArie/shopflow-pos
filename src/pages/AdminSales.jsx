@@ -121,9 +121,10 @@ export default function AdminSales() {
   );
 
   const hourlyData = Array.from({ length: 24 }, (_, hour) => {
-    const hourSales = daySales.filter(sale => 
-      moment(sale.created_date).hour() === hour
-    );
+    const hourSales = daySales.filter(sale => {
+      const d = new Date(sale.created_date);
+      return d.getHours() === hour;
+    });
     const revenue = hourSales.reduce((sum, sale) => sum + sale.total, 0);
     const count = hourSales.length;
     
