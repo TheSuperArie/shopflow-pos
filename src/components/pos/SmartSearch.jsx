@@ -13,6 +13,33 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef(null);
 
+  // Hydrate with cache if props are empty
+  useEffect(() => {
+    if (groups.length > 0) {
+      setCachedGroups(groups);
+    } else {
+      offlineManager.getCachedInventory().then(cached => {
+        setCachedGroups(cached.groups);
+      });
+    }
+  }, [groups]);
+
+  useEffect(() => {
+    if (variants.length > 0) {
+      setCachedVariants(variants);
+    } else {
+      offlineManager.getCachedInventory().then(cached => {
+        setCachedVariants(cached.variants);
+      });
+    }
+  }, [variants]);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      setCachedCategories(categories);
+    }
+  }, [categories]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
