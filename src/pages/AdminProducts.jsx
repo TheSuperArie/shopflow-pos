@@ -322,6 +322,9 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
       });
       onClose();
     },
+    onError: (error) => {
+      toast({ title: `❌ שגיאה: ${error.message}`, duration: 5000 });
+    },
   });
 
   const deleteMut = useMutation({
