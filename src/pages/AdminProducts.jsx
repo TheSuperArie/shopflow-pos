@@ -361,10 +361,13 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
           <Button
             onClick={() => mutation.mutate({ name })}
             className="bg-amber-500 hover:bg-amber-600"
-            disabled={!name}
+            disabled={!name || mutation.isPending}
           >
             {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
           </Button>
+          {mutation.isError && (
+            <p className="text-red-500 text-xs mt-1">{mutation.error?.message}</p>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
