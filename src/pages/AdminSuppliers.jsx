@@ -737,6 +737,56 @@ function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAdd
               </div>
             </div>
           )}
+
+          {/* Payment History Modal */}
+          <Dialog open={showPaymentHistory} onOpenChange={setShowPaymentHistory}>
+            <DialogContent dir="rtl" className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <History className="w-5 h-5" />
+                  היסטוריית תשלומים - {supplier.name}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                {payments.length === 0 ? (
+                  <p className="text-center text-gray-400 py-8">אין תשלומים</p>
+                ) : (
+                  payments.map(payment => (
+                    <Card key={payment.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="font-bold text-lg text-green-600">₪{payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</p>
+                              <Badge variant="outline">{payment.payment_method}</Badge>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              {format(new Date(payment.payment_date), 'dd/MM/yyyy')}
+                            </p>
+                            {payment.reference_number && (
+                              <p className="text-xs text-gray-500 mt-1">אסמכתא: {payment.reference_number}</p>
+                            )}
+                            {payment.notes && (
+                              <p className="text-xs text-gray-400 italic mt-1">{payment.notes}</p>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePrintPayment(payment)}
+                            className="gap-1"
+                          >
+                            <Printer className="w-4 h-4" />
+                            הדפס
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </DialogContent>
     </Dialog>
