@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Building2, Phone, Mail, MapPin, CreditCard, Package, Edit, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminSuppliers() {
   const [showSupplierForm, setShowSupplierForm] = useState(false);
@@ -20,20 +21,24 @@ export default function AdminSuppliers() {
   const [showOrderForm, setShowOrderForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: suppliers = [] } = useQuery({
-    queryKey: ['suppliers'],
-    queryFn: () => base44.entities.Supplier.list('-created_date'),
+    queryKey: ['suppliers', user?.email],
+    queryFn: () => user ? base44.entities.Supplier.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const { data: orders = [] } = useQuery({
-    queryKey: ['supplier-orders'],
-    queryFn: () => base44.entities.SupplierOrder.list('-created_date'),
+    queryKey: ['supplier-orders', user?.email],
+    queryFn: () => user ? base44.entities.SupplierOrder.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const { data: payments = [] } = useQuery({
-    queryKey: ['supplier-payments'],
-    queryFn: () => base44.entities.SupplierPayment.list('-created_date'),
+    queryKey: ['supplier-payments', user?.email],
+    queryFn: () => user ? base44.entities.SupplierPayment.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const activeSuppliers = suppliers.filter(s => s.is_active);
