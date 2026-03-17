@@ -408,7 +408,16 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
     } else {
       setForm({ name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '', barcode: '', enabled_dimensions: [] });
     }
+    setGeneratedPreview(null);
   }, [group, open]);
+
+  const handleGeneratePreview = () => {
+    const selected = dimensions.filter(d => form.enabled_dimensions.includes(d.id));
+    if (selected.length === 0) return;
+    const combos = cartesianProduct(selected);
+    setGeneratedPreview(combos);
+    toast({ title: `⚡ נוצרו ${combos.length} צירופים — לחץ "שמור" לאישור`, duration: 3000 });
+  };
 
   // Helper: compute all combinations (cartesian product) of dimension values
   const cartesianProduct = (dims) => {
