@@ -342,6 +342,11 @@ export default function BatchShipmentEntry() {
             <p className="font-bold text-blue-600">
               סה״כ: {shipmentDetails.quantity * selectedItems.length} יחידות
             </p>
+            {shipmentDetails.cost_price && (
+              <p className="font-bold text-red-600">
+                חוב לספק: ₪{(parseFloat(shipmentDetails.cost_price) * shipmentDetails.quantity * selectedItems.length).toLocaleString('he-IL', { maximumFractionDigits: 2 })}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirm(false)}>ביטול</Button>
