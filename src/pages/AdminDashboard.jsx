@@ -48,9 +48,12 @@ export default function AdminDashboard() {
   const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (sale.total || 0), 0);
   const lowStockVariants = variants.filter(v => (v.stock || 0) <= 3).map(v => {
     const group = groups.find(g => g.id === v.group_id);
+    const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
+      ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(', ')
+      : 'רגיל';
     return {
       id: v.id,
-      name: group ? `${group.name} - ${v.size} ${v.cut} ${v.collar}` : `מידה ${v.size}`,
+      name: group ? `${group.name} - ${dimText}` : dimText,
       stock: v.stock || 0
     };
   });
