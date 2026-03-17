@@ -51,21 +51,7 @@ export default function AdminExpenses() {
             </div>
           </CardContent>
         </Card>
-        {cashCounts[0] && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                  <Calculator className="w-5 h-5 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">ספירת קופה אחרונה ({cashCounts[0].date})</p>
-                  <p className="text-2xl font-bold text-green-600">₪{cashCounts[0].amount?.toFixed(0)}</p>
-                </div>
-              </div>
-            </CardContent>
-            </Card>
-            )}
+
             </div>
 
             {isLoading ? (
