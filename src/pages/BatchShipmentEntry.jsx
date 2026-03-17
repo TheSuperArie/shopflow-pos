@@ -35,6 +35,12 @@ export default function BatchShipmentEntry() {
   // Batch update mutation
   const batchUpdateMutation = useMutation({
     mutationFn: async () => {
+      const costPrice = parseFloat(shipmentDetails.cost_price) || 0;
+      const supplier = suppliers.find(s => s.id === shipmentDetails.supplier_id);
+      
+      // Calculate total debt (quantity × cost price × items count)
+      const totalDebt = costPrice * shipmentDetails.quantity * selectedItems.length;
+
       const updatePromises = selectedItems.map(item =>
         base44.entities.ProductVariant.update(item.id, {
           stock: (item.stock || 0) + (shipmentDetails.quantity || 0),
@@ -42,25 +48,40 @@ export default function BatchShipmentEntry() {
       );
 
       // Create stock updates for tracking
-      const updates = selectedItems.map(item => ({
-        product_id: item.group_id,
-        product_name: item.group_id, // Will be populated from group later
-        quantity_added: shipmentDetails.quantity,
-        supplier_id: shipmentDetails.supplier_id,
-        supplier_name: shipmentDetails.supplier_name,
-        order_id: shipmentDetails.order_id,
-        arrival_date: format(new Date(), 'yyyy-MM-dd'),
-        notes: shipmentDetails.notes,
-      }));
+      const updates = selectedItems.map(item => {
+        const group = groups.find(g => g.id === item.group_id);
+        const dimText = item.dimensions && Object.keys(item.dimensions).length > 0
+          ? Object.entries(item.dimensions).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : 'רגיל';
+        return {
+          product_id: item.id,
+          product_name: `${group?.name || 'מוצר'} - ${dimText}`,
+          quantity_added: shipmentDetails.quantity,
+          supplier_id: shipmentDetails.supplier_id,
+          supplier_name: shipmentDetails.supplier_name,
+          order_id: shipmentDetails.order_id,
+          arrival_date: format(new Date(), 'yyyy-MM-dd'),
+          notes: shipmentDetails.notes,
+        };
+      });
 
       await Promise.all(updatePromises);
       await Promise.all(updates.map(u => base44.entities.StockUpdate.create(u)));
+
+      // Update supplier debt
+      if (supplier && totalDebt > 0) {
+        const currentDebt = supplier.total_debt || 0;
+        await base44.entities.Supplier.update(supplier.id, {
+          total_debt: currentDebt + totalDebt,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       queryClient.invalidateQueries({ queryKey: ['stock-updates'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       toast({
-        title: `✅ ${selectedItems.length} פריטים עודכנו בהצלחה`,
+        title: `✅ ${selectedItems.length} פריטים עודכנו + חוב עודכן`,
         duration: 2000,
       });
       clearBatch();
