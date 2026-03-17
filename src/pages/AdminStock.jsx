@@ -15,6 +15,7 @@ import { useInventorySync } from '@/hooks/useInventorySync';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import ShipmentCheckbox from '@/components/shipment/ShipmentCheckbox';
+import VariantItemWithCheckbox from '@/components/shipment/VariantItemWithCheckbox';
 
 export default function AdminStock() {
   const [showForm, setShowForm] = useState(false);
