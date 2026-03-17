@@ -39,7 +39,7 @@ export default function VariantDimensionFolders({
     return null;
   })();
 
-  // If no dimensions at all, just render all variants flat
+  // If no dimensions at all (simple products), just render all variants flat - no folder structure needed
   if (!firstDimKey) {
     return (
       <div className="space-y-2">
@@ -48,6 +48,11 @@ export default function VariantDimensionFolders({
         ))}
       </div>
     );
+  }
+
+  // If all variants have only 1 dimension value combination (single variant), render flat
+  if (variants.length === 1) {
+    return <div>{renderVariant(variants[0])}</div>;
   }
 
   // Group variants by the first dimension value
