@@ -144,13 +144,14 @@ export default function StaffPortal({ open, onClose }) {
   };
 
   const handleClockOut = () => {
-    const shift = getActiveShift();
     const amount = parseFloat(cashAmount);
     if (isNaN(amount) || amount < 0) {
       toast({ title: '⚠️ הזן סכום תקין', variant: 'destructive' });
       return;
     }
-    clockOutMutation.mutate({ logId: shift.logId, closingCash: amount });
+    if (foundEmployee && activeShiftForEmployee) {
+      clockOutMutation.mutate({ employeeId: foundEmployee.id, logId: activeShiftForEmployee.logId, closingCash: amount });
+    }
   };
 
   const resetAndClose = () => {
