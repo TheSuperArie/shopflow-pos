@@ -47,37 +47,37 @@ export default function AdminStock() {
     enabled: !!user,
   });
 
-  // Calculate low stock items by category
-  const lowStockByCategory = {};
-  groups.forEach(group => {
-    const category = categories.find(c => c.id === group.category_id);
-    const categoryName = category?.name || 'אחר';
-    
-    const groupVariants = variants.filter(v => v.group_id === group.id);
-    groupVariants.forEach(variant => {
-      if ((variant.stock || 0) < 5) {
-        if (!lowStockByCategory[categoryName]) {
-          lowStockByCategory[categoryName] = [];
-        }
-        
-        // Build variant description
-        let variantDesc = '';
-        if (variant.dimensions && typeof variant.dimensions === 'object') {
-          variantDesc = Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' | ');
-        } else {
-          variantDesc = 'רגיל';
-        }
-        
-        lowStockByCategory[categoryName].push({
-          groupName: group.name,
-          variantDesc,
-          stock: variant.stock || 0,
-        });
-      }
-    });
+  const { data: allDimensions = [] } = useQuery({
+    queryKey: ['variant-dimensions', user?.email],
+    queryFn: () => user ? base44.entities.VariantDimension.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
-  const totalLowStock = Object.values(lowStockByCategory).reduce((sum, items) => sum + items.length, 0);
+  // Calculate low stock items by category → group (with hierarchy)
+  const lowStockByCategory = {};
+  categories.forEach(cat => {
+    lowStockByCategory[cat.id] = {
+      category: cat,
+      groups: {},
+      totalVariants: 0,
+    };
+  });
+
+  groups.forEach(group => {
+    const lowStockVariants = variants.filter(v => v.group_id === group.id && (v.stock || 0) < 5);
+    if (lowStockVariants.length === 0) return;
+
+    const catId = group.category_id;
+    if (!lowStockByCategory[catId]) {
+      lowStockByCategory[catId] = { category: { id: catId, name: 'ללא קטגוריה' }, groups: {}, totalVariants: 0 };
+    }
+
+    lowStockByCategory[catId].groups[group.id] = { group, variants: lowStockVariants };
+    lowStockByCategory[catId].totalVariants += lowStockVariants.length;
+  });
+
+  const lowStockData = Object.values(lowStockByCategory).filter(cat => cat.totalVariants > 0);
+  const totalLowStock = lowStockData.reduce((sum, cat) => sum + cat.totalVariants, 0);
 
   return (
     <div className="space-y-6">
