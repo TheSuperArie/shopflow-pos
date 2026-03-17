@@ -47,23 +47,26 @@ export default function POS() {
   };
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories', isOfflineMode],
-    queryFn: makeQueryFn(() => base44.entities.Category.list('sort_order'), 'categories'),
+    queryKey: ['categories', isOfflineMode, user?.email],
+    queryFn: makeQueryFn(() => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [], 'categories'),
     staleTime: isEffectivelyOffline ? Infinity : 0,
+    enabled: !!user,
   });
 
   const { data: allGroups = [] } = useQuery({
-    queryKey: ['product-groups', isOfflineMode],
-    queryFn: makeQueryFn(() => base44.entities.ProductGroup.list(), 'groups'),
+    queryKey: ['product-groups', isOfflineMode, user?.email],
+    queryFn: makeQueryFn(() => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [], 'groups'),
     staleTime: isEffectivelyOffline ? Infinity : 0,
+    enabled: !!user,
   });
 
   const { data: allVariants = [] } = useQuery({
-    queryKey: ['product-variants', isOfflineMode],
-    queryFn: makeQueryFn(() => base44.entities.ProductVariant.list(), 'variants'),
+    queryKey: ['product-variants', isOfflineMode, user?.email],
+    queryFn: makeQueryFn(() => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [], 'variants'),
     staleTime: isEffectivelyOffline ? Infinity : 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    enabled: !!user,
   });
 
   // Cache whenever we get fresh online data
