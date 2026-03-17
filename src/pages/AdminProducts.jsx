@@ -705,7 +705,7 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
             )}
           </div>
 
-          {enabledDimensions.length > 0 && (
+          {allDimensions.length > 0 && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm font-semibold text-blue-900 mb-2">📊 ממד ראשי לארגון וריאציות</p>
               <div className="flex flex-wrap gap-2">
