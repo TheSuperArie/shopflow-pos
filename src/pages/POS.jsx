@@ -455,6 +455,11 @@ export default function POS() {
         open={showReturnForm}
         onClose={() => setShowReturnForm(false)}
       />
+
+      <StaffPortal
+        open={showStaffPortal}
+        onClose={() => setShowStaffPortal(false)}
+      />
     </div>
   );
 }
