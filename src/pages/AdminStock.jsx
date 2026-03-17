@@ -19,25 +19,30 @@ export default function AdminStock() {
   const [showForm, setShowForm] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   useInventorySync();
+  const user = useCurrentUser();
 
   const { data: updates = [], isLoading } = useQuery({
-    queryKey: ['stock-updates'],
-    queryFn: () => base44.entities.StockUpdate.list('-arrival_date'),
+    queryKey: ['stock-updates', user?.email],
+    queryFn: () => user ? base44.entities.StockUpdate.filter({ created_by: user.email }, '-arrival_date') : [],
+    enabled: !!user,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.list('sort_order'),
+    queryKey: ['categories', user?.email],
+    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [],
+    enabled: !!user,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups', user?.email],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
+    queryKey: ['product-variants', user?.email],
+    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   // Calculate low stock items by category
