@@ -7,16 +7,13 @@ export function useOfflineSync() {
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'success', 'error'
   const [failedCount, setFailedCount] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
+  const [syncLocked, setSyncLocked] = useState(false); // Prevents any state updates during sync
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for online/offline changes
-    const handleOnline = async () => {
-      await syncToServer();
-    };
-
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    // IMPORTANT: Do NOT auto-sync on online event
+    // The app will call syncToServer() manually only when needed
+    // This prevents race conditions with automatic inventory fetches
   }, []);
 
   const syncToServer = async () => {
