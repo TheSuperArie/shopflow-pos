@@ -32,7 +32,7 @@ export default function StaffPortal({ open, onClose }) {
   const [mode, setMode] = useState('select'); // 'select' | 'clock_in' | 'clock_out' | 'opening_cash' | 'closing_cash'
   const [foundEmployee, setFoundEmployee] = useState(null);
   const [cashAmount, setCashAmount] = useState('');
-  const [activeShift, setActiveShift] = useState(getActiveShift());
+  const [activeShiftForEmployee, setActiveShiftForEmployee] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -44,8 +44,11 @@ export default function StaffPortal({ open, onClose }) {
   });
 
   useEffect(() => {
-    setActiveShift(getActiveShift());
-  }, [open]);
+    if (open && foundEmployee) {
+      // Check if THIS specific employee has an active shift
+      setActiveShiftForEmployee(getActiveShiftForEmployee(foundEmployee.id));
+    }
+  }, [open, foundEmployee]);
 
   const clockInMutation = useMutation({
     mutationFn: async ({ employee, openingCash }) => {
