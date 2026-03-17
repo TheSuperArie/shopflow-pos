@@ -264,28 +264,7 @@ export default function BatchShipmentEntry() {
         </div>
       </div>
 
-      {/* Remove Item Dialog */}
-      <Dialog open={!!removingItem} onOpenChange={() => setRemovingItem(null)}>
-        <DialogContent dir="rtl">
-          <DialogHeader>
-            <DialogTitle>הסר פריט מהבחירה?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-gray-600">פריט זה יוסר מרשימת הפריטים לעדכון.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRemovingItem(null)}>ביטול</Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                // Access context to remove item
-                window.dispatchEvent(new CustomEvent('removeShipmentItem', { detail: { itemId: removingItem } }));
-                setRemovingItem(null);
-              }}
-            >
-              הסר
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
