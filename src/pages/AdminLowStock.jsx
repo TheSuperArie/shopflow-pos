@@ -206,7 +206,7 @@ export default function AdminLowStock() {
                               const isCritical = stock === 0;
                               const dimText = variant.dimensions && Object.keys(variant.dimensions).length > 0
                                 ? Object.entries(variant.dimensions).map(([k, v]) => `${k}: ${v}`).join(' • ')
-                                : 'רגיל';
+                                : variant.sku || 'מוצר בודד';
                               return (
                                 <div className={`flex items-center justify-between p-3 rounded-lg ${
                                   isCritical ? 'bg-red-100 border border-red-300' : 'bg-white border border-gray-200'
