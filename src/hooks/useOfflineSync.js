@@ -7,7 +7,6 @@ export function useOfflineSync() {
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'success', 'error'
   const [failedCount, setFailedCount] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
-  const [syncLocked, setSyncLocked] = useState(false); // Prevents any state updates during sync
   const { toast } = useToast();
 
   useEffect(() => {
