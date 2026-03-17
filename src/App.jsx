@@ -72,8 +72,10 @@ const AuthenticatedApp = () => {
           <Route path="/AdminCashReport" element={<AdminCashReport />} />
         </Route>
       </Route>
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+        <Route path="/BatchShipmentEntry" element={<BatchShipmentEntry />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </ShipmentBatchProvider>
   );
 };
 
