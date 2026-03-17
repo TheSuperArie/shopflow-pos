@@ -60,11 +60,16 @@ export default function StaffPortal({ open, onClose }) {
         date: format(new Date(), 'yyyy-MM-dd'),
         opening_cash: openingCash,
       });
-      localStorage.setItem(ACTIVE_SHIFT_KEY, JSON.stringify({ logId: log.id, employee }));
+      // Store shift indexed by employee ID
+      const shifts = getAllActiveShifts();
+      shifts[employee.id] = { logId: log.id, employee };
+      localStorage.setItem(ACTIVE_SHIFTS_KEY, JSON.stringify(shifts));
       return log;
     },
     onSuccess: () => {
-      setActiveShift(getActiveShift());
+      if (foundEmployee) {
+        setActiveShiftForEmployee(getActiveShiftForEmployee(foundEmployee.id));
+      }
       queryClient.invalidateQueries({ queryKey: ['attendance-logs'] });
       toast({ title: `✅ כניסה נרשמה - ${foundEmployee?.name}`, duration: 3000 });
       resetAndClose();
@@ -72,15 +77,20 @@ export default function StaffPortal({ open, onClose }) {
   });
 
   const clockOutMutation = useMutation({
-    mutationFn: async ({ logId, closingCash }) => {
+    mutationFn: async ({ employeeId, logId, closingCash }) => {
       await base44.entities.AttendanceLog.update(logId, {
         clock_out: new Date().toISOString(),
         closing_cash: closingCash,
       });
-      localStorage.removeItem(ACTIVE_SHIFT_KEY);
+      // Remove THIS employee's shift from active shifts
+      const shifts = getAllActiveShifts();
+      delete shifts[employeeId];
+      localStorage.setItem(ACTIVE_SHIFTS_KEY, JSON.stringify(shifts));
     },
     onSuccess: () => {
-      setActiveShift(null);
+      if (foundEmployee) {
+        setActiveShiftForEmployee(null);
+      }
       queryClient.invalidateQueries({ queryKey: ['attendance-logs'] });
       toast({ title: `✅ יציאה נרשמה - ${foundEmployee?.name}`, duration: 3000 });
       resetAndClose();
