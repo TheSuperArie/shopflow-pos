@@ -58,6 +58,8 @@ export default function POS() {
     queryKey: ['product-variants', isOfflineMode],
     queryFn: makeQueryFn(() => base44.entities.ProductVariant.list(), 'variants'),
     staleTime: isEffectivelyOffline ? Infinity : 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Cache whenever we get fresh online data
