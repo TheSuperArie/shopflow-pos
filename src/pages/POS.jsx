@@ -110,15 +110,24 @@ export default function POS() {
         payment_method: paymentMethod,
         cash_received: cashDetails?.received,
         cash_change: cashDetails?.change,
+        seller_email: user?.email,
+        seller_name: user?.full_name,
         created_date: new Date().toISOString(),
       };
 
       if (isEffectivelyOffline) {
-        offlineManager.addPendingSale(saleData);
-        const updatedVariants = offlineManager.deductLocalStock(cartItems);
-        queryClient.setQueryData(['product-variants', isOfflineMode], updatedVariants);
+        // 1. Add to pending sync queue
+        await offlineManager.addPendingSale(saleData);
+        
+        // 2. IMMEDIATELY deduct from local state (critical for offline-first)
+        const updatedVariants = await offlineManager.deductLocalStock(cartItems);
+        
+        // 3. Update query cache to reflect the change instantly in UI
+        queryClient.setQueryData(['product-variants', isOfflineMode, user?.email], updatedVariants);
+        
         return { ...saleData, id: 'offline_' + Date.now() };
       } else {
+        // Online: create sale and update stock on server
         const sale = await base44.entities.Sale.create(saleData);
         for (const item of cartItems) {
           if (!item.variant_id) continue;
@@ -142,7 +151,7 @@ export default function POS() {
       setShowCart(false);
       setShowReceipt(true);
       if (isEffectivelyOffline) {
-        toast({ title: '✅ המכירה נשמרה מקומית', description: 'תסונכרן כשיחזור החיבור', duration: 3000 });
+        toast({ title: '✅ המכירה נשמרה מקומית (אופליין)', description: 'תסונכרן כשיחזור החיבור', duration: 3000 });
       } else {
         toast({ title: '✅ המכירה הושלמה!' });
       }
