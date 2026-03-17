@@ -16,7 +16,6 @@ const EXPENSE_CATEGORIES = ['שכר עובדים', 'הוצאות חוץ', 'פר�
 
 export default function AdminExpenses() {
   const [showForm, setShowForm] = useState(false);
-  const [showCashCount, setShowCashCount] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
