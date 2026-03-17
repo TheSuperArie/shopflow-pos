@@ -91,15 +91,12 @@ export default function POS() {
     enabled: !!user,
   });
 
-  // Cache whenever we get fresh online data and auto-sync when online
+  // Cache fresh online data ONLY if sync is not in progress
   useEffect(() => {
-    if (!isEffectivelyOffline && categories.length > 0 && allGroups.length > 0 && allVariants.length > 0) {
-      offlineManager.cacheInventory(categories, allGroups, allVariants).then(() => {
-        // Auto-sync pending sales when back online
-        syncToServer();
-      });
+    if (!isEffectivelyOffline && !offlineManager.isSyncInProgress() && categories.length > 0 && allGroups.length > 0 && allVariants.length > 0) {
+      offlineManager.cacheInventory(categories, allGroups, allVariants);
     }
-  }, [categories, allGroups, allVariants, isEffectivelyOffline, syncToServer]);
+  }, [categories, allGroups, allVariants, isEffectivelyOffline]);
 
   // Show subtle toast when using cache
   useEffect(() => {
