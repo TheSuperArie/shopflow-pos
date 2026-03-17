@@ -148,7 +148,7 @@ export default function AdminOrders() {
                                 renderVariant={(v) => {
                                   const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
                                     ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' | ')
-                                    : 'רגיל';
+                                    : v.sku || 'מוצר בודד';
                                   const suggested = Math.max(10 - (v.stock || 0), 5);
                                   return (
                                     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
