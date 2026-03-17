@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, ShoppingCart, AlertCircle, Package, CheckCircle, ChevronDown } from 'lucide-react';
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
+import ShipmentCheckbox from '@/components/shipment/ShipmentCheckbox';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
