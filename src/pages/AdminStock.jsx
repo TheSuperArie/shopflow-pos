@@ -206,7 +206,14 @@ function StockFormModal({ open, onClose }) {
 
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
-    setStep('variant');
+    const gVariants = variants.filter(v => v.group_id === group.id);
+    const isSimple = (!group.enabled_dimensions || group.enabled_dimensions.length === 0) && gVariants.length === 1;
+    if (isSimple) {
+      setSelectedVariant(gVariants[0]);
+      setStep('details');
+    } else {
+      setStep('variant');
+    }
   };
 
   const handleVariantSelect = (variant) => {
