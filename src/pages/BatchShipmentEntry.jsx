@@ -32,6 +32,43 @@ export default function BatchShipmentEntry() {
     queryFn: () => base44.entities.ProductGroup.list(),
   });
 
+  // Fetch all variants to get database cost prices
+  const { data: allVariants = [] } = useQuery({
+    queryKey: ['product-variants'],
+    queryFn: () => base44.entities.ProductVariant.list(),
+  });
+
+  // Build item cost map: fetch actual database cost prices for each selected item
+  const itemCosts = selectedItems.map(item => {
+    const variant = allVariants.find(v => v.id === item.id);
+    const group = groups.find(g => g.id === item.group_id);
+    
+    // Get cost price: variant-level or group-level
+    const costPrice = group?.has_uniform_price
+      ? (group?.uniform_cost_price || 0)
+      : (variant?.cost_price || 0);
+    
+    return {
+      id: item.id,
+      costPrice,
+      hasCost: costPrice > 0,
+    };
+  });
+
+  // Check for missing costs
+  const itemsWithMissingCost = itemCosts.filter(ic => !ic.hasCost);
+  const hasAcknowledgedMissingCost = shipmentDetails.acknowledgeZeroCost === true;
+  const canSubmit = itemsWithMissingCost.length === 0 || hasAcknowledgedMissingCost;
+
+  // Calculate precise debt based on database costs
+  const calculatePreciseDebt = () => {
+    return itemCosts.reduce((total, ic) => {
+      return total + (ic.costPrice * shipmentDetails.quantity);
+    }, 0);
+  };
+
+  const preciseTotalDebt = calculatePreciseDebt();
+
   // Batch update mutation
   const batchUpdateMutation = useMutation({
     mutationFn: async () => {
