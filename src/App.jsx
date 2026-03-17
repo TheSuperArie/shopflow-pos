@@ -36,9 +36,14 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Only block for user_not_registered, not for network errors
+  // Only block for user_not_registered, not for network errors or auth_required (public app)
   if (authError && authError.type === 'user_not_registered') {
     return <UserNotRegisteredError />;
+  }
+
+  // For public apps, auth_required errors should be ignored
+  if (authError && authError.type === 'auth_required') {
+    // Continue rendering the app without blocking
   }
 
   // Always render the app - let individual pages handle their own data loading
