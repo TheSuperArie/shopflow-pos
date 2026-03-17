@@ -12,13 +12,13 @@ export default function AdminDashboard() {
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const queryClient = useQueryClient();
 
-  // Real-time sync
+  // Real-time sync — invalidate on any sale/expense/variant change
   useEffect(() => {
     const unsub1 = base44.entities.Sale.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-sales'] });
     });
     const unsub2 = base44.entities.Expense.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-expenses'] });
     });
     const unsub3 = base44.entities.ProductVariant.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
@@ -27,13 +27,15 @@ export default function AdminDashboard() {
   }, [queryClient]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['sales'],
-    queryFn: () => base44.entities.Sale.list('-created_date'),
+    queryKey: ['dashboard-sales', dateFrom, dateTo],
+    queryFn: () => base44.entities.Sale.list('-created_date', 2000),
+    staleTime: 0,
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['expenses'],
-    queryFn: () => base44.entities.Expense.list('-date'),
+    queryKey: ['dashboard-expenses', dateFrom, dateTo],
+    queryFn: () => base44.entities.Expense.list('-date', 2000),
+    staleTime: 0,
   });
 
   const { data: groups = [] } = useQuery({
