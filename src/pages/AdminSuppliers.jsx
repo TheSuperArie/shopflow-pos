@@ -556,39 +556,12 @@ function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAdd
             </Button>
           </div>
 
-          {/* Unified Transaction Log */}
-          <div>
-            <h3 className="font-semibold mb-3">יומן עסקאות</h3>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {transactions.length === 0 ? (
-                <p className="text-center text-gray-400 py-4">אין עסקאות</p>
-              ) : (
-                transactions.map(tx => (
-                  <div key={tx.id} className={`flex items-center justify-between p-3 rounded-lg border ${
-                    tx.type === 'payment' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{tx.type === 'payment' ? '💳' : '📦'}</span>
-                      <div>
-                        <p className="font-medium text-sm">{tx.label}</p>
-                        <p className="text-xs text-gray-500">
-                          {tx.date ? format(new Date(tx.date), 'dd/MM/yyyy') : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-left">
-                      {tx.type === 'payment' ? (
-                        <p className="font-bold text-green-700">-₪{tx.amount.toLocaleString()}</p>
-                      ) : (
-                        <p className="font-bold text-red-700">+{tx.amount} יח'</p>
-                      )}
-                      <p className="text-xs text-gray-400">{tx.type === 'payment' ? 'תשלום' : 'משלוח'}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          {/* Transaction Ledger with Running Balance */}
+          <TransactionLedger
+            stockUpdates={supplierStockUpdates}
+            payments={payments}
+            initialDebt={supplier.total_debt || 0}
+          />
 
           {/* Open Orders */}
           {orders.filter(o => o.status !== 'התקבל' && o.status !== 'בוטל').length > 0 && (
