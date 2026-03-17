@@ -15,8 +15,6 @@ import { format } from 'date-fns';
 export default function AdminStock() {
   const [showForm, setShowForm] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: updates = [], isLoading } = useQuery({
     queryKey: ['stock-updates'],
