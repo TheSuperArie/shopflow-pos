@@ -121,7 +121,10 @@ export default function BatchShipmentEntry() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setRemovingItem(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeItem(item.id);
+                      }}
                       className="text-red-500 hover:bg-red-50"
                     >
                       <Trash2 className="w-4 h-4" />
