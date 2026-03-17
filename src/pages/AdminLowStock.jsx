@@ -12,6 +12,7 @@ export default function AdminLowStock() {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const queryClient = useQueryClient();
   useInventorySync();
+  const user = useCurrentUser();
 
   // Force fresh data fetch on component mount
   useEffect(() => {
