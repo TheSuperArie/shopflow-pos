@@ -2,8 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Search, Package, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { offlineManager } from '@/components/pos/offlineManager';
 
 export default function SmartSearch({ groups, variants, onSelectGroup, onSelectVariant, categories }) {
+  // Fallback to cache if data is empty
+  const [cachedGroups, setCachedGroups] = useState(groups);
+  const [cachedVariants, setCachedVariants] = useState(variants);
+  const [cachedCategories, setCachedCategories] = useState(categories);
   const [query, setQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef(null);
