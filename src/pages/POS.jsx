@@ -30,6 +30,7 @@ export default function POS() {
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
+  const [usingCache, setUsingCache] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
