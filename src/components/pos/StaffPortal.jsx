@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Users, LogIn, LogOut, Clock, DollarSign, Delete } from 'lucide-react';
 import { format } from 'date-fns';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const ACTIVE_SHIFT_KEY = 'active_shift';
 
@@ -26,10 +27,12 @@ export default function StaffPortal({ open, onClose }) {
   const [activeShift, setActiveShift] = useState(getActiveShift());
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const { data: employees = [] } = useQuery({
-    queryKey: ['employees'],
-    queryFn: () => base44.entities.Employee.filter({ is_active: true }),
+    queryKey: ['employees', user?.email],
+    queryFn: () => user ? base44.entities.Employee.filter({ created_by: user.email, is_active: true }) : [],
+    enabled: !!user,
   });
 
   useEffect(() => {
