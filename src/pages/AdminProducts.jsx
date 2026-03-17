@@ -44,7 +44,7 @@ export default function AdminProducts() {
     queryFn: () => base44.entities.ProductVariant.list(),
   });
 
-  // Group products by category
+  // Group products by category - show ALL categories even empty ones
   const categorizedGroups = {};
   categories.forEach(cat => {
     categorizedGroups[cat.id] = {
@@ -53,7 +53,7 @@ export default function AdminProducts() {
     };
   });
 
-  const categorizedData = Object.values(categorizedGroups).filter(({ groups }) => groups.length > 0);
+  const categorizedData = Object.values(categorizedGroups);
 
   return (
     <div className="space-y-6">
