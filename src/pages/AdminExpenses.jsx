@@ -38,16 +38,11 @@ export default function AdminExpenses() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">הוצאות</h1>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowCashCount(true)} variant="outline" className="gap-2">
-            <Calculator className="w-4 h-4" /> ספירת קופה
-          </Button>
-          <Button onClick={() => setShowForm(true)} className="gap-2 bg-amber-500 hover:bg-amber-600">
-            <Plus className="w-4 h-4" /> הוצאה חדשה
-          </Button>
-        </div>
-      </div>
+         <h1 className="text-2xl font-bold text-gray-800">הוצאות</h1>
+         <Button onClick={() => setShowForm(true)} className="gap-2 bg-amber-500 hover:bg-amber-600">
+           <Plus className="w-4 h-4" /> הוצאה חדשה
+         </Button>
+       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>
