@@ -207,6 +207,24 @@ export default function BatchShipmentEntry() {
               </p>
             </div>
 
+            {/* Cost Price */}
+            <div>
+              <Label>מחיר עלות ליחידה *</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={shipmentDetails.cost_price || ''}
+                onChange={e => updateShipmentDetails({ cost_price: e.target.value })}
+                placeholder="50.00"
+              />
+              {shipmentDetails.quantity > 0 && shipmentDetails.cost_price && (
+                <p className="text-xs text-amber-600 mt-1 font-semibold">
+                  סה״כ חוב: ₪{(parseFloat(shipmentDetails.cost_price) * shipmentDetails.quantity * selectedItems.length).toLocaleString('he-IL', { maximumFractionDigits: 2 })}
+                </p>
+              )}
+            </div>
+
             {/* Invoice Number */}
             <div>
               <Label>מספר חשבונית / משלוח</Label>
