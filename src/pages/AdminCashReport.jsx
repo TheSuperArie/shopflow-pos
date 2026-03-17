@@ -7,23 +7,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, DollarSign, TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminCashReport() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const user = useCurrentUser();
 
   const { data: logs = [], isLoading: logsLoading } = useQuery({
-    queryKey: ['attendance-logs'],
-    queryFn: () => base44.entities.AttendanceLog.list('-clock_in'),
+    queryKey: ['attendance-logs', user?.email],
+    queryFn: () => user ? base44.entities.AttendanceLog.filter({ created_by: user.email }, '-clock_in') : [],
+    enabled: !!user,
   });
 
   const { data: sales = [], isLoading: salesLoading } = useQuery({
-    queryKey: ['sales'],
-    queryFn: () => base44.entities.Sale.list('-created_date'),
+    queryKey: ['sales', user?.email],
+    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date') : [],
+    enabled: !!user,
   });
 
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
-    queryKey: ['expenses'],
-    queryFn: () => base44.entities.Expense.list('-date'),
+    queryKey: ['expenses', user?.email],
+    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date') : [],
+    enabled: !!user,
   });
 
   const isLoading = logsLoading || salesLoading || expensesLoading;
