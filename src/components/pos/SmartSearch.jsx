@@ -53,17 +53,17 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
   // Check if query is exactly 4 digits (barcode scan)
   const isBarcodeSearch = /^\d{4}$/.test(query);
   
-  // Find exact variant by last 4 digits of barcode
+  // Find exact variant by last 4 digits of barcode (use cache if needed)
   useEffect(() => {
     if (isBarcodeSearch && onSelectVariant) {
-      const exactVariant = variants.find(v => 
+      const exactVariant = cachedVariants.find(v => 
         v.barcode && 
         v.barcode.slice(-4) === query && 
         (v.stock || 0) > 0
       );
       
       if (exactVariant) {
-        const group = groups.find(g => g.id === exactVariant.group_id);
+        const group = cachedGroups.find(g => g.id === exactVariant.group_id);
         if (group) {
           onSelectVariant(exactVariant, group);
           setQuery('');
@@ -71,7 +71,7 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
         }
       }
     }
-  }, [query, isBarcodeSearch, variants, groups, onSelectVariant]);
+  }, [query, isBarcodeSearch, cachedVariants, cachedGroups, onSelectVariant]);
 
   const searchResults = query.trim().length >= 2 ? groups.filter(group => {
     const searchLower = query.toLowerCase();
