@@ -555,20 +555,66 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
 function VariantsViewModal({ open, group, variants, onClose, queryClient, toast }) {
   const [editingVariant, setEditingVariant] = useState(null);
   const [printingBarcode, setPrintingBarcode] = useState(null);
-  const [expandedSize, setExpandedSize] = useState(null);
+  const [expandedDim, setExpandedDim] = useState(null);
+  const [generatingVariants, setGeneratingVariants] = useState(false);
+
+  const { data: allDimensions = [] } = useQuery({
+    queryKey: ['variant-dimensions', group?.category_id],
+    queryFn: () => group?.category_id ? base44.entities.VariantDimension.filter({ category_id: group.category_id, is_active: true }) : Promise.resolve([]),
+    enabled: !!group?.category_id,
+  });
 
   if (!group) return null;
 
-  // Group variants by size
-  const variantsBySize = {};
-  variants.forEach(v => {
-    if (!variantsBySize[v.size]) {
-      variantsBySize[v.size] = [];
-    }
-    variantsBySize[v.size].push(v);
-  });
+  const enabledDimensions = allDimensions.filter(d => group.enabled_dimensions?.includes(d.id));
 
-  const sizes = Object.keys(variantsBySize).sort((a, b) => parseFloat(a) - parseFloat(b));
+  // Cartesian product helper
+  const cartesianProduct = (dims) => {
+    if (dims.length === 0) return [{}];
+    const [first, ...rest] = dims;
+    const restCombos = cartesianProduct(rest);
+    const result = [];
+    for (const val of first.values) {
+      for (const combo of restCombos) {
+        result.push({ [first.name]: val, ...combo });
+      }
+    }
+    return result;
+  };
+
+  const handleAutoGenerate = async () => {
+    if (!window.confirm('זה ימחק את כל הוריאציות הקיימות ויצור מחדש מכל הצירופים האפשריים. להמשיך?')) return;
+    setGeneratingVariants(true);
+    // Delete existing variants
+    await Promise.all(variants.map(v => base44.entities.ProductVariant.delete(v.id)));
+    // Generate all combinations
+    const combinations = cartesianProduct(enabledDimensions);
+    await Promise.all(combinations.map((combo, idx) =>
+      base44.entities.ProductVariant.create({
+        group_id: group.id,
+        dimensions: combo,
+        stock: 0,
+        sku: `${group.id.slice(-4)}-${idx + 1}`,
+      })
+    ));
+    queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+    toast({ title: `✅ נוצרו ${combinations.length} וריאציות אוטומטית`, duration: 2000 });
+    setGeneratingVariants(false);
+  };
+
+  // Group variants by first dimension value for display
+  const firstDimKey = enabledDimensions[0]?.name;
+  const grouped = {};
+  variants.forEach(v => {
+    const key = v.dimensions?.[firstDimKey] ?? 'כללי';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(v);
+  });
+  const groupedKeys = Object.keys(grouped).sort((a, b) => {
+    const nA = parseFloat(a), nB = parseFloat(b);
+    if (!isNaN(nA) && !isNaN(nB)) return nA - nB;
+    return a.localeCompare(b, 'he');
+  });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -577,77 +623,70 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
           <DialogTitle>{group.name} — וריאציות</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={() => setEditingVariant({ group_id: group.id })} className="gap-2 bg-amber-500 hover:bg-amber-600">
               <Plus className="w-4 h-4" /> הוסף וריאציה
             </Button>
+            {enabledDimensions.length > 0 && (
+              <Button onClick={handleAutoGenerate} variant="outline" className="gap-2 border-blue-300 text-blue-600 hover:bg-blue-50" disabled={generatingVariants}>
+                {generatingVariants ? <Loader2 className="w-4 h-4 animate-spin" /> : '⚡'} צור וריאציות אוטומטית ({cartesianProduct(enabledDimensions).length})
+              </Button>
+            )}
           </div>
           
           {variants.length === 0 ? (
-            <p className="text-center text-gray-400 py-8">אין וריאציות. לחץ על "הוסף וריאציה" כדי להתחיל.</p>
+            <p className="text-center text-gray-400 py-8">אין וריאציות. לחץ על "הוסף וריאציה" או "צור וריאציות אוטומטית".</p>
           ) : (
             <div className="space-y-3">
-              {sizes.map(size => {
-                const sizeVariants = variantsBySize[size];
-                const isExpanded = expandedSize === size;
-                const totalStock = sizeVariants.reduce((s, v) => s + (v.stock || 0), 0);
-                
+              {groupedKeys.map(dimVal => {
+                const dimVariants = grouped[dimVal];
+                const isExpanded = expandedDim === dimVal;
+                const totalStock = dimVariants.reduce((s, v) => s + (v.stock || 0), 0);
                 return (
-                  <div key={size} className="border-2 border-gray-200 rounded-xl overflow-hidden">
-                    {/* Size Header - Clickable */}
+                  <div key={dimVal} className="border-2 border-gray-200 rounded-xl overflow-hidden">
                     <button
-                      onClick={() => setExpandedSize(isExpanded ? null : size)}
+                      onClick={() => setExpandedDim(isExpanded ? null : dimVal)}
                       className="sticky top-0 z-10 w-full bg-amber-50 p-3 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-100 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl font-bold text-amber-700">מידה {size}</span>
-                        <Badge className="bg-amber-600 text-white">
-                          {sizeVariants.length} וריאציות
-                        </Badge>
+                        <span className="text-xl font-bold text-amber-700">{firstDimKey ? `${firstDimKey}: ${dimVal}` : dimVal}</span>
+                        <Badge className="bg-amber-600 text-white">{dimVariants.length} וריאציות</Badge>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-600">סה"כ מלאי: {totalStock}</span>
+                        <span className="text-sm text-gray-600">מלאי: {totalStock}</span>
                         <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </div>
                     </button>
 
-                    {/* Variants Grid - Expandable */}
                     {isExpanded && (
                       <div className="bg-white p-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {sizeVariants.map(v => (
-                            <Card key={v.id}>
-                              <CardContent className="p-3">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <p className="font-semibold">{v.cut} | {v.collar}</p>
-                                    <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
-                                    {!group.has_uniform_price && (
-                                      <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
-                                    )}
-                                    {v.barcode && (
-                                      <p className="text-xs text-gray-400 mt-1">ברקוד: {v.barcode}</p>
-                                    )}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    {v.barcode && (
-                                      <button 
-                                        onClick={() => setPrintingBarcode({ variant: v, group })} 
-                                        className="p-2.5 hover:bg-blue-50 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                        title="הדפס מדבקות"
-                                      >
-                                        <Barcode className="w-5 h-5 text-blue-500" />
+                          {dimVariants.map(v => {
+                            const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
+                              ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(' | ')
+                              : 'רגיל';
+                            return (
+                              <Card key={v.id}>
+                                <CardContent className="p-3">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-sm">{dimText}</p>
+                                      <p className="text-sm text-gray-500">מלאי: {v.stock || 0}</p>
+                                      {!group.has_uniform_price && (
+                                        <p className="text-sm text-gray-500">מחיר: ₪{v.sell_price || 0}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
+                                        <Pencil className="w-4 h-4" />
                                       </button>
-                                    )}
-                                    <button onClick={() => setEditingVariant(v)} className="p-2.5 hover:bg-gray-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
-                                      <Pencil className="w-5 h-5" />
-                                    </button>
-                                    <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
+                                      <DeleteVariantButton variantId={v.id} queryClient={queryClient} toast={toast} />
+                                    </div>
                                   </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
