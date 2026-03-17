@@ -39,6 +39,17 @@ export default function POS() {
   const { syncToServer } = useOfflineSync();
   const user = useCurrentUser();
 
+  // Manual sync trigger when connection is restored
+  useEffect(() => {
+    const handleOnline = async () => {
+      console.log('[POS] Connection restored, initiating manual sync...');
+      await syncToServer();
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [syncToServer]);
+
   const makeQueryFn = (apiCall, cacheKey) => async () => {
     if (isEffectivelyOffline) {
       const cached = await offlineManager.getCachedInventory();
