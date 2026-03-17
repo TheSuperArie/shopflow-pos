@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, DollarSign, Package, Banknote, CreditCard, Loader2 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 
 export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const queryClient = useQueryClient();
+
+  // Real-time sync
+  useEffect(() => {
+    const unsub1 = base44.entities.Sale.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    });
+    const unsub2 = base44.entities.Expense.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    });
+    const unsub3 = base44.entities.ProductVariant.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+    });
+    return () => { unsub1(); unsub2(); unsub3(); };
+  }, [queryClient]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['sales'],
