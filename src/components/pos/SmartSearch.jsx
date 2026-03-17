@@ -73,12 +73,12 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
     }
   }, [query, isBarcodeSearch, cachedVariants, cachedGroups, onSelectVariant]);
 
-  const searchResults = query.trim().length >= 2 ? groups.filter(group => {
+  const searchResults = query.trim().length >= 2 ? cachedGroups.filter(group => {
     const searchLower = query.toLowerCase();
     const nameMatch = group.name.toLowerCase().includes(searchLower);
     
     // Check if any variant has stock
-    const groupVariants = variants.filter(v => v.group_id === group.id);
+    const groupVariants = cachedVariants.filter(v => v.group_id === group.id);
     const hasStock = groupVariants.some(v => (v.stock || 0) > 0);
     
     // Search by name or last 4 digits of barcode
