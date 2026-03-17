@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Loader2, Wallet, Calculator } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
