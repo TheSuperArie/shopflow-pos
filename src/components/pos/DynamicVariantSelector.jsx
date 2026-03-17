@@ -37,7 +37,10 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
 
   if (!group) return null;
 
-  const allVariants = variants || [];
+  // Always use the freshest data: filter from the full live variants list if available
+  const allVariants = allVariantsLive
+    ? allVariantsLive.filter(v => v.group_id === group.id)
+    : (variants || []);
 
   // If no dimensions configured, show simple stock check
   if (enabledDimensions.length === 0) {
