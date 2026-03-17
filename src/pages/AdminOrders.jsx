@@ -8,26 +8,31 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ShoppingCart, AlertCircle, Package, CheckCircle, ChevronDown } from 'lucide-react';
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 import { useInventorySync } from '@/hooks/useInventorySync';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminOrders() {
   const [threshold, setThreshold] = useState(5);
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [expandedGroup, setExpandedGroup] = useState(null);
   useInventorySync();
+  const user = useCurrentUser();
 
   const { data: groups = [], isLoading: loadingGroups } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups', user?.email],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: variants = [], isLoading: loadingVariants } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
+    queryKey: ['product-variants', user?.email],
+    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.list('sort_order'),
+    queryKey: ['categories', user?.email],
+    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [],
+    enabled: !!user,
   });
 
   // Build category → group → variants hierarchy
