@@ -13,6 +13,7 @@ import { Plus, Loader2, TruckIcon, AlertTriangle, Package, ChevronLeft, Folder }
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { format } from 'date-fns';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminStock() {
   const [showForm, setShowForm] = useState(false);
