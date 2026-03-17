@@ -51,6 +51,14 @@ export default function POS() {
   }, [syncToServer]);
 
   const makeQueryFn = (apiCall, cacheKey) => async () => {
+    // CRITICAL: If global sync lock is active, ALWAYS use cache - never fetch from server
+    if (offlineManager.isGlobalSyncLocked()) {
+      console.log(`[POS] Query blocked by global sync lock - using cache for ${cacheKey}`);
+      const cached = await offlineManager.getCachedInventory();
+      setUsingCache(true);
+      return cached[cacheKey];
+    }
+
     if (isEffectivelyOffline) {
       const cached = await offlineManager.getCachedInventory();
       setUsingCache(true);
