@@ -18,6 +18,7 @@ export default function AdminEmployees() {
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'payments'
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const { toast } = useToast();
