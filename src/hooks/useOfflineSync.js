@@ -147,6 +147,12 @@ export function useOfflineSync() {
       offlineManager.setGlobalSyncLock(false);
       offlineManager.setSyncInProgress(false);
       console.log('[SYNC] 🏁 Sync Process Complete - All Locks Released');
+
+      // Now that the lock is released, allow React Query to resume normal operation.
+      // This does NOT trigger an immediate fetch because staleTime is 30s and cache was just populated.
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      console.log('[SYNC] ♻️  Query invalidation scheduled (post-lock)');
     }
   };
 
