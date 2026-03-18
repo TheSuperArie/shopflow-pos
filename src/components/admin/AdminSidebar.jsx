@@ -51,7 +51,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen }) {
         </button>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path;
           return (
