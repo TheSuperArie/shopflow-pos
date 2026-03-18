@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut, Calendar, Wallet } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut, Calendar, Wallet, ClipboardEdit } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import EmployeePaymentPanel from '@/components/admin/EmployeePaymentPanel';
