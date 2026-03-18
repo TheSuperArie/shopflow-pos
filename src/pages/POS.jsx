@@ -76,27 +76,35 @@ export default function POS() {
     }
   };
 
+  const syncLocked = offlineManager.isGlobalSyncLocked();
+  const isSyncing = offlineManager.isSyncInProgress();
+  const blockFetch = syncLocked || isSyncing;
+
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', isOfflineMode, user?.email],
     queryFn: makeQueryFn(() => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [], 'categories'),
-    staleTime: isEffectivelyOffline || offlineManager.isGlobalSyncLocked() ? Infinity : 0,
-    enabled: !!user && !offlineManager.isGlobalSyncLocked(),
+    staleTime: isEffectivelyOffline || blockFetch ? Infinity : 30000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    enabled: !!user && !blockFetch,
   });
 
   const { data: allGroups = [] } = useQuery({
     queryKey: ['product-groups', isOfflineMode, user?.email],
     queryFn: makeQueryFn(() => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [], 'groups'),
-    staleTime: isEffectivelyOffline || offlineManager.isGlobalSyncLocked() ? Infinity : 0,
-    enabled: !!user && !offlineManager.isGlobalSyncLocked(),
+    staleTime: isEffectivelyOffline || blockFetch ? Infinity : 30000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    enabled: !!user && !blockFetch,
   });
 
   const { data: allVariants = [] } = useQuery({
     queryKey: ['product-variants', isOfflineMode, user?.email],
     queryFn: makeQueryFn(() => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [], 'variants'),
-    staleTime: isEffectivelyOffline || offlineManager.isGlobalSyncLocked() ? Infinity : 0,
-    refetchOnMount: !offlineManager.isGlobalSyncLocked(),
-    refetchOnWindowFocus: !offlineManager.isGlobalSyncLocked(),
-    enabled: !!user && !offlineManager.isGlobalSyncLocked(),
+    staleTime: isEffectivelyOffline || blockFetch ? Infinity : 30000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    enabled: !!user && !blockFetch,
   });
 
   // Cache fresh online data ONLY if sync is not in progress
