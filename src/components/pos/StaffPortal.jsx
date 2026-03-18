@@ -191,19 +191,35 @@ export default function StaffPortal({ open, onClose }) {
           </DialogTitle>
         </DialogHeader>
 
-        {/* Active shift banner for this employee */}
-        {activeShiftForEmployee && foundEmployee && mode === 'select' && (
-          <div className="space-y-2">
-            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-700 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>משמרת פעילה: <strong>{foundEmployee.name}</strong></span>
+        {/* Action Menu — shown after PIN verified for employee with active shift */}
+        {mode === 'action_menu' && foundEmployee && (
+          <div className="space-y-3">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
+              <p className="font-bold text-green-800">{foundEmployee.name}</p>
+              <p className="text-sm text-green-600">משמרת פעילה</p>
             </div>
             <Button
               onClick={() => setMode('add_expense')}
-              variant="outline"
-              className="w-full gap-2 text-sm"
+              className="w-full gap-2 bg-amber-500 hover:bg-amber-600"
             >
               <Wallet className="w-4 h-4" /> הוסף הוצאה
+            </Button>
+            <Button
+              onClick={() => {
+                if (foundEmployee.role === 'קופאי') {
+                  setMode('closing_cash');
+                } else {
+                  clockOutMutation.mutate({ employeeId: foundEmployee.id, logId: activeShiftForEmployee.logId, closingCash: 0 });
+                }
+              }}
+              variant="outline"
+              className="w-full gap-2 border-red-300 text-red-600 hover:bg-red-50"
+              disabled={clockOutMutation.isPending}
+            >
+              <LogOut className="w-4 h-4" /> סיום משמרת
+            </Button>
+            <Button variant="ghost" onClick={() => { setMode('select'); setPin(''); setFoundEmployee(null); }} className="w-full text-sm text-gray-400">
+              ביטול
             </Button>
           </div>
         )}
