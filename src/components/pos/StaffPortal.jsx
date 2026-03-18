@@ -35,7 +35,7 @@ export default function StaffPortal({ open, onClose }) {
   const [foundEmployee, setFoundEmployee] = useState(null);
   const [cashAmount, setCashAmount] = useState('');
   const [activeShiftForEmployee, setActiveShiftForEmployee] = useState(null);
-  const [expenseForm, setExpenseForm] = useState({ amount: '', description: '', category: 'other' });
+  const [expenseForm, setExpenseForm] = useState({ amount: '', description: '', category: 'other', payment_method: 'מזומן' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -102,15 +102,13 @@ export default function StaffPortal({ open, onClose }) {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (data) => {
-      // Record expense tied to the current shift log
       return await base44.entities.Expense.create({
-        description: data.description,
+        description: `${data.description} (${foundEmployee?.name})`,
         amount: data.amount,
-        category: data.category,
+        category: 'שכר עובדים',
+        custom_category: data.category,
         date: format(new Date(), 'yyyy-MM-dd'),
-        shift_log_id: activeShiftForEmployee?.logId,
-        employee_id: foundEmployee?.id,
-        employee_name: foundEmployee?.name,
+        notes: `משמרת: ${activeShiftForEmployee?.logId || ''} | שיטת תשלום: ${data.payment_method}`,
       });
     },
     onSuccess: () => {
