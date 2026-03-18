@@ -109,15 +109,15 @@ export default function POS() {
     enabled: !!user,
   });
 
-  // Cache fresh online data whenever we have it (and not syncing)
+  // When online data arrives, ALWAYS overwrite the cache with fresh server data (no merge)
   useEffect(() => {
     if (
       !isEffectivelyOffline &&
       !offlineManager.isSyncInProgress() &&
       categories.length > 0 &&
-      allGroups.length > 0 &&
       allVariants.length > 0
     ) {
+      // Overwrite cache entirely with fresh server data — prevents stale/duplicate entries
       offlineManager.cacheInventory(categories, allGroups, allVariants);
     }
   }, [categories, allGroups, allVariants, isEffectivelyOffline]);
