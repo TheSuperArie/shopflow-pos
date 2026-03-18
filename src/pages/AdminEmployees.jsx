@@ -124,6 +124,10 @@ export default function AdminEmployees() {
                     </div>
                   </div>
                   <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => setManualHoursEmployee(emp)}
+                      className="p-2 hover:bg-blue-50 rounded-lg" title="הזנת שעות ידנית">
+                      <ClipboardEdit className="w-4 h-4 text-blue-500" />
+                    </button>
                     <button onClick={() => { setEditingEmployee(emp); setShowForm(true); }}
                       className="p-2 hover:bg-gray-100 rounded-lg">
                       <Pencil className="w-4 h-4 text-gray-500" />
