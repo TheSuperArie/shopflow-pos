@@ -43,7 +43,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen }) {
   };
 
   const sidebar = (
-    <div className="flex flex-col h-full bg-gray-900 text-white">
+    <div className="flex flex-col bg-gray-900 text-white" style={{ height: '100vh', overflow: 'hidden' }}>
       <div className="p-5 border-b border-white/10 flex items-center justify-between">
         <h2 className="text-lg font-bold text-amber-400">🏪 ניהול</h2>
         <button onClick={() => setMobileOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
@@ -51,7 +51,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen }) {
         </button>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <nav className="p-3 space-y-1" style={{ flex: 1, overflowY: 'auto' }}>
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
           const isActive = location.pathname === path;
           return (
