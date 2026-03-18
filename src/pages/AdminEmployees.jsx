@@ -248,6 +248,101 @@ export default function AdminEmployees() {
   );
 }
 
+function ManualHoursModal({ open, employee, onClose, queryClient, toast }) {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const [form, setForm] = useState({ date: today, start_time: '', end_time: '', notes: '' });
+
+  React.useEffect(() => {
+    if (open) setForm({ date: today, start_time: '', end_time: '', notes: '' });
+  }, [open]);
+
+  const mutation = useMutation({
+    mutationFn: async (data) => {
+      const clockIn = new Date(`${data.date}T${data.start_time}:00`).toISOString();
+      const clockOut = new Date(`${data.date}T${data.end_time}:00`).toISOString();
+      return base44.entities.AttendanceLog.create({
+        employee_id: employee.id,
+        employee_name: employee.name,
+        clock_in: clockIn,
+        clock_out: clockOut,
+        date: data.date,
+        notes: data.notes || 'הזנה ידנית',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance-logs'] });
+      toast({ title: '✅ שעות נרשמו בהצלחה', duration: 2000 });
+      onClose();
+    },
+  });
+
+  const isValid = form.date && form.start_time && form.end_time && form.end_time > form.start_time;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent dir="rtl" className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardEdit className="w-5 h-5 text-blue-500" />
+            הזנת שעות ידנית — {employee?.name}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label>תאריך</Label>
+            <input
+              type="date"
+              value={form.date}
+              onChange={e => setForm({ ...form, date: e.target.value })}
+              className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="flex items-center gap-1"><LogIn className="w-3 h-3 text-green-500" /> שעת כניסה</Label>
+              <input
+                type="time"
+                value={form.start_time}
+                onChange={e => setForm({ ...form, start_time: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              />
+            </div>
+            <div>
+              <Label className="flex items-center gap-1"><LogOut className="w-3 h-3 text-red-500" /> שעת יציאה</Label>
+              <input
+                type="time"
+                value={form.end_time}
+                onChange={e => setForm({ ...form, end_time: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              />
+            </div>
+          </div>
+          {form.start_time && form.end_time && form.end_time <= form.start_time && (
+            <p className="text-xs text-red-500">שעת יציאה חייבת להיות אחרי שעת כניסה</p>
+          )}
+          <div>
+            <Label>סיבה / הערה</Label>
+            <Input
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              placeholder="למשל: שכחתי לדצ'ק אין..."
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => mutation.mutate(form)}
+            disabled={!isValid || mutation.isPending}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור שעות'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function EmployeeFormModal({ open, employee, onClose, queryClient, toast }) {
   const [form, setForm] = useState({ name: '', pin: '', phone: '', role: 'קופאי', is_active: true });
 
