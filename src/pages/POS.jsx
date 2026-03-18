@@ -247,7 +247,7 @@ export default function POS() {
   // ── Render ───────────────────────────────────────────────────────
   return (
     <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
-      <OfflineSyncStatus />
+      <OfflineSyncStatus syncStatus={syncStatus} failedCount={failedCount} processedCount={processedCount} retryFailedSync={retryFailedSync} />
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
@@ -289,17 +289,25 @@ export default function POS() {
             <>
               <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {categories.map(category => {
-                  const catGroups = allGroups.filter(g => g.category_id === category.id);
-                  return (
-                    <button key={category.id} onClick={() => setSelectedCategory(category.id)}
-                      className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center min-h-[140px]">
-                      <div className="text-4xl mb-2">📦</div>
-                      <h3 className="text-lg font-bold text-gray-800">{category.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">{catGroups.length} מוצרים</p>
-                    </button>
-                  );
-                })}
+                {/* Deduplicate by ID, hide categories with no groups that have stock */}
+                {Array.from(new Map(categories.map(c => [c.id, c])).values())
+                  .filter(category => {
+                    const catGroups = allGroups.filter(g => g.category_id === category.id);
+                    return catGroups.some(group =>
+                      allVariants.some(v => v.group_id === group.id && (v.stock || 0) > 0)
+                    );
+                  })
+                  .map(category => {
+                    const catGroups = allGroups.filter(g => g.category_id === category.id);
+                    return (
+                      <button key={category.id} onClick={() => setSelectedCategory(category.id)}
+                        className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center min-h-[140px]">
+                        <div className="text-4xl mb-2">📦</div>
+                        <h3 className="text-lg font-bold text-gray-800">{category.name}</h3>
+                        <p className="text-sm text-gray-500 mt-1">{catGroups.length} מוצרים</p>
+                      </button>
+                    );
+                  })}
               </div>
             </>
           ) : (

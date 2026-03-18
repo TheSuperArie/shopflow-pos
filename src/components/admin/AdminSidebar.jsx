@@ -43,7 +43,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen }) {
   };
 
   const sidebar = (
-    <div className="flex flex-col bg-gray-900 text-white" style={{ height: '100vh', overflow: 'hidden' }}>
+    <div className="flex flex-col bg-gray-900 text-white overflow-hidden" style={{ height: '100vh' }}>
       <div className="p-5 border-b border-white/10 flex items-center justify-between">
         <h2 className="text-lg font-bold text-amber-400">🏪 ניהול</h2>
         <button onClick={() => setMobileOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
