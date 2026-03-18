@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, ShoppingCart, RotateCcw, Users } from 'lucide-react';
@@ -20,6 +20,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function POS() {
+  // ── All hooks declared unconditionally at top level ──────────────
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -30,106 +31,103 @@ export default function POS() {
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
-  const [usingCache, setUsingCache] = useState(false);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
-  useInventorySync();
-  const { syncToServer } = useOfflineSync();
   const user = useCurrentUser();
 
-  // Manual sync trigger when connection is restored
+  useInventorySync();
+  const { syncToServer } = useOfflineSync();
+
+  // ── Derived values (not hooks) ───────────────────────────────────
+  const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
+
+  // ── Effects ──────────────────────────────────────────────────────
   useEffect(() => {
     const handleOnline = async () => {
       console.log('[POS] Connection restored, initiating manual sync...');
       await syncToServer();
     };
-
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [syncToServer]);
 
-  const makeQueryFn = (apiCall, cacheKey) => async () => {
-    // CRITICAL: If global sync lock is active, ALWAYS use cache - never fetch from server
-    if (offlineManager.isGlobalSyncLocked()) {
-      console.log(`[POS] Query blocked by global sync lock - using cache for ${cacheKey}`);
+  // ── Query functions ───────────────────────────────────────────────
+  // Simple rule: if online → fetch from server; if offline or sync locked → use cache
+  const fetchOrCache = useCallback(async (apiCall, cacheKey) => {
+    const locked = offlineManager.isGlobalSyncLocked() || offlineManager.isSyncInProgress();
+
+    if (locked || isEffectivelyOffline || !navigator.onLine) {
       const cached = await offlineManager.getCachedInventory();
-      setUsingCache(true);
-      return cached[cacheKey];
+      return cached[cacheKey] || [];
     }
 
-    if (isEffectivelyOffline) {
-      const cached = await offlineManager.getCachedInventory();
-      setUsingCache(true);
-      return cached[cacheKey];
-    }
     try {
       const result = await apiCall();
-      setUsingCache(false);
       return result;
     } catch {
-      // Network error: fall back to cache
       const cached = await offlineManager.getCachedInventory();
-      setUsingCache(true);
-      return cached[cacheKey];
+      return cached[cacheKey] || [];
     }
-  };
+  }, [isEffectivelyOffline]);
 
-  const syncLocked = offlineManager.isGlobalSyncLocked();
-  const isSyncing = offlineManager.isSyncInProgress();
-  const blockFetch = syncLocked || isSyncing;
+  const queryEnabled = !!user && !offlineManager.isGlobalSyncLocked() && !offlineManager.isSyncInProgress();
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', isOfflineMode, user?.email],
-    queryFn: makeQueryFn(() => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [], 'categories'),
-    staleTime: isEffectivelyOffline || blockFetch ? Infinity : 30000,
+    queryFn: () => fetchOrCache(
+      () => base44.entities.Category.filter({ created_by: user.email }, 'sort_order'),
+      'categories'
+    ),
+    staleTime: isEffectivelyOffline ? Infinity : 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    enabled: !!user && !blockFetch,
+    enabled: !!user,
   });
 
   const { data: allGroups = [] } = useQuery({
     queryKey: ['product-groups', isOfflineMode, user?.email],
-    queryFn: makeQueryFn(() => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [], 'groups'),
-    staleTime: isEffectivelyOffline || blockFetch ? Infinity : 30000,
+    queryFn: () => fetchOrCache(
+      () => base44.entities.ProductGroup.filter({ created_by: user.email }),
+      'groups'
+    ),
+    staleTime: isEffectivelyOffline ? Infinity : 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    enabled: !!user && !blockFetch,
+    enabled: !!user,
   });
 
   const { data: allVariants = [] } = useQuery({
     queryKey: ['product-variants', isOfflineMode, user?.email],
-    queryFn: makeQueryFn(() => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [], 'variants'),
-    staleTime: isEffectivelyOffline || blockFetch ? Infinity : 30000,
+    queryFn: () => fetchOrCache(
+      () => base44.entities.ProductVariant.filter({ created_by: user.email }),
+      'variants'
+    ),
+    staleTime: isEffectivelyOffline ? Infinity : 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    enabled: !!user && !blockFetch,
+    enabled: !!user,
   });
 
-  // Cache fresh online data ONLY if sync is not in progress
+  // Cache fresh online data whenever we have it (and not syncing)
   useEffect(() => {
-    if (!isEffectivelyOffline && !offlineManager.isSyncInProgress() && categories.length > 0 && allGroups.length > 0 && allVariants.length > 0) {
+    if (
+      !isEffectivelyOffline &&
+      !offlineManager.isSyncInProgress() &&
+      categories.length > 0 &&
+      allGroups.length > 0 &&
+      allVariants.length > 0
+    ) {
       offlineManager.cacheInventory(categories, allGroups, allVariants);
     }
   }, [categories, allGroups, allVariants, isEffectivelyOffline]);
 
-  // Show subtle toast when using cache
-  useEffect(() => {
-    if (usingCache) {
-      toast({ 
-        title: '📦 נתונים מקאש מקומי', 
-        description: 'הנתונים טעונים מהאחסון המקומי שלך',
-        duration: 2000 
-      });
-      setUsingCache(false);
-    }
-  }, [usingCache, toast]);
-
+  // ── Derived data (not hooks) ─────────────────────────────────────
   const groups = selectedCategory
     ? allGroups.filter(g => g.category_id === selectedCategory)
     : [];
 
+  // ── Handlers ────────────────────────────────────────────────────
   const handleModeChange = (offline) => {
     setIsOfflineMode(offline);
     queryClient.invalidateQueries({ queryKey: ['categories'] });
@@ -161,18 +159,11 @@ export default function POS() {
       };
 
       if (isEffectivelyOffline) {
-        // 1. Add to pending sync queue
         await offlineManager.addPendingSale(saleData);
-        
-        // 2. IMMEDIATELY deduct from local state (critical for offline-first)
         const updatedVariants = await offlineManager.deductLocalStock(cartItems);
-        
-        // 3. Update query cache to reflect the change instantly in UI
         queryClient.setQueryData(['product-variants', isOfflineMode, user?.email], updatedVariants);
-        
         return { ...saleData, id: 'offline_' + Date.now() };
       } else {
-        // Online: create sale and update stock on server
         const sale = await base44.entities.Sale.create(saleData);
         for (const item of cartItems) {
           if (!item.variant_id) continue;
@@ -229,16 +220,16 @@ export default function POS() {
   };
 
   const handleGroupSelect = (group) => {
-    // Simple products (no enabled dimensions): skip selector, add directly
     const groupVariants = allVariants.filter(v => v.group_id === group.id);
     const isSimple = !group.enabled_dimensions || group.enabled_dimensions.length === 0;
     if (isSimple && groupVariants.length === 1) {
       addToCart(groupVariants[0], group);
-      setSelectedGroup(null); // Return to category view
+      setSelectedGroup(null);
     } else {
       setSelectedGroup(group);
     }
   };
+
   const handleVariantConfirm = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
   const handleBarcodeSelect = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
 
@@ -253,6 +244,7 @@ export default function POS() {
   const removeCartItem = (idx) => setCartItems(prev => prev.filter((_, i) => i !== idx));
   const cartTotal = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
+  // ── Render ───────────────────────────────────────────────────────
   return (
     <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
       <OfflineSyncStatus />
