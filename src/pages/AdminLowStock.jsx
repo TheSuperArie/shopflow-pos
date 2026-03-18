@@ -17,9 +17,16 @@ export default function AdminLowStock() {
 
   // Force fresh data fetch on component mount
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-    queryClient.invalidateQueries({ queryKey: ['product-groups'] });
-    queryClient.invalidateQueries({ queryKey: ['categories'] });
+    const refreshAll = () => {
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    };
+
+    refreshAll();
+
+    window.addEventListener('online', refreshAll);
+    return () => window.removeEventListener('online', refreshAll);
   }, [queryClient]);
 
   const { data: settings } = useQuery({
@@ -39,13 +46,14 @@ export default function AdminLowStock() {
     staleTime: 0,
   });
 
-  const { data: variants = [], isLoading: variantsLoading } = useQuery({
+ const { data: variants = [], isLoading: variantsLoading } = useQuery({
     queryKey: ['product-variants', user?.email],
     queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
     enabled: !!user,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     staleTime: 0,
+    refetchInterval: 5000,
   });
 
   const { data: categories = [] } = useQuery({
