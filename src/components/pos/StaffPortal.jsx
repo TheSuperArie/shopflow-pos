@@ -31,7 +31,7 @@ const EXPENSE_CATEGORIES = ['drawer', 'personal', 'supplies', 'other'];
 
 export default function StaffPortal({ open, onClose }) {
   const [pin, setPin] = useState('');
-  const [mode, setMode] = useState('select'); // 'select' | 'clock_in' | 'clock_out' | 'opening_cash' | 'closing_cash' | 'add_expense'
+  const [mode, setMode] = useState('select'); // 'select' | 'action_menu' | 'opening_cash' | 'closing_cash' | 'add_expense'
   const [foundEmployee, setFoundEmployee] = useState(null);
   const [cashAmount, setCashAmount] = useState('');
   const [activeShiftForEmployee, setActiveShiftForEmployee] = useState(null);
@@ -137,23 +137,17 @@ export default function StaffPortal({ open, onClose }) {
     }
     setFoundEmployee(emp);
     const employeeShift = getActiveShiftForEmployee(emp.id);
+    setActiveShiftForEmployee(employeeShift);
     const isCashier = emp.role === 'קופאי';
 
-    // Check if THIS employee has an active shift
     if (employeeShift) {
-      // Clocking out
-      if (isCashier) {
-        setMode('closing_cash');
-      } else {
-        // Non-cashier: clock out immediately without cash
-        clockOutMutation.mutate({ employeeId: emp.id, logId: employeeShift.logId, closingCash: 0 });
-      }
+      // Employee has active shift — show action menu (clock out or add expense)
+      setMode('action_menu');
     } else {
       // Clocking in
       if (isCashier) {
         setMode('opening_cash');
       } else {
-        // Non-cashier: clock in immediately without cash
         clockInMutation.mutate({ employee: emp, openingCash: 0 });
       }
     }
