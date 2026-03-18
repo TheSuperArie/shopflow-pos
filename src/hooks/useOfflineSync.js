@@ -38,7 +38,19 @@ export function useOfflineSync() {
       console.log(`[SYNC] 📦 Found ${pending.length} offline sales to upload`);
 
       if (pending.length === 0) {
-        console.log('[SYNC] ✅ No pending sales, sync complete');
+        console.log('[SYNC] ✅ No pending sales - refreshing inventory from server');
+        // Still refresh cache so it matches current server state
+        const [cats, grps, vars] = await Promise.all([
+          base44.entities.Category.list(),
+          base44.entities.ProductGroup.list(),
+          base44.entities.ProductVariant.list(),
+        ]);
+        await offlineManager.cacheInventory(cats, grps, vars);
+        const isOffline = offlineManager.isOfflineMode();
+        const userEmail = cats[0]?.created_by || grps[0]?.created_by || null;
+        queryClient.setQueryData(['product-variants', isOffline, userEmail], vars);
+        queryClient.setQueryData(['product-groups', isOffline, userEmail], grps);
+        queryClient.setQueryData(['categories', isOffline, userEmail], cats);
         setSyncStatus('idle');
         return;
       }
@@ -147,12 +159,8 @@ export function useOfflineSync() {
       offlineManager.setGlobalSyncLock(false);
       offlineManager.setSyncInProgress(false);
       console.log('[SYNC] 🏁 Sync Process Complete - All Locks Released');
-
-      // Now that the lock is released, allow React Query to resume normal operation.
-      // This does NOT trigger an immediate fetch because staleTime is 30s and cache was just populated.
-      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-      queryClient.invalidateQueries({ queryKey: ['product-groups'] });
-      console.log('[SYNC] ♻️  Query invalidation scheduled (post-lock)');
+      // NOTE: We do NOT invalidate queries here — cache was already set with fresh server data
+      // during Phase 4. Invalidating would cause a refetch that could overwrite the correct data.
     }
   };
 
