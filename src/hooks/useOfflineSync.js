@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { offlineManager } from '@/components/pos/offlineManager';
 import { useToast } from '@/components/ui/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function useOfflineSync() {
+  const queryClient = useQueryClient();
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle', 'syncing', 'success', 'error'
   const [failedCount, setFailedCount] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
