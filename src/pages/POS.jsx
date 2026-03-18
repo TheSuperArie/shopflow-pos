@@ -37,7 +37,7 @@ export default function POS() {
   const user = useCurrentUser();
 
   useInventorySync();
-  const { syncToServer } = useOfflineSync();
+  const { syncToServer, syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
 
   // ── Derived values (not hooks) ───────────────────────────────────
   const isEffectivelyOffline = isOfflineMode || !navigator.onLine;

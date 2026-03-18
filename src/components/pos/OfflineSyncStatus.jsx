@@ -5,11 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { offlineManager } from '@/components/pos/offlineManager';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { format } from 'date-fns';
 
-export default function OfflineSyncStatus() {
-  const { syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
+// Props passed from POS to avoid duplicate hook instantiation
+export default function OfflineSyncStatus({ syncStatus = 'idle', failedCount = 0, processedCount = 0, retryFailedSync }) {
   const [showFailedDialog, setShowFailedDialog] = useState(false);
   const [failedSales, setFailedSales] = useState([]);
 
