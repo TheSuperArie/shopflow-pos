@@ -115,7 +115,7 @@ export default function StaffPortal({ open, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['attendance-logs'] });
       toast({ title: `✅ הוצאה נרשמה`, duration: 2000 });
-      setExpenseForm({ amount: '', description: '', category: 'other' });
+      setExpenseForm({ amount: '', description: '', category: 'other', payment_method: 'מזומן' });
       setMode('select');
     },
   });
@@ -177,7 +177,7 @@ export default function StaffPortal({ open, onClose }) {
     setFoundEmployee(null);
     setCashAmount('');
     setActiveShiftForEmployee(null);
-    setExpenseForm({ amount: '', description: '', category: 'other' });
+    setExpenseForm({ amount: '', description: '', category: 'other', payment_method: 'מזומן' });
     onClose();
   };
 
