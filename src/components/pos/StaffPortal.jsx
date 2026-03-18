@@ -345,10 +345,22 @@ export default function StaffPortal({ open, onClose }) {
                 onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
                 className="w-full h-9 rounded-md border border-input bg-transparent px-3"
               >
-                <option value="drawer">שק קטן</option>
-                <option value="personal">הוצאה אישית</option>
-                <option value="supplies">חומרי צריכה</option>
-                <option value="other">אחר</option>
+                <option value="שק קטן">שק קטן</option>
+                <option value="הוצאה אישית">הוצאה אישית</option>
+                <option value="חומרי צריכה">חומרי צריכה</option>
+                <option value="אחר">אחר</option>
+              </select>
+            </div>
+            <div>
+              <Label>אמצעי תשלום</Label>
+              <select
+                value={expenseForm.payment_method}
+                onChange={e => setExpenseForm({ ...expenseForm, payment_method: e.target.value })}
+                className="w-full h-9 rounded-md border border-input bg-transparent px-3"
+              >
+                <option value="מזומן">מזומן</option>
+                <option value="אשראי">אשראי</option>
+                <option value="העברה בנקאית">העברה בנקאית</option>
               </select>
             </div>
             <Button
@@ -369,7 +381,7 @@ export default function StaffPortal({ open, onClose }) {
             >
               <Wallet className="w-4 h-4" /> שמור הוצאה
             </Button>
-            <Button variant="outline" onClick={() => setMode('select')} className="w-full">
+            <Button variant="outline" onClick={() => setMode('action_menu')} className="w-full">
               חזור
             </Button>
           </div>
