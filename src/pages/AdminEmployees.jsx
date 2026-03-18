@@ -236,6 +236,14 @@ export default function AdminEmployees() {
         queryClient={queryClient}
         toast={toast}
       />
+
+      <ManualHoursModal
+        open={!!manualHoursEmployee}
+        employee={manualHoursEmployee}
+        onClose={() => setManualHoursEmployee(null)}
+        queryClient={queryClient}
+        toast={toast}
+      />
     </div>
   );
 }
