@@ -103,6 +103,16 @@ export function useOfflineSync() {
       await offlineManager.cacheInventory(categories, groups, variants);
       console.log('[SYNC] 💾 Local Cache Updated with Server State');
 
+      // Push server data directly into React Query cache so UI updates immediately
+      // We use setQueryData (not invalidate) to avoid triggering a new fetch while lock is still active
+      // The queryKey format must match what POS.jsx uses
+      const userEmail = categories[0]?.created_by || groups[0]?.created_by || null;
+      const isOffline = offlineManager.isOfflineMode();
+      queryClient.setQueryData(['product-variants', isOffline, userEmail], variants);
+      queryClient.setQueryData(['product-groups', isOffline, userEmail], groups);
+      queryClient.setQueryData(['categories', isOffline, userEmail], categories);
+      console.log('[SYNC] 🖥️  React Query Cache Injected with Server Data');
+
       // Get final failed count
       const failed = await offlineManager.getFailedSyncs();
       setFailedCount(failed.length);
