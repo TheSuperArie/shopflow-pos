@@ -260,6 +260,7 @@ export default function AdminProducts() {
         onClose={() => setViewingGroup(null)}
         queryClient={queryClient}
         toast={toast}
+        allCategories={categories}
       />
 
       <Dialog open={!!managingDimensions} onOpenChange={() => setManagingDimensions(null)}>
