@@ -855,7 +855,7 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast,
           <DialogTitle>{group.name} — וריאציות</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Button onClick={() => setEditingVariant({ group_id: group.id })} className="gap-2 bg-amber-500 hover:bg-amber-600">
               <Plus className="w-4 h-4" /> הוסף וריאציה
             </Button>
@@ -866,6 +866,11 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast,
                   ? (generateProgress || 'יוצר...')
                   : `⚡ צור וריאציות אוטומטית (${cartesianProduct(enabledDimensions).length})`}
               </Button>
+            )}
+            {isInherited && allDimensions.length > 0 && (
+              <span className="text-xs text-blue-500 bg-blue-50 border border-blue-200 rounded-full px-3 py-1">
+                ⬆ ממדים בירושה מ-{allCategories.find(c => c.id === resolvedCategoryId)?.name}
+              </span>
             )}
           </div>
 
