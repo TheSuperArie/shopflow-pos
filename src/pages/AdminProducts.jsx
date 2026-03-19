@@ -651,6 +651,7 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
   const [printingBarcode, setPrintingBarcode] = useState(null);
   const [expandedDim, setExpandedDim] = useState(null);
   const [generatingVariants, setGeneratingVariants] = useState(false);
+  const user = useCurrentUser();
 
   const { data: allDimensions = [] } = useQuery({
     queryKey: ['variant-dimensions', group?.category_id],
@@ -660,18 +661,23 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
 
   if (!group) return null;
 
-  const enabledDimensions = allDimensions.filter(d => group.enabled_dimensions?.includes(d.id));
+  const enabledDimensions = allDimensions
+    .filter(d => group.enabled_dimensions?.includes(d.id))
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-  // Cartesian product helper
+  // Stable iterative cartesian product — no recursion, guaranteed consistent order
   const cartesianProduct = (dims) => {
     if (dims.length === 0) return [{}];
-    const [first, ...rest] = dims;
-    const restCombos = cartesianProduct(rest);
-    const result = [];
-    for (const val of first.values) {
-      for (const combo of restCombos) {
-        result.push({ [first.name]: val, ...combo });
+    const result = [{}];
+    for (const dim of dims) {
+      const expanded = [];
+      for (const existing of result) {
+        for (const val of (dim.values || [])) {
+          expanded.push({ ...existing, [dim.name]: val });
+        }
       }
+      result.length = 0;
+      result.push(...expanded);
     }
     return result;
   };
@@ -679,18 +685,24 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
   const handleAutoGenerate = async () => {
     if (!window.confirm('זה ימחק את כל הוריאציות הקיימות ויצור מחדש מכל הצירופים האפשריים. להמשיך?')) return;
     setGeneratingVariants(true);
-    // Delete existing variants
-    await Promise.all(variants.map(v => base44.entities.ProductVariant.delete(v.id)));
-    // Generate all combinations
+
+    // Delete only THIS user's existing variants for this group
+    const myVariants = variants.filter(v => v.created_by === user?.email);
+    for (const v of myVariants) {
+      await base44.entities.ProductVariant.delete(v.id);
+    }
+
+    // Generate all combinations sequentially for reliability
     const combinations = cartesianProduct(enabledDimensions);
-    await Promise.all(combinations.map((combo, idx) =>
-      base44.entities.ProductVariant.create({
+    for (let idx = 0; idx < combinations.length; idx++) {
+      await base44.entities.ProductVariant.create({
         group_id: group.id,
-        dimensions: combo,
+        dimensions: combinations[idx],
         stock: 0,
         sku: `${group.id.slice(-4)}-${idx + 1}`,
-      })
-    ));
+      });
+    }
+
     queryClient.invalidateQueries({ queryKey: ['product-variants'] });
     toast({ title: `✅ נוצרו ${combinations.length} וריאציות אוטומטית`, duration: 2000 });
     setGeneratingVariants(false);
