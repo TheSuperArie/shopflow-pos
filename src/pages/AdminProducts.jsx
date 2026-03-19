@@ -414,26 +414,32 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
     setGeneratedPreview(null);
   }, [group, open]);
 
+  // Helper: compute all combinations (cartesian product) of dimension values
+  // Uses sorted, stable dimension order to guarantee consistency
+  const cartesianProduct = (dims) => {
+    if (dims.length === 0) return [{}];
+    const result = [{}];
+    for (const dim of dims) {
+      const expanded = [];
+      for (const existing of result) {
+        for (const val of (dim.values || [])) {
+          expanded.push({ ...existing, [dim.name]: val });
+        }
+      }
+      result.length = 0;
+      result.push(...expanded);
+    }
+    return result;
+  };
+
   const handleGeneratePreview = () => {
-    const selected = dimensions.filter(d => form.enabled_dimensions.includes(d.id));
+    const selected = dimensions
+      .filter(d => form.enabled_dimensions.includes(d.id))
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     if (selected.length === 0) return;
     const combos = cartesianProduct(selected);
     setGeneratedPreview(combos);
     toast({ title: `⚡ נוצרו ${combos.length} צירופים — לחץ "שמור" לאישור`, duration: 3000 });
-  };
-
-  // Helper: compute all combinations (cartesian product) of dimension values
-  const cartesianProduct = (dims) => {
-    if (dims.length === 0) return [{}];
-    const [first, ...rest] = dims;
-    const restCombinations = cartesianProduct(rest);
-    const result = [];
-    for (const val of first.values) {
-      for (const combo of restCombinations) {
-        result.push({ [first.name]: val, ...combo });
-      }
-    }
-    return result;
   };
 
   const mutation = useMutation({
@@ -443,22 +449,33 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
       }
       // Create new group
       const newGroup = await base44.entities.ProductGroup.create(data);
-      
-      // Use preview combinations if available, otherwise compute from enabled dims
-      let combinations = generatedPreview;
-      if (!combinations && data.enabled_dimensions && data.enabled_dimensions.length > 0) {
-        const enabledDims = dimensions.filter(d => data.enabled_dimensions.includes(d.id));
-        combinations = cartesianProduct(enabledDims);
-      }
-      if (combinations && combinations.length > 0) {
-        await Promise.all(combinations.map((combo, idx) =>
-          base44.entities.ProductVariant.create({
+
+      // Always compute combinations fresh at save time from the loaded dimensions snapshot
+      const enabledDims = dimensions
+        .filter(d => data.enabled_dimensions?.includes(d.id))
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+      // Use generatedPreview if available (already computed), else compute now
+      const combinations = (generatedPreview && generatedPreview.length > 0)
+        ? generatedPreview
+        : enabledDims.length > 0 ? cartesianProduct(enabledDims) : [];
+
+      if (combinations.length > 0) {
+        // Fetch existing variants for this group scoped to this user to prevent duplicates
+        const existingVariants = await base44.entities.ProductVariant.filter({ group_id: newGroup.id, created_by: user?.email });
+        const existingKeys = new Set(existingVariants.map(v => JSON.stringify(v.dimensions)));
+
+        const toCreate = combinations.filter(combo => !existingKeys.has(JSON.stringify(combo)));
+
+        // Sequential creation to guarantee all variants are created reliably
+        for (let idx = 0; idx < toCreate.length; idx++) {
+          await base44.entities.ProductVariant.create({
             group_id: newGroup.id,
-            dimensions: combo,
+            dimensions: toCreate[idx],
             stock: 0,
             sku: `${newGroup.id.slice(-4)}-${idx + 1}`,
-          })
-        ));
+          });
+        }
       }
       return newGroup;
     },
