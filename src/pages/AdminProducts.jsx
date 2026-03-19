@@ -487,15 +487,11 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
         const existingKeys = new Set(existingVariants.map(v => JSON.stringify(v.dimensions)));
         const toCreate = combinations.filter(combo => !existingKeys.has(JSON.stringify(combo)));
 
-        // Sequential creation to guarantee all variants are created reliably
-        for (let idx = 0; idx < toCreate.length; idx++) {
-          await base44.entities.ProductVariant.create({
-            group_id: newGroup.id,
-            dimensions: toCreate[idx],
-            stock: 0,
-            sku: `${newGroup.id.slice(-4)}-${idx + 1}`,
-          });
-        }
+        setProgressText(`יוצר 0/${toCreate.length}...`);
+        await createVariantsBatched(toCreate, newGroup.id, (done, total) => {
+          setProgressText(`יוצר ${done}/${total}...`);
+        });
+        setProgressText('');
       }
       return { newGroup, count: combinations.length };
     },
