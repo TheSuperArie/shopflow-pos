@@ -616,7 +616,17 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
             <Select value={form.category_id} onValueChange={v => setForm({ ...form, category_id: v })}>
               <SelectTrigger><SelectValue placeholder="בחר קטגוריה" /></SelectTrigger>
               <SelectContent>
-                {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                {categories.filter(c => !c.parent_id).map(parent => (
+                  <React.Fragment key={parent.id}>
+                    <SelectItem value={parent.id}>{parent.name}</SelectItem>
+                    {categories.filter(c => c.parent_id === parent.id).map(sub => (
+                      <SelectItem key={sub.id} value={sub.id}>{'  └ '}{sub.name}</SelectItem>
+                    ))}
+                  </React.Fragment>
+                ))}
+                {categories.filter(c => c.parent_id && !categories.find(p => p.id === c.parent_id)).map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
