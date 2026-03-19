@@ -124,8 +124,16 @@ export default function POS() {
   }, [categories, allGroups, allVariants, isEffectivelyOffline]);
 
   // ── Derived data (not hooks) ─────────────────────────────────────
-  const groups = selectedCategory
-    ? allGroups.filter(g => g.category_id === selectedCategory)
+  // Sub-categories of the selected main category
+  const subCategories = selectedCategory
+    ? categories.filter(c => c.parent_id === selectedCategory)
+    : [];
+
+  // Active category for products: sub-category if selected, else main category
+  const activeProductCategoryId = selectedSubCategory || (subCategories.length === 0 ? selectedCategory : null);
+
+  const groups = activeProductCategoryId
+    ? allGroups.filter(g => g.category_id === activeProductCategoryId)
     : [];
 
   // ── Handlers ────────────────────────────────────────────────────
