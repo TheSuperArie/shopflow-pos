@@ -193,6 +193,7 @@ export default function AdminProducts() {
         onClose={() => setShowGroupForm(false)}
         queryClient={queryClient}
         toast={toast}
+        user={user}
       />
 
       <VariantsViewModal
