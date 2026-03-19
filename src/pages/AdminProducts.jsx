@@ -443,28 +443,27 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
   };
 
   const mutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async ({ formData, dimensionsSnapshot, previewSnapshot }) => {
       if (group) {
-        return base44.entities.ProductGroup.update(group.id, data);
+        return base44.entities.ProductGroup.update(group.id, formData);
       }
       // Create new group
-      const newGroup = await base44.entities.ProductGroup.create(data);
+      const newGroup = await base44.entities.ProductGroup.create(formData);
 
-      // Always compute combinations fresh at save time from the loaded dimensions snapshot
-      const enabledDims = dimensions
-        .filter(d => data.enabled_dimensions?.includes(d.id))
+      // Always compute combinations fresh at save time from the passed-in snapshot
+      const enabledDims = dimensionsSnapshot
+        .filter(d => formData.enabled_dimensions?.includes(d.id))
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-      // Use generatedPreview if available (already computed), else compute now
-      const combinations = (generatedPreview && generatedPreview.length > 0)
-        ? generatedPreview
+      // Use previewSnapshot if available (already computed), else compute now
+      const combinations = (previewSnapshot && previewSnapshot.length > 0)
+        ? previewSnapshot
         : enabledDims.length > 0 ? cartesianProduct(enabledDims) : [];
 
       if (combinations.length > 0) {
         // Fetch existing variants for this group scoped to this user to prevent duplicates
         const existingVariants = await base44.entities.ProductVariant.filter({ group_id: newGroup.id, created_by: user?.email });
         const existingKeys = new Set(existingVariants.map(v => JSON.stringify(v.dimensions)));
-
         const toCreate = combinations.filter(combo => !existingKeys.has(JSON.stringify(combo)));
 
         // Sequential creation to guarantee all variants are created reliably
@@ -477,12 +476,11 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
           });
         }
       }
-      return newGroup;
+      return { newGroup, count: combinations.length };
     },
-    onSuccess: () => {
+    onSuccess: ({ count } = {}) => {
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-      const count = generatedPreview?.length;
       toast({ 
         title: group
           ? '✅ התיקייה עודכנה'
