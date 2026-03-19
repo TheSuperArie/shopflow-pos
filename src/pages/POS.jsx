@@ -139,6 +139,8 @@ export default function POS() {
   // ── Handlers ────────────────────────────────────────────────────
   const handleModeChange = (offline) => {
     setIsOfflineMode(offline);
+    setSelectedCategory(null);
+    setSelectedSubCategory(null);
     queryClient.invalidateQueries({ queryKey: ['categories'] });
     queryClient.invalidateQueries({ queryKey: ['product-groups'] });
     queryClient.invalidateQueries({ queryKey: ['product-variants'] });
