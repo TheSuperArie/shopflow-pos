@@ -52,23 +52,60 @@ export default function AdminProducts() {
     enabled: !!user,
   });
 
-  // Group products by category - show ALL categories even empty ones
-  const categorizedGroups = {};
-  categories.forEach(cat => {
-    categorizedGroups[cat.id] = {
-      category: cat,
-      groups: groups.filter(g => g.category_id === cat.id),
-    };
-  });
+  // Build hierarchy: top-level categories, each with sub-categories
+  const topLevelCategories = categories.filter(c => !c.parent_id);
+  const subCategoriesOf = (parentId) => categories.filter(c => c.parent_id === parentId);
 
-  const categorizedData = Object.values(categorizedGroups);
+  // Groups helper
+  const groupsForCategory = (catId) => groups.filter(g => g.category_id === catId);
+
+  const renderGroupsGrid = (catGroups) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {catGroups.map(group => {
+        const groupVariants = variants.filter(v => v.group_id === group.id);
+        const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
+        return (
+          <Card key={group.id} className="cursor-pointer hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex gap-3" onClick={() => setViewingGroup(group)}>
+                {group.image_url ? (
+                  <img src={group.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center">
+                    <Folder className="w-8 h-8 text-amber-400" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{group.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {group.has_uniform_price ? (
+                      <>עלות: ₪{group.uniform_cost_price || 0} | מכירה: ₪{group.uniform_sell_price}</>
+                    ) : <>מחירים משתנים</>}
+                  </p>
+                  <p className="text-sm text-gray-500">סה"כ מלאי: {totalStock}</p>
+                  <p className="text-xs text-amber-600 mt-0.5">{groupVariants.length} וריאציות</p>
+                </div>
+                <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => { setEditingGroup(group); setShowGroupForm(true); }}
+                    className="p-3 rounded-lg hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center">
+                    <Pencil className="w-5 h-5 text-gray-500" />
+                  </button>
+                  <DeleteGroupButton groupId={group.id} queryClient={queryClient} toast={toast} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">מוצרים וקטלוג</h1>
         <div className="flex gap-2">
-          <Button onClick={() => { setEditingCategory(null); setShowCatForm(true); }} variant="outline" className="gap-2">
+          <Button onClick={() => { setEditingCategory(null); setNewCatDefaultParentId(null); setShowCatForm(true); }} variant="outline" className="gap-2">
             <FolderPlus className="w-4 h-4" /> קטגוריה
           </Button>
           <Button onClick={() => setShowSimpleProductForm(true)} variant="outline" className="gap-2 border-green-300 text-green-600 hover:bg-green-50">
@@ -80,20 +117,22 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {/* Collapsible Categories */}
+      {/* Collapsible Categories - hierarchical */}
       {loadingGroups ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>
       ) : (
         <div className="space-y-3">
-          {categorizedData.map(({ category, groups: catGroups }) => {
+          {topLevelCategories.map(category => {
             const isExpanded = expandedCategory === category.id;
-            const totalVariants = catGroups.reduce((sum, g) => {
-              return sum + variants.filter(v => v.group_id === g.id).length;
-            }, 0);
-            
+            const subCats = subCategoriesOf(category.id);
+            const directGroups = groupsForCategory(category.id);
+            // Count all groups: direct + in sub-cats
+            const allCatGroups = [...directGroups, ...subCats.flatMap(sc => groupsForCategory(sc.id))];
+            const totalVariants = allCatGroups.reduce((sum, g) => sum + variants.filter(v => v.group_id === g.id).length, 0);
+
             return (
               <div key={category.id} className="border-2 border-amber-200 rounded-xl overflow-hidden">
-                {/* Category Header - Sticky */}
+                {/* Category Header */}
                 <button
                   onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
                   className="sticky top-0 z-10 w-full bg-amber-100 p-4 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-150 transition-colors"
@@ -104,73 +143,86 @@ export default function AdminProducts() {
                     </div>
                     <div className="text-right">
                       <h3 className="font-bold text-amber-900 text-lg">{category.name}</h3>
-                      <p className="text-sm text-amber-700">{catGroups.length} מוצרים • {totalVariants} וריאציות</p>
+                      <p className="text-sm text-amber-700">
+                        {subCats.length > 0 ? `${subCats.length} תת-קטגוריות • ` : ''}{allCatGroups.length} מוצרים • {totalVariants} וריאציות
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setManagingDimensions(category); }}
-                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors"
-                      title="ניהול ממדי וריאציות"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); setManagingDimensions(category); }}
+                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors" title="ממדי וריאציות">
                       <Settings className="w-5 h-5 text-amber-700" />
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setEditingCategory(category); setShowCatForm(true); }}
-                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); setNewCatDefaultParentId(category.id); setEditingCategory(null); setShowCatForm(true); }}
+                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors" title="הוסף תת-קטגוריה">
+                      <FolderPlus className="w-5 h-5 text-amber-700" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setEditingCategory(category); setNewCatDefaultParentId(null); setShowCatForm(true); }}
+                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors">
                       <Pencil className="w-5 h-5 text-amber-700" />
                     </button>
                     <DeleteCategoryButton categoryId={category.id} queryClient={queryClient} toast={toast} />
                     <ChevronDown className={`w-5 h-5 ml-2 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
-                
-                {/* Products Grid - Expandable */}
+
                 {isExpanded && (
-                  <div className="bg-white p-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {catGroups.map(group => {
-                        const groupVariants = variants.filter(v => v.group_id === group.id);
-                        const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
-                        return (
-                          <Card key={group.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                            <CardContent className="p-4">
-                              <div className="flex gap-3" onClick={() => setViewingGroup(group)}>
-                                {group.image_url ? (
-                                  <img src={group.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
-                                ) : (
-                                  <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center">
-                                    <Folder className="w-8 h-8 text-amber-400" />
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold truncate">{group.name}</p>
-                                  <p className="text-sm text-gray-500">
-                                    {group.has_uniform_price ? (
-                                      <>עלות: ₪{group.uniform_cost_price || 0} | מכירה: ₪{group.uniform_sell_price}</>
-                                    ) : (
-                                      <>מחירים משתנים</>
-                                    )}
-                                  </p>
-                                  <p className="text-sm text-gray-500">סה"כ מלאי: {totalStock}</p>
-                                  <p className="text-xs text-amber-600 mt-0.5">{groupVariants.length} וריאציות</p>
-                                </div>
-                                <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    onClick={() => { setEditingGroup(group); setShowGroupForm(true); }}
-                                    className="p-3 rounded-lg hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                  >
-                                    <Pencil className="w-5 h-5 text-gray-500" />
-                                  </button>
-                                  <DeleteGroupButton groupId={group.id} queryClient={queryClient} toast={toast} />
-                                </div>
+                  <div className="bg-white p-4 space-y-4">
+                    {/* Sub-categories */}
+                    {subCats.map(subCat => {
+                      const isSubExpanded = expandedSubCategory === subCat.id;
+                      const subGroups = groupsForCategory(subCat.id);
+                      const subVariants = subGroups.reduce((sum, g) => sum + variants.filter(v => v.group_id === g.id).length, 0);
+                      return (
+                        <div key={subCat.id} className="border-2 border-blue-200 rounded-xl overflow-hidden">
+                          <button
+                            onClick={() => setExpandedSubCategory(isSubExpanded ? null : subCat.id)}
+                            className="w-full bg-blue-50 px-4 py-3 flex items-center justify-between hover:bg-blue-100 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center">
+                                <Folder className="w-4 h-4 text-white" />
                               </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-blue-900">{subCat.name}</p>
+                                <p className="text-xs text-blue-600">{subGroups.length} מוצרים • {subVariants} וריאציות</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button onClick={(e) => { e.stopPropagation(); setManagingDimensions(subCat); }}
+                                className="p-1.5 rounded-lg hover:bg-blue-200" title="ממדי וריאציות">
+                                <Settings className="w-4 h-4 text-blue-600" />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setEditingCategory(subCat); setNewCatDefaultParentId(null); setShowCatForm(true); }}
+                                className="p-1.5 rounded-lg hover:bg-blue-200">
+                                <Pencil className="w-4 h-4 text-blue-600" />
+                              </button>
+                              <DeleteCategoryButton categoryId={subCat.id} queryClient={queryClient} toast={toast} />
+                              <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isSubExpanded ? 'rotate-180' : ''}`} />
+                            </div>
+                          </button>
+                          {isSubExpanded && (
+                            <div className="bg-white p-4">
+                              {subGroups.length === 0
+                                ? <p className="text-center text-gray-400 py-4 text-sm">אין מוצרים בתת-קטגוריה זו</p>
+                                : renderGroupsGrid(subGroups)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Direct groups of this top-level category */}
+                    {directGroups.length > 0 && (
+                      <div>
+                        {subCats.length > 0 && <p className="text-xs text-gray-400 mb-2">מוצרים ישירים בקטגוריה</p>}
+                        {renderGroupsGrid(directGroups)}
+                      </div>
+                    )}
+
+                    {allCatGroups.length === 0 && subCats.length === 0 && (
+                      <p className="text-center text-gray-400 py-4">אין מוצרים או תת-קטגוריות</p>
+                    )}
                   </div>
                 )}
               </div>
