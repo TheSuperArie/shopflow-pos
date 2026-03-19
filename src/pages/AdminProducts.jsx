@@ -770,7 +770,10 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
             </Button>
             {enabledDimensions.length > 0 && (
               <Button onClick={handleAutoGenerate} variant="outline" className="gap-2 border-blue-300 text-blue-600 hover:bg-blue-50" disabled={generatingVariants}>
-                {generatingVariants ? <Loader2 className="w-4 h-4 animate-spin" /> : '⚡'} צור וריאציות אוטומטית ({cartesianProduct(enabledDimensions).length})
+                <Loader2 className={`w-4 h-4 ${generatingVariants ? 'animate-spin' : 'hidden'}`} />
+                {generatingVariants
+                  ? (generateProgress || 'יוצר...')
+                  : `⚡ צור וריאציות אוטומטית (${cartesianProduct(enabledDimensions).length})`}
               </Button>
             )}
           </div>
