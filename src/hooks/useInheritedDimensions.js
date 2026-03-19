@@ -7,6 +7,10 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
  * walking up the category tree (sub → parent → grandparent)
  * until dimensions are found.
  *
+ * Respects `inherit_dimensions` flag on the category:
+ * - If a sub-category has inherit_dimensions=true, its own dimensions are skipped
+ *   and the parent's are used directly.
+ *
  * Also returns `resolvedCategoryId` so the caller knows which
  * ancestor actually owns the dimensions.
  */
@@ -24,19 +28,6 @@ export function useInheritedDimensions(categoryId, allCategories = []) {
     current = cat?.parent_id || null;
   }
 
-  // Fetch dimensions for every ancestor in parallel
-  const queries = ancestorChain.map(catId => ({
-    queryKey: ['variant-dimensions', catId, user?.email],
-    queryFn: () =>
-      user
-        ? base44.entities.VariantDimension.filter({ category_id: catId, created_by: user.email })
-        : Promise.resolve([]),
-    enabled: !!user && !!catId,
-    staleTime: 30000,
-  }));
-
-  // We can't call useQuery inside a loop conditionally, so we use a fixed-size
-  // approach: fetch all three levels (self, parent, grandparent) separately.
   const [selfId, parentId, grandparentId] = ancestorChain;
 
   const { data: selfDims = [] } = useQuery({
@@ -60,8 +51,13 @@ export function useInheritedDimensions(categoryId, allCategories = []) {
     staleTime: 30000,
   });
 
-  // Walk the chain: return first level that has dimensions
-  if (selfDims.length > 0) {
+  // Check if this category is set to inherit from parent
+  const selfCategory = allCategories.find(c => c.id === selfId);
+  const shouldInherit = selfCategory?.inherit_dimensions === true && !!selfCategory?.parent_id;
+
+  // Walk the chain respecting inherit flag:
+  // If inherit is ON, skip self's dims and go straight to parent
+  if (!shouldInherit && selfDims.length > 0) {
     return { dimensions: selfDims, resolvedCategoryId: selfId, isInherited: false };
   }
   if (parentDims.length > 0) {
