@@ -5,15 +5,18 @@ import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Lock, Loader2 } from 'lucide-react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const user = useCurrentUser();
 
   const { data: settings = [], isLoading } = useQuery({
-    queryKey: ['app-settings'],
-    queryFn: () => base44.entities.AppSettings.list(),
+    queryKey: ['app-settings', user?.email],
+    queryFn: () => user ? base44.entities.AppSettings.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
   const handleSubmit = (e) => {
