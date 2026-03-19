@@ -673,7 +673,27 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
   const [printingBarcode, setPrintingBarcode] = useState(null);
   const [expandedDim, setExpandedDim] = useState(null);
   const [generatingVariants, setGeneratingVariants] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState('');
   const user = useCurrentUser();
+
+  const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+  const createVariantsBatched = async (combinations, groupId, onProgress) => {
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < combinations.length; i += BATCH_SIZE) {
+      const batch = combinations.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map((combo, batchIdx) =>
+        base44.entities.ProductVariant.create({
+          group_id: groupId,
+          dimensions: combo,
+          stock: 0,
+          sku: `${groupId.slice(-4)}-${i + batchIdx + 1}`,
+        })
+      ));
+      onProgress(Math.min(i + BATCH_SIZE, combinations.length), combinations.length);
+      if (i + BATCH_SIZE < combinations.length) await delay(50);
+    }
+  };
 
   const { data: allDimensions = [] } = useQuery({
     queryKey: ['variant-dimensions', group?.category_id],
