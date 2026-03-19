@@ -23,7 +23,9 @@ export default function AdminProducts() {
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [newCatDefaultParentId, setNewCatDefaultParentId] = useState(null);
   const [expandedCategory, setExpandedCategory] = useState(null);
+  const [expandedSubCategory, setExpandedSubCategory] = useState(null);
   const [viewingGroup, setViewingGroup] = useState(null);
   const [managingDimensions, setManagingDimensions] = useState(null);
   const [printingBarcode, setPrintingBarcode] = useState(null);
