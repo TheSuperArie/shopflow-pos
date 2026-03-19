@@ -304,7 +304,7 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
   );
 }
 
-function CategoryFormModal({ open, category, onClose, queryClient, toast }) {
+function CategoryFormModal({ open, category, onClose, queryClient, toast, user }) {
   const [name, setName] = useState('');
 
   React.useEffect(() => {
