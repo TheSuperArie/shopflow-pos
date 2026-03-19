@@ -15,6 +15,7 @@ import VariantDimensionsManager from '@/components/admin/VariantDimensionsManage
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 import BarcodePrintModal from '@/components/admin/BarcodePrintModal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useInheritedDimensions } from '@/hooks/useInheritedDimensions';
 
 
 
