@@ -367,28 +367,58 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
 function CategoryFormModal({ open, category, onClose, queryClient, toast, user, categories = [], defaultParentId = null }) {
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
+  const [inheritDimensions, setInheritDimensions] = useState(true);
+
+  const effectiveParentId = parentId || defaultParentId || null;
+  const isSubCategory = !!effectiveParentId;
+  const parentCategory = categories.find(c => c.id === effectiveParentId);
 
   React.useEffect(() => {
     if (category) {
       setName(category.name);
       setParentId(category.parent_id || '');
+      // Default inherit to true if not explicitly set to false
+      setInheritDimensions(category.inherit_dimensions !== false);
     } else {
       setName('');
       setParentId(defaultParentId || '');
+      // New sub-categories default to inheriting; top-level don't inherit
+      setInheritDimensions(!!defaultParentId);
     }
   }, [category, open, defaultParentId]);
 
-  // Only show top-level categories as parent options (no nested sub-categories as parents)
+  // When parent selection changes, update inherit default
+  const handleParentChange = (v) => {
+    const newParentId = v === '__none__' ? '' : v;
+    setParentId(newParentId);
+    if (newParentId) setInheritDimensions(true); // auto-enable inherit when a parent is chosen
+    else setInheritDimensions(false);
+  };
+
+  // Only show top-level categories as parent options
   const parentOptions = categories.filter(c => !c.parent_id && c.id !== category?.id);
 
   const mutation = useMutation({
-    mutationFn: (data) =>
-      category
-        ? base44.entities.Category.update(category.id, data)
-        : base44.entities.Category.create(data),
+    mutationFn: async (data) => {
+      const saved = category
+        ? await base44.entities.Category.update(category.id, data)
+        : await base44.entities.Category.create(data);
+
+      // If switching to inherit mode, clear this category's own VariantDimension records
+      if (data.inherit_dimensions && data.parent_id) {
+        const catId = category?.id || saved?.id;
+        if (catId) {
+          const ownDims = await base44.entities.VariantDimension.filter({ category_id: catId, created_by: user?.email });
+          await Promise.all(ownDims.map(d => base44.entities.VariantDimension.delete(d.id)));
+          queryClient.invalidateQueries({ queryKey: ['variant-dimensions', catId] });
+        }
+      }
+
+      return saved;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast({ 
+      toast({
         title: category ? '✅ הקטגוריה עודכנה' : '✅ הקטגוריה נוצרה',
         duration: 2000,
         className: 'bg-blue-500 text-white border-blue-600'
@@ -404,7 +434,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user, 
     mutationFn: () => base44.entities.Category.delete(category.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast({ 
+      toast({
         title: '🗑️ הקטגוריה נמחקה',
         duration: 2000,
         className: 'bg-red-500 text-white border-red-600'
@@ -414,7 +444,12 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user, 
   });
 
   const handleSave = () => {
-    const data = { name, parent_id: parentId || null };
+    const resolvedParentId = parentId || null;
+    const data = {
+      name,
+      parent_id: resolvedParentId,
+      inherit_dimensions: resolvedParentId ? inheritDimensions : false,
+    };
     if (!category) data.created_by = user?.email;
     mutation.mutate(data);
   };
@@ -432,7 +467,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user, 
           </div>
           <div>
             <Label>קטגוריית אב (אופציונלי)</Label>
-            <Select value={parentId || '__none__'} onValueChange={v => setParentId(v === '__none__' ? '' : v)}>
+            <Select value={parentId || '__none__'} onValueChange={handleParentChange}>
               <SelectTrigger><SelectValue placeholder="ללא — קטגוריה ראשית" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">ללא — קטגוריה ראשית</SelectItem>
@@ -440,6 +475,31 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user, 
               </SelectContent>
             </Select>
           </div>
+
+          {/* Inheritance toggle — only relevant for sub-categories */}
+          {isSubCategory && (
+            <div className={`p-3 rounded-xl border-2 transition-colors ${inheritDimensions ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center gap-3">
+                <Switch checked={inheritDimensions} onCheckedChange={setInheritDimensions} />
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">השתמש בממדים מקטגוריית אב</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {inheritDimensions
+                      ? `ממדי "${parentCategory?.name || 'האב'}" ישמשו ליצירת וריאציות`
+                      : 'הגדר ממדים עצמאיים לתת-קטגוריה זו'}
+                  </p>
+                </div>
+              </div>
+              {inheritDimensions && parentCategory && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs bg-blue-100 text-blue-700 border border-blue-300 rounded-full px-3 py-1 font-medium">
+                    ⬆ בירושה מ-{parentCategory.name}
+                  </span>
+                  <span className="text-xs text-blue-500">הממדים הקיימים בתת-קטגוריה ימחקו</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter className="flex gap-2">
           {category && (
