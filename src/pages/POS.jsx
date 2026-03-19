@@ -21,7 +21,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null); // top-level category id
+  const [selectedSubCategory, setSelectedSubCategory] = useState(null); // sub-category id or null
   const [cartItems, setCartItems] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showCheckout, setShowCheckout] = useState(false);
