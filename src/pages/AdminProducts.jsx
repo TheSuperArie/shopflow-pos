@@ -762,10 +762,9 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
   );
 }
 
-function VariantsViewModal({ open, group, variants, onClose, queryClient, toast }) {
+function VariantsViewModal({ open, group, variants, onClose, queryClient, toast, allCategories = [] }) {
   const [editingVariant, setEditingVariant] = useState(null);
   const [printingBarcode, setPrintingBarcode] = useState(null);
-  const [expandedDim, setExpandedDim] = useState(null);
   const [generatingVariants, setGeneratingVariants] = useState(false);
   const [generateProgress, setGenerateProgress] = useState('');
   const user = useCurrentUser();
@@ -789,11 +788,8 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
     }
   };
 
-  const { data: allDimensions = [] } = useQuery({
-    queryKey: ['variant-dimensions', group?.category_id],
-    queryFn: () => group?.category_id ? base44.entities.VariantDimension.filter({ category_id: group.category_id, is_active: true }) : Promise.resolve([]),
-    enabled: !!group?.category_id,
-  });
+  // Inherited dimensions: walks sub → parent → grandparent
+  const { dimensions: allDimensions, resolvedCategoryId, isInherited } = useInheritedDimensions(group?.category_id, allCategories);
 
   if (!group) return null;
 
