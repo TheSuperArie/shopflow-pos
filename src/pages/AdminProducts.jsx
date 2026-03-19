@@ -468,7 +468,6 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
   });
   const [uploading, setUploading] = useState(false);
   const [generatedPreview, setGeneratedPreview] = useState(null); // null = not generated yet
-  const [generating, setGenerating] = useState(false);
   const [progressText, setProgressText] = useState('');
 
   const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -490,11 +489,8 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
     }
   };
 
-  const { data: dimensions = [] } = useQuery({
-    queryKey: ['variant-dimensions', form.category_id],
-    queryFn: () => form.category_id ? base44.entities.VariantDimension.filter({ category_id: form.category_id }) : Promise.resolve([]),
-    enabled: !!form.category_id,
-  });
+  // Inherited dimensions: walks sub → parent → grandparent
+  const { dimensions, resolvedCategoryId, isInherited } = useInheritedDimensions(form.category_id, categories);
 
   React.useEffect(() => {
     if (group) {
