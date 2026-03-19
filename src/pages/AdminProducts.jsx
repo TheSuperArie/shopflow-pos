@@ -381,7 +381,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user }
   );
 }
 
-function ProductGroupFormModal({ open, group, categories, onClose, queryClient, toast }) {
+function ProductGroupFormModal({ open, group, categories, onClose, queryClient, toast, user }) {
   const [form, setForm] = useState({
     name: '', category_id: '', has_uniform_price: true, uniform_sell_price: 0, uniform_cost_price: 0, image_url: '', barcode: '', enabled_dimensions: [],
   });
