@@ -366,7 +366,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user }
             </Button>
           )}
           <Button
-            onClick={() => mutation.mutate({ name })}
+            onClick={() => mutation.mutate(category ? { name } : { name, created_by: user?.email })}
             className="bg-amber-500 hover:bg-amber-600"
             disabled={!name || mutation.isPending}
           >
