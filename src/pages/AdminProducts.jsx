@@ -1109,16 +1109,12 @@ function SimpleProductFormModal({ open, categories, onClose, queryClient, toast 
   );
 }
 
-function VariantFormModal({ variant, group, onClose, queryClient, toast }) {
+function VariantFormModal({ variant, group, onClose, queryClient, toast, allCategories = [] }) {
   const [form, setForm] = useState({
     dimensions: {}, stock: 0, sell_price: 0, cost_price: 0, sku: '',
   });
 
-  const { data: allDimensions = [] } = useQuery({
-    queryKey: ['variant-dimensions', group?.category_id],
-    queryFn: () => group?.category_id ? base44.entities.VariantDimension.filter({ category_id: group.category_id, is_active: true }) : Promise.resolve([]),
-    enabled: !!group?.category_id,
-  });
+  const { dimensions: allDimensions } = useInheritedDimensions(group?.category_id, allCategories);
 
   const enabledDimensions = allDimensions.filter(dim => 
     group?.enabled_dimensions?.includes(dim.id)
