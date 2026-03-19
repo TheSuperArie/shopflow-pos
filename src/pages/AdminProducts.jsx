@@ -632,7 +632,11 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
         </div>
         <DialogFooter>
           <Button
-            onClick={() => mutation.mutate(form)}
+            onClick={() => mutation.mutate({
+              formData: form,
+              dimensionsSnapshot: dimensions,
+              previewSnapshot: generatedPreview,
+            })}
             className="bg-amber-500 hover:bg-amber-600"
             disabled={!form.name || !form.category_id}
           >
