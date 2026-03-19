@@ -445,7 +445,8 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
   const mutation = useMutation({
     mutationFn: async ({ formData, dimensionsSnapshot, previewSnapshot }) => {
       if (group) {
-        return base44.entities.ProductGroup.update(group.id, formData);
+        await base44.entities.ProductGroup.update(group.id, formData);
+        return { count: 0 };
       }
       // Create new group
       const newGroup = await base44.entities.ProductGroup.create(formData);
