@@ -234,10 +234,12 @@ export default function AdminProducts() {
       <CategoryFormModal
         open={showCatForm}
         category={editingCategory}
-        onClose={() => setShowCatForm(false)}
+        onClose={() => { setShowCatForm(false); setNewCatDefaultParentId(null); }}
         queryClient={queryClient}
         toast={toast}
         user={user}
+        categories={categories}
+        defaultParentId={newCatDefaultParentId}
       />
 
       <ProductGroupFormModal
