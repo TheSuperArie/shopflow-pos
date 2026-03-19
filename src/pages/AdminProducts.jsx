@@ -183,6 +183,7 @@ export default function AdminProducts() {
         onClose={() => setShowCatForm(false)}
         queryClient={queryClient}
         toast={toast}
+        user={user}
       />
 
       <ProductGroupFormModal
