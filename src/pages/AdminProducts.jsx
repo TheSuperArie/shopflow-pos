@@ -497,6 +497,7 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
     },
     onSuccess: (result) => {
       const count = result?.count;
+      setProgressText('');
       queryClient.invalidateQueries({ queryKey: ['product-groups'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       toast({ 
