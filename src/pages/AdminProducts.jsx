@@ -641,7 +641,14 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
           {dimensions.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label>ממדי וריאציות מופעלים</Label>
+                <div>
+                  <Label>ממדי וריאציות מופעלים</Label>
+                  {isInherited && (
+                    <p className="text-xs text-blue-500 mt-0.5">
+                      ⬆ ממדים בירושה מ-{categories.find(c => c.id === resolvedCategoryId)?.name}
+                    </p>
+                  )}
+                </div>
                 {form.enabled_dimensions.length > 0 && (
                   <Button
                     type="button"
