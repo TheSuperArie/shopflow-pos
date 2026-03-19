@@ -290,6 +290,7 @@ export default function AdminProducts() {
         onClose={() => setShowSimpleProductForm(false)}
         queryClient={queryClient}
         toast={toast}
+        allCategories={categories}
       />
     </div>
   );
