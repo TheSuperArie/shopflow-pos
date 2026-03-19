@@ -190,10 +190,17 @@ export default function AdminProducts() {
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <button onClick={(e) => { e.stopPropagation(); setManagingDimensions(subCat); }}
-                                className="p-1.5 rounded-lg hover:bg-blue-200" title="ממדי וריאציות">
-                                <Settings className="w-4 h-4 text-blue-600" />
-                              </button>
+                              {subCat.inherit_dimensions !== false && (
+                                <span className="text-xs bg-blue-100 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5 font-medium hidden sm:inline">
+                                  ⬆ ירושה
+                                </span>
+                              )}
+                              {subCat.inherit_dimensions === false && (
+                                <button onClick={(e) => { e.stopPropagation(); setManagingDimensions(subCat); }}
+                                  className="p-1.5 rounded-lg hover:bg-blue-200" title="ממדי וריאציות">
+                                  <Settings className="w-4 h-4 text-blue-600" />
+                                </button>
+                              )}
                               <button onClick={(e) => { e.stopPropagation(); setEditingCategory(subCat); setNewCatDefaultParentId(null); setShowCatForm(true); }}
                                 className="p-1.5 rounded-lg hover:bg-blue-200">
                                 <Pencil className="w-4 h-4 text-blue-600" />
