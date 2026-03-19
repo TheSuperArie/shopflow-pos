@@ -389,6 +389,26 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
   const [uploading, setUploading] = useState(false);
   const [generatedPreview, setGeneratedPreview] = useState(null); // null = not generated yet
   const [generating, setGenerating] = useState(false);
+  const [progressText, setProgressText] = useState('');
+
+  const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+  const createVariantsBatched = async (toCreate, groupId, onProgress) => {
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < toCreate.length; i += BATCH_SIZE) {
+      const batch = toCreate.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map((combo, batchIdx) =>
+        base44.entities.ProductVariant.create({
+          group_id: groupId,
+          dimensions: combo,
+          stock: 0,
+          sku: `${groupId.slice(-4)}-${i + batchIdx + 1}`,
+        })
+      ));
+      onProgress(Math.min(i + BATCH_SIZE, toCreate.length), toCreate.length);
+      if (i + BATCH_SIZE < toCreate.length) await delay(50);
+    }
+  };
 
   const { data: dimensions = [] } = useQuery({
     queryKey: ['variant-dimensions', form.category_id],
