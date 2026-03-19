@@ -301,31 +301,47 @@ export default function POS() {
             <>
               <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* Deduplicate by ID, hide categories with no groups that have stock */}
+                {/* Only top-level categories that have groups with stock (direct or via sub-cats) */}
                 {Array.from(new Map(categories.map(c => [c.id, c])).values())
+                  .filter(category => !category.parent_id)
                   .filter(category => {
-                    const catGroups = allGroups.filter(g => g.category_id === category.id);
-                    return catGroups.some(group =>
+                    // Check direct groups
+                    const directGroups = allGroups.filter(g => g.category_id === category.id);
+                    const hasDirectStock = directGroups.some(group =>
                       allVariants.some(v => v.group_id === group.id && (v.stock || 0) > 0)
                     );
+                    // Check sub-category groups
+                    const subCats = categories.filter(c => c.parent_id === category.id);
+                    const hasSubStock = subCats.some(sc => {
+                      const scGroups = allGroups.filter(g => g.category_id === sc.id);
+                      return scGroups.some(group =>
+                        allVariants.some(v => v.group_id === group.id && (v.stock || 0) > 0)
+                      );
+                    });
+                    return hasDirectStock || hasSubStock;
                   })
                   .map(category => {
-                    const catGroups = allGroups.filter(g => g.category_id === category.id);
+                    const subCats = categories.filter(c => c.parent_id === category.id);
+                    const allCatGroups = [
+                      ...allGroups.filter(g => g.category_id === category.id),
+                      ...subCats.flatMap(sc => allGroups.filter(g => g.category_id === sc.id)),
+                    ];
                     return (
-                      <button key={category.id} onClick={() => setSelectedCategory(category.id)}
+                      <button key={category.id} onClick={() => { setSelectedCategory(category.id); setSelectedSubCategory(null); }}
                         className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-amber-500 hover:shadow-md transition-all text-center min-h-[140px]">
                         <div className="text-4xl mb-2">📦</div>
                         <h3 className="text-lg font-bold text-gray-800">{category.name}</h3>
-                        <p className="text-sm text-gray-500 mt-1">{catGroups.length} מוצרים</p>
+                        <p className="text-sm text-gray-500 mt-1">{allCatGroups.length} מוצרים</p>
                       </button>
                     );
                   })}
               </div>
             </>
-          ) : (
+          ) : selectedCategory && subCategories.length > 0 && !selectedSubCategory ? (
             <>
+              {/* Sub-category selection */}
               <div className="flex items-center gap-3 mb-4">
-                <button onClick={() => setSelectedCategory(null)}
+                <button onClick={() => { setSelectedCategory(null); setSelectedSubCategory(null); }}
                   className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium flex items-center gap-2">
                   ← חזור לקטגוריות
                 </button>
@@ -333,7 +349,61 @@ export default function POS() {
                   {categories.find(c => c.id === selectedCategory)?.name}
                 </h2>
               </div>
-              <ProductGrid groups={groups} variants={allVariants} onSelect={handleGroupSelect} />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {subCategories
+                  .filter(sc => {
+                    const scGroups = allGroups.filter(g => g.category_id === sc.id);
+                    return scGroups.some(g => allVariants.some(v => v.group_id === g.id && (v.stock || 0) > 0));
+                  })
+                  .map(subCat => {
+                    const scGroups = allGroups.filter(g => g.category_id === subCat.id);
+                    return (
+                      <button key={subCat.id} onClick={() => setSelectedSubCategory(subCat.id)}
+                        className="bg-white rounded-xl p-6 shadow-sm border-2 border-gray-200 hover:border-blue-500 hover:shadow-md transition-all text-center min-h-[120px]">
+                        <div className="text-3xl mb-2">📁</div>
+                        <h3 className="text-base font-bold text-gray-800">{subCat.name}</h3>
+                        <p className="text-sm text-gray-500 mt-1">{scGroups.length} מוצרים</p>
+                      </button>
+                    );
+                  })}
+                {/* Also show direct products of the main category if any */}
+                {allGroups.filter(g => g.category_id === selectedCategory).length > 0 && (
+                  <button onClick={() => setSelectedSubCategory('__direct__')}
+                    className="bg-white rounded-xl p-6 shadow-sm border-2 border-dashed border-gray-300 hover:border-amber-400 hover:shadow-md transition-all text-center min-h-[120px]">
+                    <div className="text-3xl mb-2">📦</div>
+                    <h3 className="text-base font-bold text-gray-800">כללי</h3>
+                    <p className="text-sm text-gray-500 mt-1">{allGroups.filter(g => g.category_id === selectedCategory).length} מוצרים</p>
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Products level */}
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <button onClick={() => { setSelectedCategory(null); setSelectedSubCategory(null); }}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium flex items-center gap-2">
+                  ← קטגוריות
+                </button>
+                {subCategories.length > 0 && (
+                  <button onClick={() => setSelectedSubCategory(null)}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium flex items-center gap-2">
+                    {categories.find(c => c.id === selectedCategory)?.name} ←
+                  </button>
+                )}
+                <h2 className="text-lg font-bold text-amber-600">
+                  {selectedSubCategory && selectedSubCategory !== '__direct__'
+                    ? categories.find(c => c.id === selectedSubCategory)?.name
+                    : categories.find(c => c.id === selectedCategory)?.name}
+                </h2>
+              </div>
+              <ProductGrid
+                groups={selectedSubCategory === '__direct__'
+                  ? allGroups.filter(g => g.category_id === selectedCategory)
+                  : groups}
+                variants={allVariants}
+                onSelect={handleGroupSelect}
+              />
             </>
           )}
         </div>
