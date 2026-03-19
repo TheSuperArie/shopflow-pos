@@ -305,16 +305,22 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
   );
 }
 
-function CategoryFormModal({ open, category, onClose, queryClient, toast, user }) {
+function CategoryFormModal({ open, category, onClose, queryClient, toast, user, categories = [], defaultParentId = null }) {
   const [name, setName] = useState('');
+  const [parentId, setParentId] = useState('');
 
   React.useEffect(() => {
     if (category) {
       setName(category.name);
+      setParentId(category.parent_id || '');
     } else {
       setName('');
+      setParentId(defaultParentId || '');
     }
-  }, [category, open]);
+  }, [category, open, defaultParentId]);
+
+  // Only show top-level categories as parent options (no nested sub-categories as parents)
+  const parentOptions = categories.filter(c => !c.parent_id && c.id !== category?.id);
 
   const mutation = useMutation({
     mutationFn: (data) =>
@@ -348,6 +354,12 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user }
     },
   });
 
+  const handleSave = () => {
+    const data = { name, parent_id: parentId || null };
+    if (!category) data.created_by = user?.email;
+    mutation.mutate(data);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent dir="rtl" className="max-w-sm">
@@ -359,6 +371,16 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user }
             <Label>שם הקטגוריה</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="למשל: חולצות" />
           </div>
+          <div>
+            <Label>קטגוריית אב (אופציונלי)</Label>
+            <Select value={parentId || '__none__'} onValueChange={v => setParentId(v === '__none__' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="ללא — קטגוריה ראשית" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">ללא — קטגוריה ראשית</SelectItem>
+                {parentOptions.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter className="flex gap-2">
           {category && (
@@ -367,7 +389,7 @@ function CategoryFormModal({ open, category, onClose, queryClient, toast, user }
             </Button>
           )}
           <Button
-            onClick={() => mutation.mutate(category ? { name } : { name, created_by: user?.email })}
+            onClick={handleSave}
             className="bg-amber-500 hover:bg-amber-600"
             disabled={!name || mutation.isPending}
           >
