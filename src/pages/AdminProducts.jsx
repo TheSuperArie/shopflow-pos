@@ -946,6 +946,7 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast,
           onClose={() => setEditingVariant(null)}
           queryClient={queryClient}
           toast={toast}
+          allCategories={allCategories}
         />
       )}
 
