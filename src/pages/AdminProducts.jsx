@@ -734,16 +734,13 @@ function VariantsViewModal({ open, group, variants, onClose, queryClient, toast 
       await base44.entities.ProductVariant.delete(v.id);
     }
 
-    // Generate all combinations sequentially for reliability
+    // Generate all combinations in batches of 20 with 50ms delay between batches
     const combinations = cartesianProduct(enabledDimensions);
-    for (let idx = 0; idx < combinations.length; idx++) {
-      await base44.entities.ProductVariant.create({
-        group_id: group.id,
-        dimensions: combinations[idx],
-        stock: 0,
-        sku: `${group.id.slice(-4)}-${idx + 1}`,
-      });
-    }
+    setGenerateProgress(`יוצר 0/${combinations.length}...`);
+    await createVariantsBatched(combinations, group.id, (done, total) => {
+      setGenerateProgress(`יוצר ${done}/${total}...`);
+    });
+    setGenerateProgress('');
 
     queryClient.invalidateQueries({ queryKey: ['product-variants'] });
     toast({ title: `✅ נוצרו ${combinations.length} וריאציות אוטומטית`, duration: 2000 });
