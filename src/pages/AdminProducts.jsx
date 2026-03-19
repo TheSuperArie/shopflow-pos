@@ -656,9 +656,11 @@ function ProductGroupFormModal({ open, group, categories, onClose, queryClient, 
               previewSnapshot: generatedPreview,
             })}
             className="bg-amber-500 hover:bg-amber-600"
-            disabled={!form.name || !form.category_id}
+            disabled={!form.name || !form.category_id || mutation.isPending}
           >
-            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
+            {mutation.isPending
+              ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{progressText || 'שומר...'}</span>
+              : 'שמור'}
           </Button>
         </DialogFooter>
       </DialogContent>
