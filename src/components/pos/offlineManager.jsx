@@ -16,6 +16,12 @@ const KEYS = {
   GLOBAL_SYNC_LOCK: 'pos_global_sync_lock', // CRITICAL: Blocks ALL queries during sync
 };
 
+// On load: always clear stale sync locks that may have been left by a crashed session
+try {
+  localStorage.removeItem('pos_global_sync_lock');
+  localStorage.removeItem('pos_sync_in_progress');
+} catch(e) {}
+
 // Initialize IndexedDB
 let db = null;
 

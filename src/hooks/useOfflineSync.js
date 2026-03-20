@@ -15,6 +15,7 @@ export function useOfflineSync() {
     if (offlineManager.isSyncInProgress() || navigator.onLine === false) return;
 
     offlineManager.setSyncInProgress(true);
+    offlineManager.setGlobalSyncLock(true);
     setSyncStatus('syncing');
 
     try {
@@ -79,6 +80,7 @@ export function useOfflineSync() {
       setSyncStatus('error');
     } finally {
       offlineManager.setSyncInProgress(false);
+      offlineManager.setGlobalSyncLock(false);
       setTimeout(() => setSyncStatus('idle'), 2000);
     }
   };
