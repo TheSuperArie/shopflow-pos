@@ -97,6 +97,7 @@ export default function AdminSettings() {
           </Button>
         </CardContent>
       </Card>
+      <DangerZone user={user} />
     </div>
   );
 }
