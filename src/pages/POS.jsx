@@ -74,12 +74,16 @@ export default function POS() {
 
   const queryEnabled = !!user && !offlineManager.isGlobalSyncLocked() && !offlineManager.isSyncInProgress();
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], error: categoriesError } = useQuery({
     queryKey: ['categories', isOfflineMode, user?.email],
-    queryFn: () => fetchOrCache(
-      () => base44.entities.Category.filter({ created_by: user.email }, 'sort_order'),
-      'categories'
-    ),
+    queryFn: async () => {
+      const result = await fetchOrCache(
+        () => base44.entities.Category.filter({ created_by: user.email }, 'sort_order'),
+        'categories'
+      );
+      console.log('[POS] categories loaded:', result?.length, 'user:', user?.email);
+      return result;
+    },
     staleTime: isEffectivelyOffline ? Infinity : 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
