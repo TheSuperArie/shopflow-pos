@@ -233,11 +233,9 @@ function StockFormModal({ open, onClose }) {
     queryFn: () => base44.entities.ProductVariant.list(),
   });
 
-  const user2 = useCurrentUser();
   const { data: suppliers = [] } = useQuery({
-    queryKey: ['suppliers', user2?.email],
-    queryFn: () => user2 ? base44.entities.Supplier.filter({ created_by: user2.email }) : [],
-    enabled: !!user2,
+    queryKey: ['suppliers'],
+    queryFn: () => base44.entities.Supplier.list(),
   });
 
   const { data: orders = [] } = useQuery({
