@@ -350,6 +350,16 @@ export default function POS() {
                     );
                   })}
               </div>
+              {user && categories.length === 0 && (
+                <div className="text-center py-12 text-gray-400 text-sm">
+                  אין קטגוריות להצגה — עבור לניהול מוצרים כדי להוסיף קטגוריות
+                </div>
+              )}
+              {user && categories.length > 0 && categories.filter(c => !c.parent_id).length === 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-yellow-700 text-sm text-center">
+                  DEBUG: נמצאו {categories.length} קטגוריות אך כולן עם parent_id — אין קטגוריות ראשיות
+                </div>
+              )}
             </>
           ) : selectedCategory && subCategories.length > 0 && !selectedSubCategory ? (
             <>
