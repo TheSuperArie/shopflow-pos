@@ -64,6 +64,11 @@ export default function DangerZone({ user }) {
     setConfirmText('');
   };
 
+  const invalidateAll = () => {
+    // Invalidate every cached query so ALL pages refresh immediately
+    queryClient.invalidateQueries();
+  };
+
   const handleConfirm = async () => {
     if (!isConfirmed || !user?.email) return;
     setLoading(true);
@@ -73,18 +78,37 @@ export default function DangerZone({ user }) {
       if (activeAction.id === 'reset_inventory') {
         const variants = await base44.entities.ProductVariant.filter({ created_by: email });
         await Promise.all(variants.map(v => base44.entities.ProductVariant.update(v.id, { stock: 0 })));
-        // Also reset FlexibleVariant if used
-        const flexVariants = await base44.entities.FlexibleVariant.filter({ created_by: email });
-        await Promise.all(flexVariants.map(v => base44.entities.FlexibleVariant.update(v.id, { stock: 0 })));
-        queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+        invalidateAll();
         toast({ title: '✅ המלאי אופס בהצלחה', duration: 3000, className: 'bg-green-500 text-white' });
       }
 
       if (activeAction.id === 'clear_sales') {
-        await batchDelete(
-          () => base44.entities.Sale.filter({ created_by: email }),
-          (id) => base44.entities.Sale.delete(id)
-        );
+        // Step 1: Fetch all sales and restore their stock back to variants
+        const sales = await base44.entities.Sale.filter({ created_by: email });
+        const variants = await base44.entities.ProductVariant.filter({ created_by: email });
+
+        // Build a stock-delta map: variant_id → total quantity to restore
+        const stockDelta = {};
+        for (const sale of sales) {
+          for (const item of (sale.items || [])) {
+            if (item.variant_id) {
+              stockDelta[item.variant_id] = (stockDelta[item.variant_id] || 0) + (item.quantity || 0);
+            }
+          }
+        }
+
+        // Apply restorations
+        const restorePromises = Object.entries(stockDelta).map(([variantId, qty]) => {
+          const variant = variants.find(v => v.id === variantId);
+          if (!variant) return Promise.resolve();
+          return base44.entities.ProductVariant.update(variantId, {
+            stock: (variant.stock || 0) + qty,
+          });
+        });
+        await Promise.all(restorePromises);
+
+        // Step 2: Delete all sales, receipts, returns, credits
+        await Promise.all(sales.map(s => base44.entities.Sale.delete(s.id)));
         await batchDelete(
           () => base44.entities.Receipt.filter({ created_by: email }),
           (id) => base44.entities.Receipt.delete(id)
@@ -97,10 +121,9 @@ export default function DangerZone({ user }) {
           () => base44.entities.Credit.filter({ created_by: email }),
           (id) => base44.entities.Credit.delete(id)
         );
-        queryClient.invalidateQueries({ queryKey: ['sales'] });
-        queryClient.invalidateQueries({ queryKey: ['receipts'] });
-        queryClient.invalidateQueries({ queryKey: ['returns'] });
-        toast({ title: '✅ היסטוריית המכירות נמחקה', duration: 3000, className: 'bg-green-500 text-white' });
+
+        invalidateAll();
+        toast({ title: '✅ היסטוריית המכירות נמחקה והמלאי שוחזר', duration: 3000, className: 'bg-green-500 text-white' });
       }
 
       if (activeAction.id === 'clear_catalog') {
@@ -108,10 +131,6 @@ export default function DangerZone({ user }) {
         await batchDelete(
           () => base44.entities.ProductVariant.filter({ created_by: email }),
           (id) => base44.entities.ProductVariant.delete(id)
-        );
-        await batchDelete(
-          () => base44.entities.FlexibleVariant.filter({ created_by: email }),
-          (id) => base44.entities.FlexibleVariant.delete(id)
         );
         await batchDelete(
           () => base44.entities.ProductGroup.filter({ created_by: email }),
@@ -125,9 +144,7 @@ export default function DangerZone({ user }) {
           () => base44.entities.Category.filter({ created_by: email }),
           (id) => base44.entities.Category.delete(id)
         );
-        queryClient.invalidateQueries({ queryKey: ['categories'] });
-        queryClient.invalidateQueries({ queryKey: ['product-groups'] });
-        queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+        invalidateAll();
         toast({ title: '✅ הקטלוג נמחק בהצלחה', duration: 3000, className: 'bg-green-500 text-white' });
       }
 
