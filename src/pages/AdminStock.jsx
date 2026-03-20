@@ -210,6 +210,7 @@ export default function AdminStock() {
 function StockFormModal({ open, onClose }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const modalUser = useCurrentUser();
   const [step, setStep] = useState('category'); // 'category' | 'group' | 'variant' | 'details'
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
