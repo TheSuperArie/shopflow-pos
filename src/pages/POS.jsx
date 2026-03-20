@@ -359,10 +359,6 @@ export default function POS() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {subCategories
-                  .filter(sc => {
-                    const scGroups = allGroups.filter(g => g.category_id === sc.id);
-                    return scGroups.some(g => allVariants.some(v => v.group_id === g.id && (v.stock || 0) > 0));
-                  })
                   .map(subCat => {
                     const scGroups = allGroups.filter(g => g.category_id === subCat.id);
                     return (
