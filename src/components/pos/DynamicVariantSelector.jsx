@@ -5,15 +5,28 @@ import { AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
-export default function DynamicVariantSelector({ open, group, variants, allVariants: allVariantsLive, onConfirm, onClose }) {
+export default function DynamicVariantSelector({ open, group, variants, allVariants: allVariantsLive, categories = [], onConfirm, onClose }) {
   const [currentDimensionIndex, setCurrentDimensionIndex] = useState(0);
   const [selectedValues, setSelectedValues] = useState({});
 
-  // Fetch dimensions for this product's category
+  // Resolve the effective category for dimension lookup, respecting inheritance
+  const resolveEffectiveCategoryId = () => {
+    if (!group?.category_id) return null;
+    const cat = (categories || []).find(c => c.id === group.category_id);
+    // If sub-category with inheritance enabled, use parent's category_id
+    if (cat?.parent_id && cat?.inherit_dimensions !== false) {
+      return cat.parent_id;
+    }
+    return group.category_id;
+  };
+
+  const effectiveCategoryId = resolveEffectiveCategoryId();
+
+  // Fetch dimensions from the effective (possibly parent) category
   const { data: allDimensions = [] } = useQuery({
-    queryKey: ['variant-dimensions', group?.category_id],
-    queryFn: () => group?.category_id ? base44.entities.VariantDimension.filter({ category_id: group.category_id, is_active: true }) : Promise.resolve([]),
-    enabled: !!group?.category_id,
+    queryKey: ['variant-dimensions', effectiveCategoryId],
+    queryFn: () => effectiveCategoryId ? base44.entities.VariantDimension.filter({ category_id: effectiveCategoryId, is_active: true }) : Promise.resolve([]),
+    enabled: !!effectiveCategoryId,
   });
 
   // Filter to only enabled dimensions for this product
