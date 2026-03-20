@@ -91,6 +91,14 @@ export default function AdminStock() {
         </div>
       </div>
 
+      {/* Bulk Stock Update */}
+      <BulkStockUpdate
+        categories={categories}
+        groups={groups}
+        variants={variants}
+        userEmail={user?.email}
+      />
+
       {/* Low Stock Alert - Organized by Categories as Folders */}
       {totalLowStock > 0 && (
         <Card className="border-red-200 bg-red-50">
