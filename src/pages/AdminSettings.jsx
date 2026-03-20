@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Lock, Save } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import DangerZone from '@/components/admin/DangerZone';
 
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
