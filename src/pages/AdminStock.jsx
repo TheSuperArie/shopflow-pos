@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Loader2, TruckIcon, AlertTriangle, Package, ChevronLeft, Folder } from 'lucide-react';
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
+import BulkStockUpdate from '@/components/admin/BulkStockUpdate';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
