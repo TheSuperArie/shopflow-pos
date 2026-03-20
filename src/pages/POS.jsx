@@ -304,6 +304,16 @@ export default function POS() {
           {!selectedCategory ? (
             <>
               <h2 className="text-lg font-bold text-gray-700">קטגוריות</h2>
+              {categoriesError && (
+                <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-red-700 text-sm">
+                  שגיאה בטעינת קטגוריות: {categoriesError.message}
+                </div>
+              )}
+              {!user && (
+                <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 text-yellow-700 text-sm">
+                  טוען משתמש...
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {/* Only top-level categories that have groups with stock (direct or via sub-cats) */}
                 {Array.from(new Map(categories.map(c => [c.id, c])).values())
