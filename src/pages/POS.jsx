@@ -318,22 +318,6 @@ export default function POS() {
                 {/* Only top-level categories that have groups with stock (direct or via sub-cats) */}
                 {Array.from(new Map(categories.map(c => [c.id, c])).values())
                   .filter(category => !category.parent_id)
-                  .filter(category => {
-                    // Check direct groups
-                    const directGroups = allGroups.filter(g => g.category_id === category.id);
-                    const hasDirectStock = directGroups.some(group =>
-                      allVariants.some(v => v.group_id === group.id && (v.stock || 0) > 0)
-                    );
-                    // Check sub-category groups
-                    const subCats = categories.filter(c => c.parent_id === category.id);
-                    const hasSubStock = subCats.some(sc => {
-                      const scGroups = allGroups.filter(g => g.category_id === sc.id);
-                      return scGroups.some(group =>
-                        allVariants.some(v => v.group_id === group.id && (v.stock || 0) > 0)
-                      );
-                    });
-                    return hasDirectStock || hasSubStock;
-                  })
                   .map(category => {
                     const subCats = categories.filter(c => c.parent_id === category.id);
                     const allCatGroups = [
