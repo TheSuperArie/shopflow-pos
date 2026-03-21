@@ -439,25 +439,46 @@ export default function AdminSales() {
             {categoryData.length === 0 ? (
               <p className="text-center text-gray-400 py-8">אין נתונים</p>
             ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="revenue"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="revenue"
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => `₪${value.toLocaleString()}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Sub-category breakdown */}
+                {parentCategoryData.some(p => p.subCategories.length > 0) && (
+                  <div className="mt-3 space-y-1 max-h-36 overflow-y-auto">
+                    {parentCategoryData.filter(p => p.subCategories.length > 0).map((parent, idx) => (
+                      <div key={parent.id} className="text-xs">
+                        <p className="font-semibold text-gray-700 flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                          {parent.name}
+                        </p>
+                        {parent.subCategories.map(sub => (
+                          <div key={sub.id} className="flex justify-between pr-5 text-gray-500 py-0.5">
+                            <span>↳ {sub.name}</span>
+                            <span className="font-medium text-amber-600">₪{sub.revenue.toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
                     ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => `₪${value.toLocaleString()}`} />
-                </PieChart>
-              </ResponsiveContainer>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
