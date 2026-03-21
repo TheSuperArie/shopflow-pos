@@ -3,18 +3,22 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, DollarSign, Package, Banknote, CreditCard, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Package, Banknote, CreditCard, Loader2, ChevronDown } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useCategorySalesAnalytics } from '@/hooks/useCategorySalesAnalytics';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
+const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [expandedParent, setExpandedParent] = useState(null);
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
-  // Real-time sync — invalidate on any sale/expense/variant change
+  // Real-time sync
   useEffect(() => {
     const unsub1 = base44.entities.Sale.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-sales'] });
@@ -29,14 +33,14 @@ export default function AdminDashboard() {
   }, [queryClient]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['dashboard-sales', dateFrom, dateTo, user?.email],
+    queryKey: ['dashboard-sales', user?.email],
     queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000) : [],
     staleTime: 0,
     enabled: !!user,
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['dashboard-expenses', dateFrom, dateTo, user?.email],
+    queryKey: ['dashboard-expenses', user?.email],
     queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date', 2000) : [],
     staleTime: 0,
     enabled: !!user,
@@ -54,31 +58,41 @@ export default function AdminDashboard() {
     enabled: !!user,
   });
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', user?.email],
+    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }) : [],
+    enabled: !!user,
+  });
+
+  // Date filter
   const filteredSales = sales.filter(s => {
     const d = s.created_date?.split('T')[0];
     return d >= dateFrom && d <= dateTo;
   });
 
-  const filteredExpenses = expenses.filter(e => {
-    return e.date >= dateFrom && e.date <= dateTo;
-  });
+  const filteredExpenses = expenses.filter(e => e.date >= dateFrom && e.date <= dateTo);
 
+  // Summary stats
   const totalSales = filteredSales.reduce((s, sale) => s + (sale.total || 0), 0);
   const totalCost = filteredSales.reduce((s, sale) => s + (sale.total_cost || 0), 0);
   const totalExpenses = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0);
   const netProfit = totalSales - totalCost - totalExpenses;
   const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (sale.total || 0), 0);
   const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (sale.total || 0), 0);
+
   const lowStockVariants = variants.filter(v => (v.stock || 0) <= 3).map(v => {
     const group = groups.find(g => g.id === v.group_id);
     const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
       ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(', ')
       : 'רגיל';
-    return {
-      id: v.id,
-      name: group ? `${group.name} - ${dimText}` : dimText,
-      stock: v.stock || 0
-    };
+    return { id: v.id, name: group ? `${group.name} - ${dimText}` : dimText, stock: v.stock || 0 };
+  });
+
+  // Shared analytics
+  const { parentCategoryData, flatCategoryData } = useCategorySalesAnalytics({
+    sales: filteredSales,
+    categories,
+    groups,
   });
 
   const isLoading = loadingSales || loadingExpenses;
@@ -100,6 +114,7 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <>
+          {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard title="מכירות" value={`₪${totalSales.toFixed(0)}`} icon={DollarSign} color="text-green-600" bg="bg-green-50" />
             <StatCard title="עלות סחורה" value={`₪${totalCost.toFixed(0)}`} icon={TrendingDown} color="text-red-500" bg="bg-red-50" />
@@ -114,6 +129,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Payment breakdown */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-600">פילוח תשלומים</CardTitle>
@@ -136,6 +152,7 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
+            {/* Low stock */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-600">מלאי נמוך</CardTitle>
@@ -156,6 +173,80 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Category Sales Analytics */}
+          {parentCategoryData.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Pie Chart */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold text-gray-600">מכירות לפי קטגוריה</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={flatCategoryData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="revenue"
+                        labelLine={false}
+                        label={({ name, percent }) => percent > 0.07 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}
+                      >
+                        {flatCategoryData.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v) => `₪${v.toLocaleString()}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Hierarchical breakdown list */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold text-gray-600">פירוט לפי קטגוריה</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 max-h-64 overflow-y-auto">
+                  {parentCategoryData.map((cat, idx) => (
+                    <div key={cat.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => setExpandedParent(expandedParent === cat.id ? null : cat.id)}
+                        className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                          <span className="font-semibold text-sm">{cat.name}</span>
+                          {cat.subCategories.length > 0 && (
+                            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${expandedParent === cat.id ? 'rotate-180' : ''}`} />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-amber-600">₪{cat.revenue.toLocaleString()}</p>
+                          <p className="text-xs text-gray-400">{cat.quantity} יח׳</p>
+                        </div>
+                      </button>
+                      {expandedParent === cat.id && cat.subCategories.length > 0 && (
+                        <div className="bg-white divide-y divide-gray-50">
+                          {cat.subCategories.map(sub => (
+                            <div key={sub.id} className="flex items-center justify-between px-4 py-2">
+                              <span className="text-sm text-gray-600 pr-3">↳ {sub.name}</span>
+                              <div className="text-left">
+                                <p className="text-sm font-semibold text-amber-500">₪{sub.revenue.toLocaleString()}</p>
+                                <p className="text-xs text-gray-400">{sub.quantity} יח׳</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </>
       )}
     </div>
