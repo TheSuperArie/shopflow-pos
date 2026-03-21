@@ -93,6 +93,7 @@ export default function AdminDashboard() {
     sales: filteredSales,
     categories,
     groups,
+    variants,
   });
 
   const isLoading = loadingSales || loadingExpenses;
