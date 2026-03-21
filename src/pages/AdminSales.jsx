@@ -77,33 +77,14 @@ export default function AdminSales() {
     { name: 'אשראי', value: creditTotal, count: creditSales.length },
   ].filter(d => d.value > 0);
 
-  // Category breakdown
-  const categoryStats = {};
-  filteredSales.forEach(sale => {
-    sale.items?.forEach(item => {
-      const group = groups.find(g => g.id === item.product_id || g.name === item.product_name);
-      const categoryId = group?.category_id;
-      const category = categories.find(c => c.id === categoryId);
-      const categoryName = category?.name || 'אחר';
-      
-      if (!categoryStats[categoryName]) {
-        categoryStats[categoryName] = { revenue: 0, cost: 0, quantity: 0 };
-      }
-      categoryStats[categoryName].revenue += item.sell_price * item.quantity;
-      categoryStats[categoryName].cost += (item.cost_price || 0) * item.quantity;
-      categoryStats[categoryName].quantity += item.quantity;
-    });
+  // Shared hierarchical category analytics
+  const { parentCategoryData, flatCategoryData, COLORS } = useCategorySalesAnalytics({
+    sales: filteredSales,
+    categories,
+    groups,
   });
-
-  const categoryData = Object.entries(categoryStats).map(([name, stats]) => ({
-    name,
-    revenue: stats.revenue,
-    cost: stats.cost,
-    profit: stats.revenue - stats.cost,
-    quantity: stats.quantity,
-  })).sort((a, b) => b.revenue - a.revenue);
-
-  const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+  // alias for existing code that references categoryData
+  const categoryData = flatCategoryData;
 
   const deleteSaleMutation = useMutation({
     mutationFn: (saleId) => base44.entities.Sale.delete(saleId),
