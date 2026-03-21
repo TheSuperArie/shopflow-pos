@@ -77,11 +77,18 @@ export default function AdminSales() {
     { name: 'אשראי', value: creditTotal, count: creditSales.length },
   ].filter(d => d.value > 0);
 
+  const { data: variants = [] } = useQuery({
+    queryKey: ['product-variants', user?.email],
+    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
+    enabled: !!user,
+  });
+
   // Shared hierarchical category analytics
   const { parentCategoryData, flatCategoryData, COLORS } = useCategorySalesAnalytics({
     sales: filteredSales,
     categories,
     groups,
+    variants,
   });
   // alias for existing code that references categoryData
   const categoryData = flatCategoryData;
