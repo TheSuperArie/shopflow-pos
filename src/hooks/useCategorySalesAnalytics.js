@@ -4,16 +4,10 @@ export const ANALYTICS_COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8
 
 /**
  * Unified hierarchical category sales analytics hook.
- *
  * Lookup chain per item:
  *   item.variant_id → variant.group_id → group.category_id → category → parent category
- *
- * Falls back to name-prefix match only when variant_id is missing.
- *
- * Returns:
- *   parentCategoryData: [{ id, name, revenue, cost, profit, quantity, subCategories: [...] }]
- *   flatCategoryData:   flat version (no subCategories) for pie charts — one entry per parent
- *   COLORS
+ * Falls back to exact name match for legacy data (older sales without variant_id).
+ * Unmapped items are bucketed individually by name (no giant "אחר" slice).
  */
 export function useCategorySalesAnalytics({ sales = [], categories = [], groups = [], variants = [] }) {
   return useMemo(() => {
@@ -24,7 +18,7 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
     const categoryById = {};
     for (const c of categories) categoryById[c.id] = c;
 
-    // variant_id → group  (the critical map that was missing)
+    // variant_id → group
     const groupByVariantId = {};
     for (const v of variants) {
       if (v.group_id && groupById[v.group_id]) {
@@ -32,13 +26,13 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       }
     }
 
-    // group name → group  (for legacy name-based fallback)
+    // group name → group (for legacy name-based fallback)
     const groupByName = {};
     for (const g of groups) groupByName[g.name] = g;
 
     // ── Resolve group from a sale item ───────────────────────────
     function resolveGroup(item) {
-      // 1. Primary: variant_id → group  (most accurate)
+      // 1. Primary: variant_id → group (most accurate)
       if (item.variant_id && groupByVariantId[item.variant_id]) {
         return groupByVariantId[item.variant_id];
       }
@@ -46,23 +40,18 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       if (item.product_id && groupById[item.product_id]) {
         return groupById[item.product_id];
       }
-      // 3. Legacy: exact name match (strip dimension suffix after " - ")
+      // 3. Legacy: name match (strip dimension suffix after " - ")
       const baseName = item.product_name?.split(' - ')[0]?.trim();
       if (baseName) {
-        // Exact match first
         if (groupByName[baseName]) return groupByName[baseName];
         // Partial match as last resort
-        const partial = groups.find(g => g.name === baseName || baseName.startsWith(g.name));
+        const partial = groups.find(g => baseName.startsWith(g.name) || g.name.startsWith(baseName));
         if (partial) return partial;
       }
       return null;
     }
 
-    // ── Build "other" buckets by item name so they don't all collapse ──
-    const otherItems = {}; // product_name → accumulated stats
-
     // ── Accumulate ───────────────────────────────────────────────
-    // parentId → { id, name, revenue, cost, quantity, subMap }
     const parentMap = {};
 
     for (const sale of sales) {
@@ -71,7 +60,7 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
         const itemCost    = (item.cost_price  || 0) * (item.quantity || 0);
         const itemQty     = item.quantity || 0;
 
-        let parentCatId   = null; // null = unmapped
+        let parentCatId   = null;
         let parentCatName = null;
         let subCatId      = null;
         let subCatName    = null;
@@ -92,19 +81,13 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
           }
         }
 
-        // Unmapped items: bucket individually by product name (not one giant "אחר")
+        // Unmapped: bucket individually by product name (not one giant slice)
         if (!parentCatId) {
           const label = item.product_name?.split(' - ')[0]?.trim() || 'אחר';
-          if (!otherItems[label]) {
-            otherItems[label] = { revenue: 0, cost: 0, quantity: 0 };
-          }
-          otherItems[label].revenue  += itemRevenue;
-          otherItems[label].cost     += itemCost;
-          otherItems[label].quantity += itemQty;
-          continue;
+          parentCatId   = `__other__${label}`;
+          parentCatName = label;
         }
 
-        // Parent bucket
         if (!parentMap[parentCatId]) {
           parentMap[parentCatId] = {
             id: parentCatId, name: parentCatName,
@@ -116,7 +99,6 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
         parentMap[parentCatId].cost     += itemCost;
         parentMap[parentCatId].quantity += itemQty;
 
-        // Sub-category bucket
         if (subCatId) {
           if (!parentMap[parentCatId].subMap[subCatId]) {
             parentMap[parentCatId].subMap[subCatId] = {
@@ -131,16 +113,6 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       }
     }
 
-    // Add individual "other" items as separate top-level entries
-    for (const [label, stats] of Object.entries(otherItems)) {
-      parentMap[`__other__${label}`] = {
-        id: `__other__${label}`,
-        name: label,
-        revenue: stats.revenue, cost: stats.cost, quantity: stats.quantity,
-        subMap: {},
-      };
-    }
-
     // ── Format output ────────────────────────────────────────────
     const parentCategoryData = Object.values(parentMap)
       .map(p => ({
@@ -152,7 +124,6 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
-    // Flat — one row per parent, for pie charts
     const flatCategoryData = parentCategoryData.map(({ subMap, ...rest }) => rest);
 
     return { parentCategoryData, flatCategoryData, COLORS: ANALYTICS_COLORS };
