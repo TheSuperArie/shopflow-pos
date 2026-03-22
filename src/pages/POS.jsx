@@ -278,6 +278,11 @@ export default function POS() {
   return (
     <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
       <OfflineSyncStatus syncStatus={syncStatus} failedCount={failedCount} processedCount={processedCount} retryFailedSync={retryFailedSync} />
+      {scannerEnabled && (
+        <div className="bg-green-500 text-white text-center text-xs py-1 font-semibold">
+          🔍 מצב סריקת ברקוד פעיל — סרוק מוצר להוספה ישירה לעגלה
+        </div>
+      )}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
