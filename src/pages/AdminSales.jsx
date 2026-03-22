@@ -575,7 +575,7 @@ export default function AdminSales() {
                         <div className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">מכירה</div>
                         <Clock className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-gray-500">
-                          {sale.created_date ? new Date(sale.created_date).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                          {formatIsraelTime(sale.created_date)}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
