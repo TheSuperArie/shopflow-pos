@@ -12,13 +12,13 @@ import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import OnlineStatus from '@/components/pos/OnlineStatus';
 import OfflineSyncStatus from '@/components/pos/OfflineSyncStatus';
+import BarcodeScanner from '@/components/pos/BarcodeScanner';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
@@ -33,7 +33,7 @@ export default function POS() {
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
-  const [scannerEnabled, setScannerEnabled] = useState(true);
+  const [scannerEnabled, setScannerEnabled] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
