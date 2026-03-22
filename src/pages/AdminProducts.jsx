@@ -201,6 +201,13 @@ export default function AdminProducts() {
                                   <Settings className="w-4 h-4 text-blue-600" />
                                 </button>
                               )}
+                              <PullParentVariantsButton
+                                subCategory={subCat}
+                                parentCategory={category}
+                                user={user}
+                                queryClient={queryClient}
+                                toast={toast}
+                              />
                               <button onClick={(e) => { e.stopPropagation(); setEditingCategory(subCat); setNewCatDefaultParentId(null); setShowCatForm(true); }}
                                 className="p-1.5 rounded-lg hover:bg-blue-200">
                                 <Pencil className="w-4 h-4 text-blue-600" />
