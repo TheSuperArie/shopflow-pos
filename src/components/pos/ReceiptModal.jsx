@@ -130,7 +130,8 @@ export default function ReceiptModal({ open, sale, onClose }) {
     // Create a printable version
     const receiptNumber = generateReceiptNumber();
     const storeName = settings?.store_name || 'החנות שלי';
-    const receiptDate = format(new Date(sale.created_date), 'dd/MM/yyyy HH:mm');
+    const sd2 = sale.created_date?.endsWith('Z') ? sale.created_date : `${sale.created_date}Z`;
+    const receiptDate = new Date(sd2).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
     
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
