@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { TrendingUp, TrendingDown, DollarSign, Package, Banknote, CreditCard, Loader2, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2, ChevronDown } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCategorySalesAnalytics } from '@/hooks/useCategorySalesAnalytics';
