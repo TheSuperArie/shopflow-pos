@@ -204,7 +204,8 @@ export default function POS() {
       }
     },
     onSuccess: (sale) => {
-      if (!isEffectivelyOffline) {
+      const wentOffline = sale?._savedOffline;
+      if (!wentOffline && !isEffectivelyOffline) {
         queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       }
       setLastSale(sale);
@@ -212,7 +213,7 @@ export default function POS() {
       setShowCheckout(false);
       setShowCart(false);
       setShowReceipt(true);
-      if (isEffectivelyOffline) {
+      if (wentOffline || isEffectivelyOffline) {
         toast({ title: '✅ המכירה נשמרה מקומית (אופליין)', description: 'תסונכרן כשיחזור החיבור', duration: 3000 });
       } else {
         toast({ title: '✅ המכירה הושלמה!' });
