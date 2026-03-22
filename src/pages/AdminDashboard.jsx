@@ -123,12 +123,25 @@ export default function AdminDashboard() {
             <StatCard title="עלות סחורה" value={`₪${totalCost.toFixed(0)}`} icon={TrendingDown} color="text-red-500" bg="bg-red-50" />
             <StatCard title="הוצאות" value={`₪${totalExpenses.toFixed(0)}`} icon={TrendingDown} color="text-orange-500" bg="bg-orange-50" />
             <StatCard
-              title="רווח נקי"
+              title={includeExpenses ? 'רווח נקי (כולל הוצאות)' : 'רווח גולמי'}
               value={`₪${netProfit.toFixed(0)}`}
               icon={TrendingUp}
               color={netProfit >= 0 ? 'text-green-600' : 'text-red-600'}
               bg={netProfit >= 0 ? 'bg-green-50' : 'bg-red-50'}
             />
+          </div>
+
+          {/* Expense toggle */}
+          <div className="flex items-center gap-2 justify-end">
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 select-none">
+              <input
+                type="checkbox"
+                checked={includeExpenses}
+                onChange={e => setIncludeExpenses(e.target.checked)}
+                className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+              />
+              כלול הוצאות ברווח
+            </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
