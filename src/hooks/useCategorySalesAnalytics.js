@@ -71,8 +71,8 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
         const itemCost    = (item.cost_price  || 0) * (item.quantity || 0);
         const itemQty     = item.quantity || 0;
 
-        let parentCatId   = '__other__';
-        let parentCatName = 'אחר';
+        let parentCatId   = null; // null = unmapped
+        let parentCatName = null;
         let subCatId      = null;
         let subCatName    = null;
 
@@ -81,17 +81,27 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
           const cat = categoryById[group.category_id];
           if (cat) {
             if (cat.parent_id && categoryById[cat.parent_id]) {
-              // cat is a sub-category
               subCatId      = cat.id;
               subCatName    = cat.name;
               parentCatId   = cat.parent_id;
               parentCatName = categoryById[cat.parent_id].name;
             } else {
-              // cat is already a top-level category
               parentCatId   = cat.id;
               parentCatName = cat.name;
             }
           }
+        }
+
+        // Unmapped items: bucket individually by product name (not one giant "אחר")
+        if (!parentCatId) {
+          const label = item.product_name?.split(' - ')[0]?.trim() || 'אחר';
+          if (!otherItems[label]) {
+            otherItems[label] = { revenue: 0, cost: 0, quantity: 0 };
+          }
+          otherItems[label].revenue  += itemRevenue;
+          otherItems[label].cost     += itemCost;
+          otherItems[label].quantity += itemQty;
+          continue;
         }
 
         // Parent bucket
