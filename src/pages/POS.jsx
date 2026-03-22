@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ShoppingCart, RotateCcw, Users, ScanLine } from 'lucide-react';
+import { Settings, ShoppingCart, RotateCcw, Users, Barcode } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import ProductGrid from '@/components/pos/ProductGrid';
@@ -12,13 +12,13 @@ import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import OnlineStatus from '@/components/pos/OnlineStatus';
 import OfflineSyncStatus from '@/components/pos/OfflineSyncStatus';
+import BarcodeScanner from '@/components/pos/BarcodeScanner';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
@@ -33,7 +33,7 @@ export default function POS() {
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
-  const [scannerEnabled, setScannerEnabled] = useState(true);
+  const [scannerEnabled, setScannerEnabled] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,19 +41,6 @@ export default function POS() {
 
   useInventorySync();
   const { syncToServer, syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
-
-  // Global barcode scanner listener
-  useBarcodeScanner((barcode) => {
-    // Match by full SKU or barcode field on variants/groups
-    const byVariantSku = allVariants.find(v => v.sku === barcode || v.barcode === barcode);
-    if (byVariantSku) {
-      const group = allGroups.find(g => g.id === byVariantSku.group_id);
-      if (group) { handleBarcodeSelect(byVariantSku, group); return; }
-    }
-    const byGroupBarcode = allGroups.find(g => g.barcode === barcode);
-    if (byGroupBarcode) { handleGroupSelect(byGroupBarcode); return; }
-    toast({ title: '⚠️ ברקוד לא נמצא', description: barcode, duration: 2000 });
-  }, scannerEnabled);
 
   // ── Derived values (not hooks) ───────────────────────────────────
   const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
@@ -295,13 +282,6 @@ export default function POS() {
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
           <OnlineStatus onModeChange={handleModeChange} onSync={handleSync} />
-          <button
-            onClick={() => setScannerEnabled(p => !p)}
-            className={`p-2 rounded-xl transition-colors ${scannerEnabled ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-            title={scannerEnabled ? 'סורק ברקוד פעיל — לחץ לכיבוי' : 'סורק ברקוד כבוי — לחץ להפעלה'}
-          >
-            <ScanLine className="w-5 h-5" />
-          </button>
           <button onClick={() => setShowStaffPortal(true)}
             className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="פורטל עובדים">
             <Users className="w-5 h-5" />
@@ -318,6 +298,13 @@ export default function POS() {
                 {cartItems.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setScannerEnabled(s => !s)}
+            className={`p-2 rounded-xl transition-colors ${scannerEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            title="מצב סריקת ברקוד"
+          >
+            <Barcode className="w-5 h-5" />
           </button>
           <Link to="/AdminLogin" className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
             <Settings className="w-5 h-5" />
@@ -465,6 +452,13 @@ export default function POS() {
           </div>
         )}
       </div>
+
+      <BarcodeScanner
+        enabled={scannerEnabled}
+        variants={allVariants}
+        groups={allGroups}
+        onVariantFound={handleBarcodeSelect}
+      />
 
       <DynamicVariantSelector
         open={!!selectedGroup}
