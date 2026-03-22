@@ -198,7 +198,12 @@ export default function ReceiptModal({ open, sale, onClose }) {
   if (!sale) return null;
 
   const storeName = settings?.store_name || 'החנות שלי';
-  const receiptDate = sale.created_date ? format(new Date(sale.created_date), 'dd/MM/yyyy HH:mm') : '';
+  const safeDate = sale.created_date
+    ? (sale.created_date.endsWith('Z') ? sale.created_date : `${sale.created_date}Z`)
+    : null;
+  const receiptDate = safeDate
+    ? new Date(safeDate).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+    : '';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
