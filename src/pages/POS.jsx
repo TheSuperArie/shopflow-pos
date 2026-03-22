@@ -173,12 +173,19 @@ export default function POS() {
         created_date: new Date().toISOString(),
       };
 
-      if (isEffectivelyOffline) {
+      const saveOffline = async () => {
         await offlineManager.addPendingSale(saleData);
         const updatedVariants = await offlineManager.deductLocalStock(cartItems);
         queryClient.setQueryData(['product-variants', isOfflineMode, user?.email], updatedVariants);
-        return { ...saleData, id: 'offline_' + Date.now() };
-      } else {
+        return { ...saleData, id: 'offline_' + Date.now(), _savedOffline: true };
+      };
+
+      if (isEffectivelyOffline || !navigator.onLine) {
+        return saveOffline();
+      }
+
+      // Online path — auto-fallback to offline on any network failure
+      try {
         const sale = await base44.entities.Sale.create(saleData);
         for (const item of cartItems) {
           if (!item.variant_id) continue;
@@ -190,6 +197,10 @@ export default function POS() {
           }
         }
         return sale;
+      } catch (err) {
+        // Network failure — save offline silently so the button never gets stuck
+        console.warn('[POS] Online save failed, falling back to offline:', err.message);
+        return saveOffline();
       }
     },
     onSuccess: (sale) => {
