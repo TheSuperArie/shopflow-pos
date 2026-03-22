@@ -18,6 +18,7 @@ import StaffPortal from '@/components/pos/StaffPortal';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
