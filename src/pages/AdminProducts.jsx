@@ -312,6 +312,68 @@ export default function AdminProducts() {
   );
 }
 
+function PullParentVariantsButton({ subCategory, parentCategory, user, queryClient, toast }) {
+  const pullMutation = useMutation({
+    mutationFn: async () => {
+      // Fetch parent's VariantDimensions
+      const parentDims = await base44.entities.VariantDimension.filter({
+        category_id: parentCategory.id,
+        created_by: user?.email,
+      });
+
+      // Fetch sub-category's existing VariantDimensions
+      const subDims = await base44.entities.VariantDimension.filter({
+        category_id: subCategory.id,
+        created_by: user?.email,
+      });
+
+      // Smart merge: find parent dims that don't exist in sub by name
+      const existingNames = new Set(subDims.map(d => d.name));
+      const toImport = parentDims.filter(d => !existingNames.has(d.name));
+
+      // Create missing ones
+      await Promise.all(toImport.map(d =>
+        base44.entities.VariantDimension.create({
+          category_id: subCategory.id,
+          name: d.name,
+          values: d.values,
+          is_active: d.is_active !== false,
+          sort_order: d.sort_order || 0,
+        })
+      ));
+
+      return toImport.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['variant-dimensions'] });
+      toast({
+        title: count > 0
+          ? `✅ יובאו ${count} ממדים חדשים מ-${parentCategory.name}`
+          : `✅ אין ממדים חדשים — הכל מעודכן`,
+        duration: 3000,
+        className: count > 0 ? 'bg-green-500 text-white border-green-600' : undefined,
+      });
+    },
+  });
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        pullMutation.mutate();
+      }}
+      disabled={pullMutation.isPending}
+      className="p-1.5 rounded-lg hover:bg-green-100 transition-colors"
+      title="עדכן וריאציות מקטגוריית אב"
+    >
+      {pullMutation.isPending
+        ? <Loader2 className="w-4 h-4 animate-spin text-green-600" />
+        : <Download className="w-4 h-4 text-green-600" />
+      }
+    </button>
+  );
+}
+
 function DeleteCategoryButton({ categoryId, queryClient, toast }) {
   const deleteMut = useMutation({
     mutationFn: async () => {
