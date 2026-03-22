@@ -77,7 +77,8 @@ export default function AdminDashboard() {
   const totalSales = filteredSales.reduce((s, sale) => s + (sale.total || 0), 0);
   const totalCost = filteredSales.reduce((s, sale) => s + (sale.total_cost || 0), 0);
   const totalExpenses = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0);
-  const netProfit = totalSales - totalCost - totalExpenses;
+  const grossProfit = totalSales - totalCost;
+  const netProfit = includeExpenses ? grossProfit - totalExpenses : grossProfit;
   const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (sale.total || 0), 0);
   const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (sale.total || 0), 0);
 
