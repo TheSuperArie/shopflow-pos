@@ -50,7 +50,8 @@ export default function ReceiptModal({ open, sale, onClose }) {
   const sendEmailMutation = useMutation({
     mutationFn: async (receipt) => {
       const storeName = settings?.store_name || 'החנות שלי';
-      const receiptDate = format(new Date(sale.created_date), 'dd/MM/yyyy HH:mm');
+      const sd = sale.created_date?.endsWith('Z') ? sale.created_date : `${sale.created_date}Z`;
+      const receiptDate = new Date(sd).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
       
       const itemsHtml = sale.items.map(item => `
         <tr>
