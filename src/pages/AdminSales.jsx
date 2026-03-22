@@ -1,4 +1,18 @@
 import React, { useState } from 'react';
+
+const formatIsraelTime = (dateString) => {
+  if (!dateString) return '';
+  const safeString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+  const date = new Date(safeString);
+  return date.toLocaleString('he-IL', {
+    timeZone: 'Asia/Jerusalem',
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
