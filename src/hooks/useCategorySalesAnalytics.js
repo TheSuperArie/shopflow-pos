@@ -131,6 +131,16 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       }
     }
 
+    // Add individual "other" items as separate top-level entries
+    for (const [label, stats] of Object.entries(otherItems)) {
+      parentMap[`__other__${label}`] = {
+        id: `__other__${label}`,
+        name: label,
+        revenue: stats.revenue, cost: stats.cost, quantity: stats.quantity,
+        subMap: {},
+      };
+    }
+
     // ── Format output ────────────────────────────────────────────
     const parentCategoryData = Object.values(parentMap)
       .map(p => ({
