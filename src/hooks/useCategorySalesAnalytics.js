@@ -32,6 +32,10 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       }
     }
 
+    // group name → group  (for legacy name-based fallback)
+    const groupByName = {};
+    for (const g of groups) groupByName[g.name] = g;
+
     // ── Resolve group from a sale item ───────────────────────────
     function resolveGroup(item) {
       // 1. Primary: variant_id → group  (most accurate)
@@ -42,13 +46,20 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       if (item.product_id && groupById[item.product_id]) {
         return groupById[item.product_id];
       }
-      // 3. Last resort: exact name match (strip dimension suffix after " - ")
+      // 3. Legacy: exact name match (strip dimension suffix after " - ")
       const baseName = item.product_name?.split(' - ')[0]?.trim();
       if (baseName) {
-        return groups.find(g => g.name === baseName) || null;
+        // Exact match first
+        if (groupByName[baseName]) return groupByName[baseName];
+        // Partial match as last resort
+        const partial = groups.find(g => g.name === baseName || baseName.startsWith(g.name));
+        if (partial) return partial;
       }
       return null;
     }
+
+    // ── Build "other" buckets by item name so they don't all collapse ──
+    const otherItems = {}; // product_name → accumulated stats
 
     // ── Accumulate ───────────────────────────────────────────────
     // parentId → { id, name, revenue, cost, quantity, subMap }
