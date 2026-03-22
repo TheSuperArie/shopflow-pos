@@ -12,13 +12,13 @@ import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import OnlineStatus from '@/components/pos/OnlineStatus';
 import OfflineSyncStatus from '@/components/pos/OfflineSyncStatus';
-import BarcodeScanner from '@/components/pos/BarcodeScanner';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
@@ -33,7 +33,7 @@ export default function POS() {
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
-  const [scannerEnabled, setScannerEnabled] = useState(false);
+  const [scannerEnabled, setScannerEnabled] = useState(true);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -41,6 +41,19 @@ export default function POS() {
 
   useInventorySync();
   const { syncToServer, syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
+
+  // Global barcode scanner listener
+  useBarcodeScanner((barcode) => {
+    // Match by full SKU or barcode field on variants/groups
+    const byVariantSku = allVariants.find(v => v.sku === barcode || v.barcode === barcode);
+    if (byVariantSku) {
+      const group = allGroups.find(g => g.id === byVariantSku.group_id);
+      if (group) { handleBarcodeSelect(byVariantSku, group); return; }
+    }
+    const byGroupBarcode = allGroups.find(g => g.barcode === barcode);
+    if (byGroupBarcode) { handleGroupSelect(byGroupBarcode); return; }
+    toast({ title: '⚠️ ברקוד לא נמצא', description: barcode, duration: 2000 });
+  }, scannerEnabled);
 
   // ── Derived values (not hooks) ───────────────────────────────────
   const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
