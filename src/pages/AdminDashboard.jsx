@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [expandedParent, setExpandedParent] = useState(null);
+  const [includeExpenses, setIncludeExpenses] = useState(true);
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
