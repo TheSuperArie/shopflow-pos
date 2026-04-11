@@ -120,6 +120,16 @@ export default function AdminCategoryInsights() {
     return d >= dateFrom && d <= dateTo;
   }), [sales, dateFrom, dateTo]);
 
+  // Group variants by group_id for fallback matching
+  const variantsByGroupId = useMemo(() => {
+    const m = {};
+    for (const v of variants) {
+      if (!m[v.group_id]) m[v.group_id] = [];
+      m[v.group_id].push(v);
+    }
+    return m;
+  }, [variants]);
+
   // ── Enrich sold items with catalog context ───────────────────────
   const soldItems = useMemo(() => {
     const items = [];
@@ -127,13 +137,30 @@ export default function AdminCategoryInsights() {
       for (const item of (sale.items || [])) {
         // 1. Resolve variant — coerce both sides to String to avoid type mismatches
         const rawVarId = item.variant_id ?? item.variantId;
-        const variant = rawVarId ? variantById[String(rawVarId)] : null;
+        let variant = rawVarId ? variantById[String(rawVarId)] : null;
 
         // 2. Resolve group: via variant → group, direct product_id, or name fallback
         const groupId = variant?.group_id || item.product_id;
         const baseName = item.product_name?.split(' - ')[0]?.trim();
         const group = groupById[groupId] || (baseName ? groupByName[baseName] : null);
         if (!group) continue;
+
+        // 3. Fallback variant match when ID lookup failed
+        if (!variant && group) {
+          const groupVariants = variantsByGroupId[group.id] || [];
+          if (groupVariants.length === 1) {
+            variant = groupVariants[0];
+          } else if (groupVariants.length > 1) {
+            const nameSuffix = item.product_name?.includes(' - ')
+              ? item.product_name.split(' - ').slice(1).join(' - ').trim()
+              : '';
+            if (nameSuffix) {
+              variant = groupVariants.find(v =>
+                Object.values(v.dimensions || {}).some(val => nameSuffix.includes(String(val)))
+              ) || null;
+            }
+          }
+        }
 
         const catId = group.category_id;
         const cat = categoryById[catId];
@@ -144,7 +171,7 @@ export default function AdminCategoryInsights() {
         const isSubCatChild = cat.parent_id === categoryId;
         if (!isDirectChild && !isSubCatChild) continue;
 
-        // Bucket: use sub-cat if available, otherwise use the group itself as the bucket
+        // Bucket: use sub-cat if available, otherwise use the group itself
         const subCatId = isSubCatChild ? catId : group.id;
         const subCatName = isSubCatChild ? cat.name : group.name;
 
@@ -163,7 +190,7 @@ export default function AdminCategoryInsights() {
       }
     }
     return items;
-  }, [dateSales, variantById, groupById, groupByName, categoryById, categoryId]);
+  }, [dateSales, variantById, variantsByGroupId, groupById, groupByName, categoryById, categoryId]);
 
   // ── Drill-path derived state ─────────────────────────────────────
   const subcatStep = drillPath.find(s => s.type === 'subcat') || null;
@@ -390,7 +417,7 @@ export default function AdminCategoryInsights() {
           {/* Breakdown List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">פירוט — {currentLabel}</CardTitle>
+              <CardTitle className="text-base">פירוט — {subcatStep && selectedDimension ? selectedDimension : currentLabel}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
