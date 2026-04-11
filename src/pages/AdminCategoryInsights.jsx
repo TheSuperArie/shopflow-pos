@@ -67,7 +67,8 @@ export default function AdminCategoryInsights() {
 
   const variantById = useMemo(() => {
     const m = {};
-    for (const v of variants) m[v.id] = v;
+    // Use String keys to avoid type mismatch between numeric/string IDs
+    for (const v of variants) m[String(v.id)] = v;
     return m;
   }, [variants]);
 
@@ -123,8 +124,9 @@ export default function AdminCategoryInsights() {
     const items = [];
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
-        // 1. Resolve variant
-        const variant = item.variant_id ? variantById[item.variant_id] : null;
+        // 1. Resolve variant — coerce both sides to String to avoid type mismatches
+        const rawVarId = item.variant_id ?? item.variantId;
+        const variant = rawVarId ? variantById[String(rawVarId)] : null;
 
         // 2. Resolve group: via variant → group, direct product_id, or name fallback
         const groupId = variant?.group_id || item.product_id;
