@@ -66,6 +66,13 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
+  // name → group fallback for legacy sales where product_id is absent
+  const groupByName = useMemo(() => {
+    const m = {};
+    for (const g of groups) m[g.name] = g;
+    return m;
+  }, [groups]);
+
   const variantById = useMemo(() => {
     const m = {};
     for (const v of variants) m[v.id] = v;
@@ -117,10 +124,12 @@ export default function AdminCategoryInsights() {
     const items = [];
     for (const sale of sales) {
       for (const item of (sale.items || [])) {
-        // Resolve variant and group
+        // Resolve variant and group — try all available signals
         const variant = item.variant_id ? variantById[item.variant_id] : null;
         const groupId = variant?.group_id || item.product_id;
-        const group = groupById[groupId];
+        // Fallback: match by base product name (strip dimension suffix after ' - ')
+        const baseName = item.product_name?.split(' - ')[0]?.trim();
+        const group = groupById[groupId] || (baseName ? groupByName[baseName] : null);
         if (!group) continue;
 
         const catId = group.category_id;
