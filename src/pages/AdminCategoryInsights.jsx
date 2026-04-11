@@ -66,6 +66,12 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
+  // Pre-sorted by name length desc for partial matching (longest/most-specific first)
+  const groupsSortedByNameLen = useMemo(
+    () => [...groups].sort((a, b) => b.name.length - a.name.length),
+    [groups]
+  );
+
   const variantById = useMemo(() => {
     const m = {};
     // Use String keys to avoid type mismatch between numeric/string IDs
@@ -142,7 +148,13 @@ export default function AdminCategoryInsights() {
         // 2. Resolve group: via variant → group, direct product_id, or name fallback
         const groupId = variant?.group_id || item.product_id;
         const baseName = item.product_name?.split(' - ')[0]?.trim();
-        const group = groupById[groupId] || (baseName ? groupByName[baseName] : null);
+        let group = groupById[groupId] || (baseName ? groupByName[baseName] : null);
+        // Partial name fallback — longest match first to avoid false matches
+        if (!group && baseName) {
+          group = groupsSortedByNameLen.find(g =>
+            baseName.startsWith(g.name) || g.name.startsWith(baseName)
+          ) || null;
+        }
         if (!group) continue;
 
         // 3. Fallback variant match when ID lookup failed

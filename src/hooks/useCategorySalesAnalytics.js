@@ -18,11 +18,11 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
     const categoryById = {};
     for (const c of categories) categoryById[c.id] = c;
 
-    // variant_id → group
+    // variant_id → group (String keys to avoid type mismatch)
     const groupByVariantId = {};
     for (const v of variants) {
       if (v.group_id && groupById[v.group_id]) {
-        groupByVariantId[v.id] = groupById[v.group_id];
+        groupByVariantId[String(v.id)] = groupById[v.group_id];
       }
     }
 
@@ -31,10 +31,14 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
     for (const g of groups) groupByName[g.name] = g;
 
     // ── Resolve group from a sale item ───────────────────────────
+    // Groups sorted by name length desc for partial matching (longest/most-specific first)
+    const groupsSortedByNameLen = [...groups].sort((a, b) => b.name.length - a.name.length);
+
     function resolveGroup(item) {
-      // 1. Primary: variant_id → group (most accurate)
-      if (item.variant_id && groupByVariantId[item.variant_id]) {
-        return groupByVariantId[item.variant_id];
+      // 1. Primary: variant_id → group (most accurate, String-coerced)
+      const rawVarId = item.variant_id ?? item.variantId;
+      if (rawVarId && groupByVariantId[String(rawVarId)]) {
+        return groupByVariantId[String(rawVarId)];
       }
       // 2. product_id might be a group id directly (older sales)
       if (item.product_id && groupById[item.product_id]) {
@@ -44,9 +48,10 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       const baseName = item.product_name?.split(' - ')[0]?.trim();
       if (baseName) {
         if (groupByName[baseName]) return groupByName[baseName];
-        // Sort by name length descending to match longest (most specific) name first
-        const sortedGroups = [...groups].sort((a, b) => b.name.length - a.name.length);
-        const partial = sortedGroups.find(g => baseName.startsWith(g.name) || g.name.startsWith(baseName));
+        // Use pre-sorted (longest name first) to match most-specific group first
+        const partial = groupsSortedByNameLen.find(g =>
+          baseName.startsWith(g.name) || g.name.startsWith(baseName)
+        );
         if (partial) return partial;
       }
       return null;
