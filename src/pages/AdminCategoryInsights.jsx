@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ export default function AdminCategoryInsights() {
   const user = useCurrentUser();
 
   const [drillPath, setDrillPath] = useState([]);
+  const [selectedDimension, setSelectedDimension] = useState('');
   // Date filter
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -196,6 +197,25 @@ export default function AdminCategoryInsights() {
 
   const currentDim = subcatStep ? (effectiveDims[dimSteps.length] || null) : null;
 
+  // Available dimension keys extracted dynamically from actual variant data
+  const availableDimKeys = useMemo(() => {
+    if (!subcatStep) return [];
+    const keys = new Set();
+    for (const item of subcatFilteredItems) {
+      for (const k of Object.keys(item.variantDimensions)) keys.add(k);
+    }
+    // Also add keys from effectiveDims (configured dimensions)
+    for (const d of effectiveDims) keys.add(d.name);
+    return [...keys];
+  }, [subcatStep, subcatFilteredItems, effectiveDims]);
+
+  // Auto-select first dimension when entering sub-cat drill
+  React.useEffect(() => {
+    if (availableDimKeys.length > 0 && !availableDimKeys.includes(selectedDimension)) {
+      setSelectedDimension(availableDimKeys[0]);
+    }
+  }, [availableDimKeys]);
+
   // Can drill further into next dimension?
   const canDrillDim = subcatStep && currentDim && effectiveDims[dimSteps.length + 1] != null;
   // At level 0, always allow drilling into sub-cat
@@ -220,12 +240,10 @@ export default function AdminCategoryInsights() {
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // Level 1+: group by current dimension value from variant data
-    // Derive available dimension keys from actual variant data if no configured dim
-    const dimName = currentDim?.name;
+    // Level 1+: group by the user-selected dimension
+    const dimName = selectedDimension;
 
     if (dimName) {
-      // Group by a specific named dimension
       const map = {};
       for (const item of filteredItems) {
         const val = item.variantDimensions[dimName] ?? 'ללא וריאציה';
@@ -236,22 +254,7 @@ export default function AdminCategoryInsights() {
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // No configured dim — derive dimension keys from actual variant data
-    const allDimKeys = [...new Set(filteredItems.flatMap(i => Object.keys(i.variantDimensions)))];
-    if (allDimKeys.length > 0) {
-      // Use first available dim key
-      const firstKey = allDimKeys[0];
-      const map = {};
-      for (const item of filteredItems) {
-        const val = item.variantDimensions[firstKey] ?? 'ללא וריאציה';
-        if (!map[val]) map[val] = { id: val, name: val, revenue: 0, quantity: 0 };
-        map[val].revenue += (item.sell_price || 0) * (item.quantity || 0);
-        map[val].quantity += item.quantity || 0;
-      }
-      return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-    }
-
-    // Last resort: group by group name
+    // No dimension selected yet — group by group name as fallback
     const map = {};
     for (const item of filteredItems) {
       const key = item.resolvedGroupId;
@@ -261,7 +264,7 @@ export default function AdminCategoryInsights() {
       map[key].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [soldItems, filteredItems, subcatStep, currentDim]);
+  }, [soldItems, filteredItems, subcatStep, selectedDimension]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
@@ -345,6 +348,21 @@ export default function AdminCategoryInsights() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Dimension selector — shown when drilled into a sub-cat */}
+              {subcatStep && availableDimKeys.length > 0 && (
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-600">קבץ לפי:</span>
+                  <select
+                    value={selectedDimension}
+                    onChange={e => setSelectedDimension(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  >
+                    {availableDimKeys.map(k => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
                   <Pie
