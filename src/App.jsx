@@ -22,6 +22,7 @@ import AdminSuppliers from './pages/AdminSuppliers';
 import AdminReturns from './pages/AdminReturns';
 import AdminEmployees from './pages/AdminEmployees';
 import AdminCashReport from './pages/AdminCashReport';
+import AdminCategoryInsights from './pages/AdminCategoryInsights';
 import BatchShipmentEntry from './pages/BatchShipmentEntry';
 import Layout from './components/Layout';
 import AdminLayout from './components/admin/AdminLayout';
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
             <Route path="/AdminSettings" element={<AdminSettings />} />
             <Route path="/AdminEmployees" element={<AdminEmployees />} />
             <Route path="/AdminCashReport" element={<AdminCashReport />} />
+            <Route path="/admin/reports/category/:id" element={<AdminCategoryInsights />} />
           </Route>
         </Route>
         <Route path="/BatchShipmentEntry" element={<BatchShipmentEntry />} />
