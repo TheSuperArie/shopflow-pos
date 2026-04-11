@@ -44,8 +44,9 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       const baseName = item.product_name?.split(' - ')[0]?.trim();
       if (baseName) {
         if (groupByName[baseName]) return groupByName[baseName];
-        // Partial match as last resort
-        const partial = groups.find(g => baseName.startsWith(g.name) || g.name.startsWith(baseName));
+        // Sort by name length descending to match longest (most specific) name first
+        const sortedGroups = [...groups].sort((a, b) => b.name.length - a.name.length);
+        const partial = sortedGroups.find(g => baseName.startsWith(g.name) || g.name.startsWith(baseName));
         if (partial) return partial;
       }
       return null;

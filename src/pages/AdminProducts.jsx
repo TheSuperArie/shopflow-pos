@@ -201,13 +201,7 @@ export default function AdminProducts() {
                                   <Settings className="w-4 h-4 text-blue-600" />
                                 </button>
                               )}
-                              <PullParentVariantsButton
-                                subCategory={subCat}
-                                parentCategory={category}
-                                user={user}
-                                queryClient={queryClient}
-                                toast={toast}
-                              />
+                              <PullParentVariantsButton subCategory={subCat} categories={categories} queryClient={queryClient} toast={toast} user={user} />
                               <button onClick={(e) => { e.stopPropagation(); setEditingCategory(subCat); setNewCatDefaultParentId(null); setShowCatForm(true); }}
                                 className="p-1.5 rounded-lg hover:bg-blue-200">
                                 <Pencil className="w-4 h-4 text-blue-600" />
@@ -312,64 +306,46 @@ export default function AdminProducts() {
   );
 }
 
-function PullParentVariantsButton({ subCategory, parentCategory, user, queryClient, toast }) {
-  const pullMutation = useMutation({
-    mutationFn: async () => {
-      // Fetch parent's VariantDimensions
-      const parentDims = await base44.entities.VariantDimension.filter({
-        category_id: parentCategory.id,
-        created_by: user?.email,
-      });
+function PullParentVariantsButton({ subCategory, categories, queryClient, toast, user }) {
+  const [loading, setLoading] = React.useState(false);
 
-      // Fetch sub-category's existing VariantDimensions
-      const subDims = await base44.entities.VariantDimension.filter({
+  const handlePull = async (e) => {
+    e.stopPropagation();
+    if (!subCategory.parent_id) return;
+    setLoading(true);
+    const parentDims = await base44.entities.VariantDimension.filter({ category_id: subCategory.parent_id, created_by: user?.email });
+    const subDims = await base44.entities.VariantDimension.filter({ category_id: subCategory.id, created_by: user?.email });
+    const existingNames = new Set(subDims.map(d => d.name));
+    const toAdd = parentDims.filter(d => !existingNames.has(d.name));
+    await Promise.all(toAdd.map(d =>
+      base44.entities.VariantDimension.create({
         category_id: subCategory.id,
-        created_by: user?.email,
-      });
+        name: d.name,
+        values: d.values,
+        is_active: d.is_active,
+        sort_order: d.sort_order,
+      })
+    ));
+    queryClient.invalidateQueries({ queryKey: ['variant-dimensions'] });
+    setLoading(false);
+    const parentName = categories.find(c => c.id === subCategory.parent_id)?.name || 'האב';
+    if (toAdd.length === 0) {
+      toast({ title: `✅ כל הממדים מ-"${parentName}" כבר קיימים`, duration: 2500 });
+    } else {
+      toast({ title: `✅ יובאו ${toAdd.length} ממדים חדשים מ-"${parentName}"`, duration: 3000, className: 'bg-blue-500 text-white border-blue-600' });
+    }
+  };
 
-      // Smart merge: find parent dims that don't exist in sub by name
-      const existingNames = new Set(subDims.map(d => d.name));
-      const toImport = parentDims.filter(d => !existingNames.has(d.name));
-
-      // Create missing ones
-      await Promise.all(toImport.map(d =>
-        base44.entities.VariantDimension.create({
-          category_id: subCategory.id,
-          name: d.name,
-          values: d.values,
-          is_active: d.is_active !== false,
-          sort_order: d.sort_order || 0,
-        })
-      ));
-
-      return toImport.length;
-    },
-    onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ['variant-dimensions'] });
-      toast({
-        title: count > 0
-          ? `✅ יובאו ${count} ממדים חדשים מ-${parentCategory.name}`
-          : `✅ אין ממדים חדשים — הכל מעודכן`,
-        duration: 3000,
-        className: count > 0 ? 'bg-green-500 text-white border-green-600' : undefined,
-      });
-    },
-  });
+  if (!subCategory.parent_id) return null;
 
   return (
     <button
-      onClick={(e) => {
-        e.stopPropagation();
-        pullMutation.mutate();
-      }}
-      disabled={pullMutation.isPending}
-      className="p-1.5 rounded-lg hover:bg-green-100 transition-colors"
+      onClick={handlePull}
+      className="p-1.5 rounded-lg hover:bg-blue-200 transition-colors"
       title="עדכן וריאציות מקטגוריית אב"
+      disabled={loading}
     >
-      {pullMutation.isPending
-        ? <Loader2 className="w-4 h-4 animate-spin text-green-600" />
-        : <Download className="w-4 h-4 text-green-600" />
-      }
+      {loading ? <Loader2 className="w-4 h-4 text-blue-600 animate-spin" /> : <Download className="w-4 h-4 text-blue-600" />}
     </button>
   );
 }
