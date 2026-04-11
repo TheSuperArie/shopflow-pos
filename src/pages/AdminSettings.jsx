@@ -14,33 +14,10 @@ export default function AdminSettings() {
   const [password, setPassword] = useState('');
   const [storeName, setStoreName] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
-  const handleUpdateLoginPassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast({ title: 'הסיסמה חייבת להכיל לפחות 6 תווים', variant: 'destructive', duration: 3000 });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ title: 'הסיסמאות אינן תואמות', variant: 'destructive', duration: 3000 });
-      return;
-    }
-    setPasswordLoading(true);
-    try {
-      await base44.auth.updateMe({ password: newPassword });
-      setNewPassword('');
-      setConfirmPassword('');
-      toast({ title: 'הסיסמה עודכנה בהצלחה', duration: 3000 });
-    } catch (e) {
-      toast({ title: `שגיאה: ${e.message}`, variant: 'destructive', duration: 4000 });
-    }
-    setPasswordLoading(false);
-  };
 
   const { data: settings = [], isLoading } = useQuery({
     queryKey: ['app-settings', user?.email],
@@ -124,36 +101,18 @@ export default function AdminSettings() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Lock className="w-5 h-5" /> עדכון סיסמת כניסה לאפליקציה
+            <Lock className="w-5 h-5" /> סיסמת כניסה לאפליקציה
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-gray-500">עדכן את הסיסמה עבור כניסה במייל (לשימוש ב-WebView / אפליקציה)</p>
-          <div>
-            <Label>סיסמה חדשה</Label>
-            <Input
-              type="password"
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              placeholder="לפחות 6 תווים"
-            />
-          </div>
-          <div>
-            <Label>אימות סיסמה</Label>
-            <Input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="הכנס שוב את הסיסמה"
-            />
-          </div>
-          <Button
-            onClick={handleUpdateLoginPassword}
-            className="bg-blue-600 hover:bg-blue-700 gap-2"
-            disabled={passwordLoading || !newPassword || !confirmPassword}
-          >
-            {passwordLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> שמור סיסמה</>}
-          </Button>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-600">כדי להגדיר או לאפס את סיסמת הכניסה שלך (לשימוש ב-WebView / אפליקציה):</p>
+          <ol className="list-decimal list-inside text-sm text-gray-700 space-y-1 pr-2">
+            <li>צא מהחשבון או פתח את דף הכניסה של האפליקציה</li>
+            <li>לחץ על <strong>"Forgot password?"</strong></li>
+            <li>הכנס את האימייל שלך — תקבל מייל לאיפוס סיסמה</li>
+            <li>הגדר סיסמה חדשה ולאחר מכן כנס עם אימייל + סיסמה</li>
+          </ol>
+          <p className="text-xs text-gray-400">* זוהי הדרך הרשמית להגדיר סיסמה לכניסה דרך אימייל במערכת</p>
         </CardContent>
       </Card>
       <DangerZone user={user} />
