@@ -4,29 +4,22 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Loader2, ArrowRight, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { format, startOfMonth } from 'date-fns';
 
-/**
- * Drill-down hierarchy:
- *   Level 0 (default): group by sub-category (or group/product name if no sub-cats)
- *   Level 1: clicked a sub-cat → group by 1st variant dimension
- *   Level 2: clicked a dim value → group by 2nd variant dimension
- *   ...
- *
- * drillPath shape:
- *   []                                                     → Level 0
- *   [{ type:'subcat', id, name }]                          → Level 1
- *   [{ type:'subcat', ... }, { type:'dim', dimName, dimValue }]  → Level 2
- */
 export default function AdminCategoryInsights() {
   const { id: categoryId } = useParams();
   const navigate = useNavigate();
   const user = useCurrentUser();
 
   const [drillPath, setDrillPath] = useState([]);
+  // Date filter
+  const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [] } = useQuery({
@@ -66,7 +59,6 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
-  // name → group fallback for legacy sales where product_id is absent
   const groupByName = useMemo(() => {
     const m = {};
     for (const g of groups) m[g.name] = g;
@@ -81,13 +73,14 @@ export default function AdminCategoryInsights() {
 
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
-  const subCategoryIds = useMemo(
-    () => categories.filter(c => c.parent_id === categoryId).map(c => c.id),
+  const subCategories = useMemo(
+    () => categories.filter(c => c.parent_id === categoryId),
     [categories, categoryId]
   );
+  const subCategoryIds = useMemo(() => subCategories.map(c => c.id), [subCategories]);
   const allCatIds = useMemo(() => [categoryId, ...subCategoryIds], [categoryId, subCategoryIds]);
 
-  // ── Fetch ALL dimensions for the whole tree in one query ─────────
+  // ── Fetch ALL dimensions for the whole tree ─────────────────────
   const { data: allDimensions = [] } = useQuery({
     queryKey: ['variant-dimensions-tree', allCatIds.join(',')],
     queryFn: async () => {
@@ -106,12 +99,12 @@ export default function AdminCategoryInsights() {
     return m;
   }, [allDimensions]);
 
-  // Get effective sorted active dims for a category (respects inheritance)
   const getEffectiveDims = (catId) => {
     const cat = categoryById[catId];
     if (!cat) return [];
     let dims;
-    if (cat.inherit_dimensions !== false && cat.parent_id && dimsByCatId[cat.parent_id]?.length) {
+    // If sub-cat inherits from parent, use parent dims
+    if (cat.inherit_dimensions !== false && cat.parent_id && (dimsByCatId[cat.parent_id]?.length)) {
       dims = dimsByCatId[cat.parent_id];
     } else {
       dims = dimsByCatId[catId] || [];
@@ -119,15 +112,22 @@ export default function AdminCategoryInsights() {
     return dims.filter(d => d.is_active !== false).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   };
 
-  // ── Enrich all sold items with catalog context ───────────────────
+  // ── Date-filtered sales ──────────────────────────────────────────
+  const dateSales = useMemo(() => sales.filter(s => {
+    const d = s.created_date?.split('T')[0];
+    return d >= dateFrom && d <= dateTo;
+  }), [sales, dateFrom, dateTo]);
+
+  // ── Enrich sold items with catalog context ───────────────────────
   const soldItems = useMemo(() => {
     const items = [];
-    for (const sale of sales) {
+    for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
-        // Resolve variant and group — try all available signals
+        // 1. Resolve variant
         const variant = item.variant_id ? variantById[item.variant_id] : null;
+
+        // 2. Resolve group: via variant → group, direct product_id, or name fallback
         const groupId = variant?.group_id || item.product_id;
-        // Fallback: match by base product name (strip dimension suffix after ' - ')
         const baseName = item.product_name?.split(' - ')[0]?.trim();
         const group = groupById[groupId] || (baseName ? groupByName[baseName] : null);
         if (!group) continue;
@@ -136,49 +136,43 @@ export default function AdminCategoryInsights() {
         const cat = categoryById[catId];
         if (!cat) continue;
 
-        // Must belong to our tree (direct child or sub-category)
+        // Must belong to our category tree
         const isDirectChild = catId === categoryId;
         const isSubCatChild = cat.parent_id === categoryId;
         if (!isDirectChild && !isSubCatChild) continue;
 
-        // Determine which sub-cat bucket this item belongs to
-        const subCatId = isSubCatChild ? catId : '__direct__';
-        const subCatName = isSubCatChild ? cat.name : (category?.name || '');
+        // Bucket: use sub-cat if available, otherwise use the group itself as the bucket
+        const subCatId = isSubCatChild ? catId : group.id;
+        const subCatName = isSubCatChild ? cat.name : group.name;
+
+        // Variant dimensions — read from the resolved variant object
+        const variantDimensions = variant?.dimensions || {};
 
         items.push({
           ...item,
-          groupId,
+          resolvedGroupId: group.id,
           groupName: group.name,
           subCatId,
           subCatName,
           catId,
-          variantDimensions: variant?.dimensions || {},
+          variantDimensions,
         });
       }
     }
     return items;
-  }, [sales, variantById, groupById, categoryById, categoryId, category]);
+  }, [dateSales, variantById, groupById, groupByName, categoryById, categoryId]);
 
   // ── Drill-path derived state ─────────────────────────────────────
   const subcatStep = drillPath.find(s => s.type === 'subcat') || null;
   const dimSteps = drillPath.filter(s => s.type === 'dim');
 
-  // Distinct sub-cats with actual sales
-  const activeSaleSubCatIds = useMemo(
-    () => [...new Set(soldItems.map(i => i.subCatId))],
-    [soldItems]
-  );
-  // True if there's more than one real sub-cat bucket, or a non-direct bucket
-  const hasSubCats = activeSaleSubCatIds.length > 1
-    || (activeSaleSubCatIds.length === 1 && activeSaleSubCatIds[0] !== '__direct__');
-
-  // Items after sub-cat filter
+  // Sub-cat items after sub-cat filter
   const subcatFilteredItems = useMemo(() => {
     if (!subcatStep) return soldItems;
     return soldItems.filter(i => i.subCatId === subcatStep.id);
   }, [soldItems, subcatStep]);
 
-  // Items after sub-cat + dimension filters
+  // Items after all filters
   const filteredItems = useMemo(() => {
     let items = subcatFilteredItems;
     for (const step of dimSteps) {
@@ -187,31 +181,36 @@ export default function AdminCategoryInsights() {
     return items;
   }, [subcatFilteredItems, dimSteps]);
 
-  // Effective dims for the selected sub-cat (for Level 1+)
+  // Effective dims for selected sub-cat
   const effectiveDims = useMemo(() => {
-    if (!subcatStep || subcatStep.id === '__direct__') return [];
-    return getEffectiveDims(subcatStep.id);
-  }, [subcatStep, dimsByCatId, categoryById]);
+    if (!subcatStep) return [];
+    // subcatStep.id could be a sub-category id OR a group.id (direct product)
+    // Try it as a sub-category first, then fall back to parent dims
+    const dims = getEffectiveDims(subcatStep.id);
+    if (dims.length > 0) return dims;
+    // Fallback: use parent category dims
+    return getEffectiveDims(categoryId);
+  }, [subcatStep, dimsByCatId, categoryById, categoryId]);
 
-  // Current dimension to show (based on how many dim steps we've already taken)
   const currentDim = subcatStep ? (effectiveDims[dimSteps.length] || null) : null;
 
-  // Can we drill further?
-  const canDrill = !subcatStep || (currentDim && effectiveDims[dimSteps.length + 1]);
+  // Can drill further into next dimension?
+  const canDrillDim = subcatStep && currentDim && effectiveDims[dimSteps.length + 1] != null;
+  // At level 0, always allow drilling into sub-cat
+  const canDrill = !subcatStep || canDrillDim;
 
-  // Label for the current chart level
   const currentLabel = !subcatStep
-    ? (hasSubCats ? 'תת-קטגוריה' : 'מוצר')
-    : (currentDim?.name || '—');
+    ? 'תת-קטגוריה / מוצר'
+    : (currentDim?.name || 'וריאציות');
 
   // ── Chart data ───────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    // Level 0: group by sub-cat (or group name if flat)
+    // Level 0: group by sub-cat bucket
     if (!subcatStep) {
       const map = {};
       for (const item of soldItems) {
-        const key = hasSubCats ? item.subCatId : item.groupId;
-        const label = hasSubCats ? item.subCatName : item.groupName;
+        const key = item.subCatId;
+        const label = item.subCatName;
         if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
         map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
         map[key].quantity += item.quantity || 0;
@@ -219,27 +218,56 @@ export default function AdminCategoryInsights() {
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // Level 1+: group by current dimension value
-    if (!currentDim) return [];
+    // Level 1+: group by current dimension value from variant data
+    // Derive available dimension keys from actual variant data if no configured dim
+    const dimName = currentDim?.name;
+
+    if (dimName) {
+      // Group by a specific named dimension
+      const map = {};
+      for (const item of filteredItems) {
+        const val = item.variantDimensions[dimName] ?? 'ללא וריאציה';
+        if (!map[val]) map[val] = { id: val, name: val, revenue: 0, quantity: 0 };
+        map[val].revenue += (item.sell_price || 0) * (item.quantity || 0);
+        map[val].quantity += item.quantity || 0;
+      }
+      return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+    }
+
+    // No configured dim — derive dimension keys from actual variant data
+    const allDimKeys = [...new Set(filteredItems.flatMap(i => Object.keys(i.variantDimensions)))];
+    if (allDimKeys.length > 0) {
+      // Use first available dim key
+      const firstKey = allDimKeys[0];
+      const map = {};
+      for (const item of filteredItems) {
+        const val = item.variantDimensions[firstKey] ?? 'ללא וריאציה';
+        if (!map[val]) map[val] = { id: val, name: val, revenue: 0, quantity: 0 };
+        map[val].revenue += (item.sell_price || 0) * (item.quantity || 0);
+        map[val].quantity += item.quantity || 0;
+      }
+      return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+    }
+
+    // Last resort: group by group name
     const map = {};
     for (const item of filteredItems) {
-      const val = item.variantDimensions[currentDim.name] || 'לא ידוע';
-      if (!map[val]) map[val] = { id: val, name: val, revenue: 0, quantity: 0 };
-      map[val].revenue += (item.sell_price || 0) * (item.quantity || 0);
-      map[val].quantity += item.quantity || 0;
+      const key = item.resolvedGroupId;
+      const label = item.groupName;
+      if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
+      map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
+      map[key].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [soldItems, filteredItems, subcatStep, currentDim, hasSubCats]);
+  }, [soldItems, filteredItems, subcatStep, currentDim]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
   // ── Handlers ─────────────────────────────────────────────────────
   const handleDrillDown = (row) => {
     if (!subcatStep) {
-      // Level 0 → drill into sub-cat
       setDrillPath([{ type: 'subcat', id: row.id, name: row.name }]);
-    } else if (canDrill && currentDim) {
-      // Level 1+ → drill into next dimension
+    } else if (currentDim) {
       setDrillPath(prev => [...prev, { type: 'dim', dimName: currentDim.name, dimValue: row.name }]);
     }
   };
@@ -248,29 +276,32 @@ export default function AdminCategoryInsights() {
     setDrillPath(prev => prev.slice(0, index));
   };
 
-  const isLoading = loadingSales;
-
   // ── Render ───────────────────────────────────────────────────────
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" onClick={() => navigate('/AdminDashboard')} className="gap-2">
-          <ArrowRight className="w-4 h-4" />
-          חזור ללוח בקרה
-        </Button>
-        <h1 className="text-2xl font-bold text-gray-800">
-          ניתוח קטגוריה: {category?.name || '...'}
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => navigate('/AdminDashboard')} className="gap-2">
+            <ArrowRight className="w-4 h-4" />
+            חזור ללוח בקרה
+          </Button>
+          <h1 className="text-2xl font-bold text-gray-800">
+            ניתוח קטגוריה: {category?.name || '...'}
+          </h1>
+        </div>
+        {/* Date filter */}
+        <div className="flex items-center gap-2">
+          <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setDrillPath([]); }} className="w-40" />
+          <span className="text-gray-400">עד</span>
+          <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setDrillPath([]); }} className="w-40" />
+        </div>
       </div>
 
       {/* Breadcrumb */}
       {drillPath.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
-          <button
-            onClick={() => setDrillPath([])}
-            className="text-sm text-blue-600 hover:underline font-medium"
-          >
+          <button onClick={() => setDrillPath([])} className="text-sm text-blue-600 hover:underline font-medium">
             כל הנתונים
           </button>
           {drillPath.map((step, idx) => (
@@ -287,14 +318,14 @@ export default function AdminCategoryInsights() {
         </div>
       )}
 
-      {isLoading ? (
+      {loadingSales ? (
         <div className="flex justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
         </div>
       ) : chartData.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-gray-400">
-            {soldItems.length === 0 ? 'אין מכירות לקטגוריה זו' : 'אין עוד נתונים ברמה זו'}
+            {soldItems.length === 0 ? 'אין מכירות לקטגוריה זו בטווח התאריכים' : 'אין עוד נתונים ברמה זו'}
           </CardContent>
         </Card>
       ) : (
@@ -321,9 +352,7 @@ export default function AdminCategoryInsights() {
                     outerRadius={100}
                     dataKey="revenue"
                     labelLine={false}
-                    label={({ name, percent }) =>
-                      percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''
-                    }
+                    label={({ name, percent }) => percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
                     onClick={(entry) => handleDrillDown(entry)}
                     style={{ cursor: canDrill ? 'pointer' : 'default' }}
                   >
@@ -350,17 +379,12 @@ export default function AdminCategoryInsights() {
                     key={row.id}
                     onClick={() => canDrill && handleDrillDown(row)}
                     className={`w-full text-right p-3 rounded-xl border transition-all ${
-                      canDrill
-                        ? 'hover:border-amber-400 hover:bg-amber-50 cursor-pointer'
-                        : 'cursor-default'
+                      canDrill ? 'hover:border-amber-400 hover:bg-amber-50 cursor-pointer' : 'cursor-default'
                     } bg-white border-gray-100`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length] }}
-                        />
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length] }} />
                         <span className="font-semibold text-sm">{row.name}</span>
                         {canDrill && <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                       </div>
@@ -390,9 +414,7 @@ export default function AdminCategoryInsights() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">סה"כ יחידות</p>
-                <p className="text-xl font-bold text-gray-700">
-                  {chartData.reduce((s, d) => s + d.quantity, 0)}
-                </p>
+                <p className="text-xl font-bold text-gray-700">{chartData.reduce((s, d) => s + d.quantity, 0)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">ערכים שונים</p>
