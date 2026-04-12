@@ -66,6 +66,23 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
+  // group name → array of all groups with that name (for disambiguation)
+  const groupsByName = useMemo(() => {
+    const m = {};
+    for (const g of groups) {
+      if (!m[g.name]) m[g.name] = [];
+      m[g.name].push(g);
+    }
+    return m;
+  }, [groups]);
+
+  // sub-cat name → category (for suffix-based disambiguation)
+  const subCatByName = useMemo(() => {
+    const m = {};
+    for (const c of categories) m[c.name] = c;
+    return m;
+  }, [categories]);
+
   // Pre-sorted by name length desc for partial matching (longest/most-specific first)
   const groupsSortedByNameLen = useMemo(
     () => [...groups].sort((a, b) => b.name.length - a.name.length),
@@ -148,12 +165,25 @@ export default function AdminCategoryInsights() {
         // 2. Resolve group: via variant → group, direct product_id, or name fallback
         const groupId = variant?.group_id || item.product_id;
         const baseName = item.product_name?.split(' - ')[0]?.trim();
-        let group = groupById[groupId] || (baseName ? groupByName[baseName] : null);
-        // Partial name fallback — longest match first to avoid false matches
+        let group = groupById[groupId] || null;
         if (!group && baseName) {
-          group = groupsSortedByNameLen.find(g =>
-            baseName.startsWith(g.name) || g.name.startsWith(baseName)
-          ) || null;
+          const matchingGroups = groupsByName[baseName] || [];
+          if (matchingGroups.length === 1) {
+            group = matchingGroups[0];
+          } else if (matchingGroups.length > 1) {
+            // Disambiguate: first suffix segment should be the sub-cat name (e.g. "ארוך" or "34/35")
+            const firstSuffix = item.product_name?.split(' - ')[1]?.split(' / ')[0]?.trim();
+            if (firstSuffix) {
+              const subCat = subCatByName[firstSuffix];
+              group = (subCat && matchingGroups.find(g => g.category_id === subCat.id)) || matchingGroups[0];
+            } else {
+              group = matchingGroups[0];
+            }
+          } else {
+            group = groupsSortedByNameLen.find(g =>
+              baseName.startsWith(g.name) || g.name.startsWith(baseName)
+            ) || null;
+          }
         }
         if (!group) continue;
 
@@ -220,7 +250,7 @@ export default function AdminCategoryInsights() {
       }
     }
     return items;
-  }, [dateSales, variantById, variantsByGroupId, groupById, groupByName, categoryById, categoryId]);
+  }, [dateSales, variantById, variantsByGroupId, groupById, groupsByName, groupByName, subCatByName, groupsSortedByNameLen, categoryById, categoryId, dimsByCatId]);
 
   // ── Drill-path derived state ─────────────────────────────────────
   const subcatStep = drillPath.find(s => s.type === 'subcat') || null;

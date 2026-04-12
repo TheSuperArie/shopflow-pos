@@ -26,9 +26,16 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       }
     }
 
-    // group name → group (for legacy name-based fallback)
-    const groupByName = {};
-    for (const g of groups) groupByName[g.name] = g;
+    // group name → array of groups (for disambiguation when multiple share same name)
+    const groupsByName = {};
+    for (const g of groups) {
+      if (!groupsByName[g.name]) groupsByName[g.name] = [];
+      groupsByName[g.name].push(g);
+    }
+
+    // sub-category name → category object (for suffix-based disambiguation)
+    const subCatByName = {};
+    for (const c of categories) subCatByName[c.name] = c;
 
     // ── Resolve group from a sale item ───────────────────────────
     // Groups sorted by name length desc for partial matching (longest/most-specific first)
@@ -47,8 +54,21 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       // 3. Legacy: name match (strip dimension suffix after " - ")
       const baseName = item.product_name?.split(' - ')[0]?.trim();
       if (baseName) {
-        if (groupByName[baseName]) return groupByName[baseName];
-        // Use pre-sorted (longest name first) to match most-specific group first
+        const matchingGroups = groupsByName[baseName] || [];
+        if (matchingGroups.length === 1) return matchingGroups[0];
+        if (matchingGroups.length > 1) {
+          // Try to match using first suffix part as sub-category name to disambiguate
+          const firstSuffix = item.product_name?.split(' - ')[1]?.split(' / ')[0]?.trim();
+          if (firstSuffix) {
+            const subCat = subCatByName[firstSuffix];
+            if (subCat) {
+              const match = matchingGroups.find(g => g.category_id === subCat.id);
+              if (match) return match;
+            }
+          }
+          return matchingGroups[0];
+        }
+        // Partial name match fallback
         const partial = groupsSortedByNameLen.find(g =>
           baseName.startsWith(g.name) || g.name.startsWith(baseName)
         );
