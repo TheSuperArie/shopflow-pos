@@ -158,6 +158,7 @@ export default function AdminCategoryInsights() {
         if (!group) continue;
 
         // 3. Fallback variant match when ID lookup failed
+        let parsedDimensions = null;
         if (!variant && group) {
           const groupVariants = variantsByGroupId[group.id] || [];
           if (groupVariants.length === 1) {
@@ -167,9 +168,26 @@ export default function AdminCategoryInsights() {
               ? item.product_name.split(' - ').slice(1).join(' - ').trim()
               : '';
             if (nameSuffix) {
-              variant = groupVariants.find(v =>
-                Object.values(v.dimensions || {}).some(val => nameSuffix.includes(String(val)))
-              ) || null;
+              // Try to match ALL dimension values (not just any one), to avoid false positives
+              const suffixParts = nameSuffix.split(' / ').map(s => s.trim());
+              variant = groupVariants.find(v => {
+                const dimVals = Object.values(v.dimensions || {}).map(String);
+                return dimVals.length > 0 && dimVals.every(val => suffixParts.some(p => p === val));
+              }) || null;
+
+              // If still no match, build parsedDimensions from suffix parts + dimension names
+              if (!variant) {
+                const catDims = dimsByCatId[group.category_id] || [];
+                if (catDims.length > 0 && suffixParts.length > 0) {
+                  parsedDimensions = {};
+                  catDims
+                    .filter(d => d.is_active !== false)
+                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                    .forEach((d, i) => {
+                      if (suffixParts[i] !== undefined) parsedDimensions[d.name] = suffixParts[i];
+                    });
+                }
+              }
             }
           }
         }
@@ -187,8 +205,8 @@ export default function AdminCategoryInsights() {
         const subCatId = isSubCatChild ? catId : group.id;
         const subCatName = isSubCatChild ? cat.name : group.name;
 
-        // Variant dimensions — read from the resolved variant object
-        const variantDimensions = variant?.dimensions || {};
+        // Variant dimensions — use variant if found, else parsed from product name, else empty
+        const variantDimensions = variant?.dimensions || parsedDimensions || {};
 
         items.push({
           ...item,
