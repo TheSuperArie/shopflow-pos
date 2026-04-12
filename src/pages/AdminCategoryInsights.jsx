@@ -254,17 +254,15 @@ export default function AdminCategoryInsights() {
 
   const currentDim = subcatStep ? (effectiveDims[dimSteps.length] || null) : null;
 
-  // Available dimension keys extracted dynamically from actual variant data
+  // Available dimension keys — ONLY from actual variant data (ignore phantom config dims)
   const availableDimKeys = useMemo(() => {
     if (!subcatStep) return [];
     const keys = new Set();
     for (const item of subcatFilteredItems) {
       for (const k of Object.keys(item.variantDimensions)) keys.add(k);
     }
-    // Also add keys from effectiveDims (configured dimensions)
-    for (const d of effectiveDims) keys.add(d.name);
     return [...keys];
-  }, [subcatStep, subcatFilteredItems, effectiveDims]);
+  }, [subcatStep, subcatFilteredItems]);
 
   // Available unfiltered dimension keys (exclude already-drilled ones)
   const undrilledDimKeys = useMemo(
