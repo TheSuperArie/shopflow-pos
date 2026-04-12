@@ -285,10 +285,8 @@ export default function AdminCategoryInsights() {
     if (dimName) {
       const map = {};
       for (const item of filteredItems) {
-        // Look up the variant fresh per item to get its actual dimension value
-        const rawVarId = item.variant_id ?? item.variantId;
-        const matchedVariant = rawVarId ? variantById[String(rawVarId)] : null;
-        const val = matchedVariant?.dimensions?.[dimName] ?? item.variantDimensions?.[dimName] ?? 'ללא וריאציה';
+        // Use the per-item variantDimensions resolved in soldItems — each item has its own variant's dimensions
+        const val = String(item.variantDimensions?.[dimName] ?? 'ללא וריאציה');
         if (!map[val]) map[val] = { id: val, name: val, revenue: 0, quantity: 0 };
         map[val].revenue += (item.sell_price || 0) * (item.quantity || 0);
         map[val].quantity += item.quantity || 0;
@@ -306,7 +304,7 @@ export default function AdminCategoryInsights() {
       map[key].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [soldItems, filteredItems, subcatStep, selectedDimension]);
+  }, [soldItems, filteredItems, subcatStep, selectedDimension, variantById]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
