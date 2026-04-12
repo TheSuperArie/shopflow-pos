@@ -266,21 +266,27 @@ export default function AdminCategoryInsights() {
     return [...keys];
   }, [subcatStep, subcatFilteredItems, effectiveDims]);
 
-  // Auto-select first dimension when entering sub-cat drill
-  React.useEffect(() => {
-    if (availableDimKeys.length > 0 && !availableDimKeys.includes(selectedDimension)) {
-      setSelectedDimension(availableDimKeys[0]);
-    }
-  }, [availableDimKeys]);
+  // Available unfiltered dimension keys (exclude already-drilled ones)
+  const undrilledDimKeys = useMemo(
+    () => availableDimKeys.filter(k => !dimSteps.some(s => s.dimName === k)),
+    [availableDimKeys, dimSteps]
+  );
 
-  // Can drill further into next dimension?
-  const canDrillDim = subcatStep && currentDim && effectiveDims[dimSteps.length + 1] != null;
+  // Auto-select first undrilled dimension when entering sub-cat drill or after drill
+  React.useEffect(() => {
+    if (undrilledDimKeys.length > 0 && !undrilledDimKeys.includes(selectedDimension)) {
+      setSelectedDimension(undrilledDimKeys[0]);
+    }
+  }, [undrilledDimKeys]);
+
+  // Can drill further: allow when there are at least 2 undrilled dimensions (current + 1 more)
+  const canDrillDim = subcatStep && selectedDimension && undrilledDimKeys.length > 1;
   // At level 0, always allow drilling into sub-cat
   const canDrill = !subcatStep || canDrillDim;
 
   const currentLabel = !subcatStep
     ? 'תת-קטגוריה / מוצר'
-    : (currentDim?.name || 'וריאציות');
+    : (selectedDimension || 'וריאציות');
 
   // ── Chart data ───────────────────────────────────────────────────
   const chartData = useMemo(() => {
@@ -330,8 +336,8 @@ export default function AdminCategoryInsights() {
   const handleDrillDown = (row) => {
     if (!subcatStep) {
       setDrillPath([{ type: 'subcat', id: row.id, name: row.name }]);
-    } else if (currentDim) {
-      setDrillPath(prev => [...prev, { type: 'dim', dimName: currentDim.name, dimValue: row.name }]);
+    } else if (selectedDimension) {
+      setDrillPath(prev => [...prev, { type: 'dim', dimName: selectedDimension, dimValue: row.name }]);
     }
   };
 
@@ -407,7 +413,7 @@ export default function AdminCategoryInsights() {
             </CardHeader>
             <CardContent>
               {/* Dimension selector — shown when drilled into a sub-cat */}
-              {subcatStep && availableDimKeys.length > 0 && (
+              {subcatStep && undrilledDimKeys.length > 0 && (
                 <div className="mb-4 flex items-center gap-3">
                   <span className="text-sm font-medium text-gray-600">קבץ לפי:</span>
                   <select
@@ -415,7 +421,7 @@ export default function AdminCategoryInsights() {
                     onChange={e => setSelectedDimension(e.target.value)}
                     className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                   >
-                    {availableDimKeys.map(k => (
+                    {undrilledDimKeys.map(k => (
                       <option key={k} value={k}>{k}</option>
                     ))}
                   </select>
@@ -448,7 +454,7 @@ export default function AdminCategoryInsights() {
           {/* Breakdown List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">פירוט — {subcatStep && selectedDimension ? selectedDimension : currentLabel}</CardTitle>
+              <CardTitle className="text-base">פירוט — {currentLabel}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
