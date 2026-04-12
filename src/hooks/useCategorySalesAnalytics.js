@@ -37,7 +37,13 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
     const subCatByName = {};
     for (const c of categories) subCatByName[c.name] = c;
 
-    // ── Resolve group from a sale item ───────────────────────────
+    // variant → group variants map (for disambiguation)
+    const variantsByGroupId = {};
+    for (const v of variants) {
+      if (!variantsByGroupId[v.group_id]) variantsByGroupId[v.group_id] = [];
+      variantsByGroupId[v.group_id].push(v);
+    }
+
     // Groups sorted by name length desc for partial matching (longest/most-specific first)
     const groupsSortedByNameLen = [...groups].sort((a, b) => b.name.length - a.name.length);
 
@@ -57,14 +63,25 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
         const matchingGroups = groupsByName[baseName] || [];
         if (matchingGroups.length === 1) return matchingGroups[0];
         if (matchingGroups.length > 1) {
-          // Try to match using first suffix part as sub-category name to disambiguate
-          const firstSuffix = item.product_name?.split(' - ')[1]?.split(' / ')[0]?.trim();
-          if (firstSuffix) {
-            const subCat = subCatByName[firstSuffix];
-            if (subCat) {
-              const match = matchingGroups.find(g => g.category_id === subCat.id);
-              if (match) return match;
+          // Disambiguate by matching dimension values from the product name suffix
+          // against the actual variants of each candidate group
+          const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
+          const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
+          if (suffixParts.length > 0) {
+            let bestGroup = null;
+            let bestScore = -1;
+            for (const g of matchingGroups) {
+              const gVariants = variantsByGroupId[g.id] || [];
+              for (const v of gVariants) {
+                const dimVals = Object.values(v.dimensions || {}).map(String);
+                const score = suffixParts.filter(p => dimVals.includes(p)).length;
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestGroup = g;
+                }
+              }
             }
+            if (bestGroup && bestScore > 0) return bestGroup;
           }
           return matchingGroups[0];
         }

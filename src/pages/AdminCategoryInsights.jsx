@@ -171,11 +171,21 @@ export default function AdminCategoryInsights() {
           if (matchingGroups.length === 1) {
             group = matchingGroups[0];
           } else if (matchingGroups.length > 1) {
-            // Disambiguate: first suffix segment should be the sub-cat name (e.g. "ארוך" or "34/35")
-            const firstSuffix = item.product_name?.split(' - ')[1]?.split(' / ')[0]?.trim();
-            if (firstSuffix) {
-              const subCat = subCatByName[firstSuffix];
-              group = (subCat && matchingGroups.find(g => g.category_id === subCat.id)) || matchingGroups[0];
+            // Disambiguate by matching dimension values from suffix against actual variants of each group
+            const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
+            const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
+            if (suffixParts.length > 0) {
+              let bestGroup = null;
+              let bestScore = -1;
+              for (const g of matchingGroups) {
+                const gVariants = variantsByGroupId[g.id] || [];
+                for (const v of gVariants) {
+                  const dimVals = Object.values(v.dimensions || {}).map(String);
+                  const score = suffixParts.filter(p => dimVals.includes(p)).length;
+                  if (score > bestScore) { bestScore = score; bestGroup = g; }
+                }
+              }
+              group = (bestGroup && bestScore > 0) ? bestGroup : matchingGroups[0];
             } else {
               group = matchingGroups[0];
             }
