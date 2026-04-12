@@ -15,7 +15,7 @@ export function useCurrentUser() {
     listeners.push(setUser);
     if (!cachedUser) {
       base44.auth.me().then(u => {
-        cachedUser = u;
+        cachedUser = u ? { ...u, email: u.email?.toLowerCase() } : u;
         notify();
       }).catch(() => {});
     }
