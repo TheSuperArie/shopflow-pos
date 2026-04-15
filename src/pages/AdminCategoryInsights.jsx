@@ -273,17 +273,29 @@ export default function AdminCategoryInsights() {
     return items;
   }, [dateSales, variantById, variantsByGroupId, groupById, groupsByName, groupByName, subCatByName, groupsSortedByNameLen, categoryById, categoryId, dimsByCatId]);
 
+  // ── Does this category have real sub-categories? ─────────────────
+  const hasRealSubCats = subCategories.length > 0;
+
   // ── Drill-path derived state ─────────────────────────────────────
+  // drillPath steps:
+  //   { type: 'subcat', id, name }  — selected a sub-category (or group if no sub-cats)
+  //   { type: 'dim', dimName, dimValue } — selected a dimension value
   const subcatStep = drillPath.find(s => s.type === 'subcat') || null;
   const dimSteps = drillPath.filter(s => s.type === 'dim');
 
-  // Sub-cat items after sub-cat filter
+  // Items filtered to the selected sub-cat/group
   const subcatFilteredItems = useMemo(() => {
     if (!subcatStep) return soldItems;
-    return soldItems.filter(i => i.subCatId === subcatStep.id);
-  }, [soldItems, subcatStep]);
+    if (hasRealSubCats) {
+      // subcatStep.id is a real category id
+      return soldItems.filter(i => i.subCatId === subcatStep.id);
+    } else {
+      // subcatStep.id is a group id (no sub-cats)
+      return soldItems.filter(i => i.resolvedGroupId === subcatStep.id);
+    }
+  }, [soldItems, subcatStep, hasRealSubCats]);
 
-  // Items after all filters
+  // Items after all dimension filters
   const filteredItems = useMemo(() => {
     let items = subcatFilteredItems;
     for (const step of dimSteps) {
@@ -292,20 +304,7 @@ export default function AdminCategoryInsights() {
     return items;
   }, [subcatFilteredItems, dimSteps]);
 
-  // Effective dims for selected sub-cat
-  const effectiveDims = useMemo(() => {
-    if (!subcatStep) return [];
-    // subcatStep.id could be a sub-category id OR a group.id (direct product)
-    // Try it as a sub-category first, then fall back to parent dims
-    const dims = getEffectiveDims(subcatStep.id);
-    if (dims.length > 0) return dims;
-    // Fallback: use parent category dims
-    return getEffectiveDims(categoryId);
-  }, [subcatStep, dimsByCatId, categoryById, categoryId]);
-
-  const currentDim = subcatStep ? (effectiveDims[dimSteps.length] || null) : null;
-
-  // Available dimension keys — ONLY from actual variant data (ignore phantom config dims)
+  // Available dimension keys from current filtered items
   const availableDimKeys = useMemo(() => {
     if (!subcatStep) return [];
     const keys = new Set();
@@ -315,36 +314,42 @@ export default function AdminCategoryInsights() {
     return [...keys];
   }, [subcatStep, subcatFilteredItems]);
 
-  // Available unfiltered dimension keys (exclude already-drilled ones)
+  // Undrilled dimension keys (exclude already-applied)
   const undrilledDimKeys = useMemo(
     () => availableDimKeys.filter(k => !dimSteps.some(s => s.dimName === k)),
     [availableDimKeys, dimSteps]
   );
 
-  // Auto-select first undrilled dimension when entering sub-cat drill or after drill
+  // Auto-select first undrilled dimension
   React.useEffect(() => {
     if (undrilledDimKeys.length > 0 && !undrilledDimKeys.includes(selectedDimension)) {
       setSelectedDimension(undrilledDimKeys[0]);
     }
   }, [undrilledDimKeys]);
 
-  // Can drill further: allow when there are at least 2 undrilled dimensions (current + 1 more)
-  const canDrillDim = subcatStep && selectedDimension && undrilledDimKeys.length > 1;
-  // At level 0, always allow drilling into sub-cat
-  const canDrill = !subcatStep || canDrillDim;
+  // Can drill: level 0 always yes; level 1+ only if more undrilled dims exist
+  const canDrill = !subcatStep || (subcatStep && selectedDimension && undrilledDimKeys.length > 1);
 
   const currentLabel = !subcatStep
-    ? 'תת-קטגוריה / מוצר'
+    ? (hasRealSubCats ? 'תת-קטגוריה' : 'מוצר')
     : (selectedDimension || 'וריאציות');
 
   // ── Chart data ───────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    // Level 0: group by sub-cat bucket
+    // Level 0: if real sub-cats exist → group by sub-category; else group by product (group)
     if (!subcatStep) {
       const map = {};
       for (const item of soldItems) {
-        const key = item.subCatId;
-        const label = item.subCatName;
+        let key, label;
+        if (hasRealSubCats) {
+          // Only show items that belong to a real sub-category
+          if (item.catId === categoryId) continue; // skip direct items when sub-cats exist
+          key = item.subCatId;
+          label = item.subCatName;
+        } else {
+          key = item.resolvedGroupId;
+          label = item.groupName;
+        }
         if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
         map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
         map[key].quantity += item.quantity || 0;
@@ -352,14 +357,11 @@ export default function AdminCategoryInsights() {
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // Level 1+: group by the user-selected dimension
-    const dimName = selectedDimension;
-
-    if (dimName) {
+    // Level 1+: group by selected dimension value
+    if (selectedDimension) {
       const map = {};
       for (const item of filteredItems) {
-        // Use the per-item variantDimensions resolved in soldItems — each item has its own variant's dimensions
-        const val = String(item.variantDimensions?.[dimName] ?? 'ללא וריאציה');
+        const val = String(item.variantDimensions?.[selectedDimension] ?? 'ללא וריאציה');
         if (!map[val]) map[val] = { id: val, name: val, revenue: 0, quantity: 0 };
         map[val].revenue += (item.sell_price || 0) * (item.quantity || 0);
         map[val].quantity += item.quantity || 0;
@@ -367,7 +369,7 @@ export default function AdminCategoryInsights() {
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // No dimension selected yet — group by group name as fallback
+    // No dimension available — group by product name
     const map = {};
     for (const item of filteredItems) {
       const key = item.resolvedGroupId;
@@ -377,7 +379,7 @@ export default function AdminCategoryInsights() {
       map[key].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [soldItems, filteredItems, subcatStep, selectedDimension, variantById]);
+  }, [soldItems, filteredItems, subcatStep, selectedDimension, hasRealSubCats, categoryId]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
