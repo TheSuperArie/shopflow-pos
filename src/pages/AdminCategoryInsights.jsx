@@ -258,27 +258,34 @@ export default function AdminCategoryInsights() {
           subCatId = catId;
           subCatName = cat.name;
         } else if (hasRealSubCats) {
-          // Group is under the parent category, but sub-cats exist (e.g. sizes as sub-cats)
-          // Extract sub-cat from the product name suffix: "חולצות - 13 / רגיל" → "13"
+          // Group is under parent category — extract the size/identifier from the product name suffix
+          // e.g. "חולצות - 34/35 / אמריקאי / רגולר" → first suffix part = "34/35"
           const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
           const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
+
+          // Try to match a suffix part to a known sub-category name
           let foundSubCat = null;
           for (const part of suffixParts) {
             const sc = thisSubCatByName[part];
             if (sc) { foundSubCat = sc; break; }
           }
-          // Also try variant dimensions directly
+          // Also try variant dimensions
           if (!foundSubCat && variant?.dimensions) {
             for (const val of Object.values(variant.dimensions)) {
               const sc = thisSubCatByName[String(val)];
               if (sc) { foundSubCat = sc; break; }
             }
           }
+
           if (foundSubCat) {
             subCatId = foundSubCat.id;
             subCatName = foundSubCat.name;
+          } else if (suffixParts.length > 0) {
+            // No matching sub-cat — use the first suffix part as a virtual bucket
+            // This handles legacy data where size format differs from sub-cat names
+            subCatId = `__suffix__${suffixParts[0]}`;
+            subCatName = suffixParts[0];
           } else {
-            // fallback: use group as bucket
             subCatId = group.id;
             subCatName = group.name;
           }
