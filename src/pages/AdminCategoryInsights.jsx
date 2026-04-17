@@ -146,7 +146,8 @@ export default function AdminCategoryInsights() {
         });
       }
     }
-    console.log('[INSIGHTS] soldItems sample:', items.slice(0, 5).map(i => ({ name: i.product_name, bucketId: i.bucketId, bucketName: i.bucketName })));
+    const buckets = [...new Set(items.map(i => i.bucketName))];
+    console.log('[INSIGHTS] total items:', items.length, '| unique buckets:', buckets, '| sample product_names:', [...new Set(items.map(i => i.product_name))].slice(0, 10));
     return items;
   }, [dateSales, groups, groupById, categoryById, categoryId, subCatById]);
 
