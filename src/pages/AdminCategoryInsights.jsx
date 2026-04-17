@@ -103,6 +103,7 @@ export default function AdminCategoryInsights() {
   // ── Build sold items with bucket assignment ──────────────────────
   const soldItems = useMemo(() => {
     const items = [];
+    let noGroup = 0, noCat = 0, noMatch = 0;
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
         const baseName = item.product_name?.split(' - ')[0]?.trim();
@@ -110,16 +111,16 @@ export default function AdminCategoryInsights() {
 
         // Find the group by product_id or by base name
         let group = groupById[item.product_id] || groupByBaseName[baseName] || null;
-        if (!group) continue;
+        if (!group) { noGroup++; continue; }
 
         const catId = group.category_id;
         const cat = categoryById[catId];
-        if (!cat) continue;
+        if (!cat) { noCat++; continue; }
 
         // Must belong to our category tree
         const isDirectChild = catId === categoryId;
         const isSubCatChild = !!subCatById[catId];
-        if (!isDirectChild && !isSubCatChild) continue;
+        if (!isDirectChild && !isSubCatChild) { noMatch++; continue; }
 
         // Determine bucket (what slice of the pie this item belongs to)
         let bucketId, bucketName;
@@ -150,6 +151,7 @@ export default function AdminCategoryInsights() {
         });
       }
     }
+    console.log('[INSIGHTS] soldItems:', items.length, '| noGroup:', noGroup, '| noCat:', noCat, '| noMatch:', noMatch, '| dateSales:', dateSales.length, '| categoryId:', categoryId, '| subCats:', Object.keys(subCatById).length);
     return items;
   }, [dateSales, groupById, groupByBaseName, categoryById, categoryId, subCatById]);
 
