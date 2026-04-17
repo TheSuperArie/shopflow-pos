@@ -120,7 +120,10 @@ export default function AdminCategoryInsights() {
         // Must belong to our category tree
         const isDirectChild = catId === categoryId;
         const isSubCatChild = !!subCatById[catId];
-        if (!isDirectChild && !isSubCatChild) { noMatch++; continue; }
+        if (!isDirectChild && !isSubCatChild) {
+          if (noMatch === 0) console.log('[INSIGHTS] noMatch sample — group.category_id:', catId, '| cat.parent_id:', cat.parent_id, '| categoryId:', categoryId, '| subCatById keys:', Object.keys(subCatById));
+          noMatch++; continue;
+        }
 
         // Determine bucket (what slice of the pie this item belongs to)
         let bucketId, bucketName;
