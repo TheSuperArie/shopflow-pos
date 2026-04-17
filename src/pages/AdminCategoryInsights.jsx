@@ -95,6 +95,12 @@ export default function AdminCategoryInsights() {
         // Find the group by product_id first, then by base name
         let group = groupById[item.product_id] || null;
 
+        // If found by product_id, verify it belongs to our category tree
+        if (group) {
+          const belongsToTree = group.category_id === categoryId || !!subCatById[group.category_id];
+          if (!belongsToTree) group = null;
+        }
+
         // If not found by ID, find by name but ONLY within our category tree
         if (!group) {
           const candidates = groups.filter(g => g.name === baseName);
@@ -106,7 +112,7 @@ export default function AdminCategoryInsights() {
         const cat = categoryById[catId];
         if (!cat) continue;
 
-        // Must belong to our category tree
+        // Must belong to our category tree (double-check)
         const isDirectChild = catId === categoryId;
         const isSubCatChild = !!subCatById[catId];
         if (!isDirectChild && !isSubCatChild) continue;
@@ -140,6 +146,7 @@ export default function AdminCategoryInsights() {
         });
       }
     }
+    console.log('[INSIGHTS] soldItems sample:', items.slice(0, 5).map(i => ({ name: i.product_name, bucketId: i.bucketId, bucketName: i.bucketName })));
     return items;
   }, [dateSales, groups, groupById, categoryById, categoryId, subCatById]);
 
