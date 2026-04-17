@@ -74,8 +74,14 @@ export default function AdminCategoryInsights() {
 
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
-  // Debug: log all categories to see the tree
-  if (categories.length > 0) console.log('[INSIGHTS] all categories:', categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })), '| looking for categoryId:', categoryId, '| found:', !!category);
+  // Debug: log all categories and groups
+  if (categories.length > 0 && groups.length > 0) {
+    const topCats = categories.filter(c => !c.parent_id);
+    console.log('[INSIGHTS] top-level cats:', topCats.map(c => ({ id: c.id, name: c.name })));
+    console.log('[INSIGHTS] categoryId from URL:', categoryId, '| matched cat:', category?.name);
+    const directGroups = groups.filter(g => g.category_id === categoryId);
+    console.log('[INSIGHTS] groups directly under categoryId:', directGroups.map(g => g.name));
+  }
   const subCategories = useMemo(
     () => categories.filter(c => c.parent_id === categoryId),
     [categories, categoryId]
