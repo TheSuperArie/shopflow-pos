@@ -306,6 +306,22 @@ export default function AdminCategoryInsights() {
   // ── Does this category have real sub-categories? ─────────────────
   const hasRealSubCats = subCategories.length > 0;
 
+  // DEBUG
+  React.useEffect(() => {
+    if (dateSales.length > 0) {
+      const sample = dateSales[0]?.items?.slice(0, 3) || [];
+      console.log('[DEBUG] subCategories:', subCategories.map(c => c.name));
+      console.log('[DEBUG] hasRealSubCats:', hasRealSubCats);
+      console.log('[DEBUG] sample items from sales:', JSON.stringify(sample, null, 2));
+      console.log('[DEBUG] soldItems count:', soldItems.length);
+      const breakdown = {};
+      for (const i of soldItems) {
+        breakdown[i.subCatName] = (breakdown[i.subCatName] || 0) + (i.quantity || 0);
+      }
+      console.log('[DEBUG] subCatName breakdown:', breakdown);
+    }
+  }, [dateSales, soldItems, subCategories, hasRealSubCats]);
+
   // ── Drill-path derived state ─────────────────────────────────────
   // drillPath steps:
   //   { type: 'subcat', id, name }  — selected a sub-category (or group if no sub-cats)
