@@ -276,6 +276,19 @@ export default function AdminCategoryInsights() {
   // ── Does this category have real sub-categories? ─────────────────
   const hasRealSubCats = subCategories.length > 0;
 
+  // Debug: log what's in soldItems to understand the breakdown
+  React.useEffect(() => {
+    if (soldItems.length > 0) {
+      const summary = {};
+      for (const item of soldItems) {
+        const key = `subCatId=${item.subCatId} | subCatName=${item.subCatName} | catId=${item.catId}`;
+        summary[key] = (summary[key] || 0) + (item.quantity || 0);
+      }
+      console.log('[AdminCategoryInsights] soldItems subcat breakdown:', summary);
+      console.log('[AdminCategoryInsights] hasRealSubCats:', hasRealSubCats, 'subCategories:', subCategories.map(c => c.name));
+    }
+  }, [soldItems, hasRealSubCats, subCategories]);
+
   // ── Drill-path derived state ─────────────────────────────────────
   // drillPath steps:
   //   { type: 'subcat', id, name }  — selected a sub-category (or group if no sub-cats)
