@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -17,8 +17,6 @@ export default function AdminCategoryInsights() {
   const user = useCurrentUser();
 
   const [drillPath, setDrillPath] = useState([]);
-  const [selectedDimension, setSelectedDimension] = useState('');
-  // Date filter
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -41,12 +39,6 @@ export default function AdminCategoryInsights() {
     enabled: !!user,
   });
 
-  const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants', user?.email],
-    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
-
   // ── Lookup maps ──────────────────────────────────────────────────
   const categoryById = useMemo(() => {
     const m = {};
@@ -60,34 +52,14 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
-  const groupByName = useMemo(() => {
-    const m = {};
-    for (const g of groups) m[g.name] = g;
-    return m;
-  }, [groups]);
-
-  // group name → array of all groups with that name (for disambiguation)
-  const groupsByName = useMemo(() => {
+  // group name → first matching group (for name-based lookup)
+  const groupByBaseName = useMemo(() => {
     const m = {};
     for (const g of groups) {
-      if (!m[g.name]) m[g.name] = [];
-      m[g.name].push(g);
+      if (!m[g.name]) m[g.name] = g;
     }
     return m;
   }, [groups]);
-
-  // Pre-sorted by name length desc for partial matching (longest/most-specific first)
-  const groupsSortedByNameLen = useMemo(
-    () => [...groups].sort((a, b) => b.name.length - a.name.length),
-    [groups]
-  );
-
-  const variantById = useMemo(() => {
-    const m = {};
-    // Use String keys to avoid type mismatch between numeric/string IDs
-    for (const v of variants) m[String(v.id)] = v;
-    return m;
-  }, [variants]);
 
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
@@ -95,40 +67,13 @@ export default function AdminCategoryInsights() {
     () => categories.filter(c => c.parent_id === categoryId),
     [categories, categoryId]
   );
-  const subCategoryIds = useMemo(() => subCategories.map(c => c.id), [subCategories]);
-  const allCatIds = useMemo(() => [categoryId, ...subCategoryIds], [categoryId, subCategoryIds]);
 
-  // ── Fetch ALL dimensions for the whole tree ─────────────────────
-  const { data: allDimensions = [] } = useQuery({
-    queryKey: ['variant-dimensions-tree', allCatIds.join(',')],
-    queryFn: async () => {
-      const results = await Promise.all(allCatIds.map(id => base44.entities.VariantDimension.filter({ category_id: id })));
-      return results.flat();
-    },
-    enabled: allCatIds.length > 0,
-  });
-
-  const dimsByCatId = useMemo(() => {
+  // subCategory id → subCategory object
+  const subCatById = useMemo(() => {
     const m = {};
-    for (const d of allDimensions) {
-      if (!m[d.category_id]) m[d.category_id] = [];
-      m[d.category_id].push(d);
-    }
+    for (const c of subCategories) m[c.id] = c;
     return m;
-  }, [allDimensions]);
-
-  const getEffectiveDims = (catId) => {
-    const cat = categoryById[catId];
-    if (!cat) return [];
-    let dims;
-    // If sub-cat inherits from parent, use parent dims
-    if (cat.inherit_dimensions !== false && cat.parent_id && (dimsByCatId[cat.parent_id]?.length)) {
-      dims = dimsByCatId[cat.parent_id];
-    } else {
-      dims = dimsByCatId[catId] || [];
-    }
-    return dims.filter(d => d.is_active !== false).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  };
+  }, [subCategories]);
 
   // ── Date-filtered sales ──────────────────────────────────────────
   const dateSales = useMemo(() => sales.filter(s => {
@@ -136,115 +81,25 @@ export default function AdminCategoryInsights() {
     return d >= dateFrom && d <= dateTo;
   }), [sales, dateFrom, dateTo]);
 
-  // Group variants by group_id for fallback matching
-  const variantsByGroupId = useMemo(() => {
-    const m = {};
-    for (const v of variants) {
-      if (!m[v.group_id]) m[v.group_id] = [];
-      m[v.group_id].push(v);
-    }
-    return m;
-  }, [variants]);
+  // ── Extract first suffix from product name ───────────────────────
+  // "חולצות - 34/35 / אמריקאי / רגולר" → "34/35"
+  const getFirstSuffix = (productName) => {
+    if (!productName?.includes(' - ')) return null;
+    const after = productName.split(' - ').slice(1).join(' - ').trim();
+    return after.split(' / ')[0]?.trim() || null;
+  };
 
-  // ── Enrich sold items with catalog context ───────────────────────
-  // sub-cat name → category, scoped to THIS category's children only
-  const thisSubCatByName = useMemo(() => {
-    const m = {};
-    for (const c of subCategories) m[c.name] = c;
-    return m;
-  }, [subCategories]);
-
-  // ── Does this category have real sub-categories? ─────────────────
-  // MUST be defined before soldItems useMemo uses it
-  const hasRealSubCats = subCategories.length > 0;
-
+  // ── Build sold items with bucket assignment ──────────────────────
   const soldItems = useMemo(() => {
     const items = [];
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
-        // 1. Resolve variant via variant_id
-        const rawVarId = item.variant_id ?? item.variantId;
-        let variant = rawVarId ? variantById[String(rawVarId)] : null;
+        const baseName = item.product_name?.split(' - ')[0]?.trim();
+        if (!baseName) continue;
 
-        // 2. Resolve group via variant, direct product_id, or name
-        const groupId = variant?.group_id || item.product_id;
-        let group = groupById[groupId] || null;
-
-        if (!group) {
-          const baseName = item.product_name?.split(' - ')[0]?.trim();
-          if (baseName) {
-            const matchingGroups = groupsByName[baseName] || [];
-            if (matchingGroups.length === 1) {
-              group = matchingGroups[0];
-            } else if (matchingGroups.length > 1) {
-              // Extract suffix parts (e.g. "13 / רגיל" → ["13", "רגיל"])
-              const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
-              const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
-
-              // Try to match a suffix part against THIS category's sub-category names
-              let resolved = null;
-              for (const part of suffixParts) {
-                const subCat = thisSubCatByName[part];
-                if (subCat) {
-                  const match = matchingGroups.find(g => g.category_id === subCat.id);
-                  if (match) { resolved = match; break; }
-                }
-              }
-
-              if (!resolved) {
-                // Score by dimension value matches
-                let bestGroup = null, bestScore = -1;
-                for (const g of matchingGroups) {
-                  const gVariants = variantsByGroupId[g.id] || [];
-                  for (const v of gVariants) {
-                    const dimVals = Object.values(v.dimensions || {}).map(String);
-                    const score = suffixParts.filter(p => dimVals.includes(p)).length;
-                    if (score > bestScore) { bestScore = score; bestGroup = g; }
-                  }
-                }
-                resolved = (bestGroup && bestScore > 0) ? bestGroup : matchingGroups[0];
-              }
-              group = resolved;
-            } else {
-              group = groupsSortedByNameLen.find(g =>
-                baseName.startsWith(g.name) || g.name.startsWith(baseName)
-              ) || null;
-            }
-          }
-        }
+        // Find the group by product_id or by base name
+        let group = groupById[item.product_id] || groupByBaseName[baseName] || null;
         if (!group) continue;
-
-        // 3. Resolve variant from group if not yet found
-        let parsedDimensions = null;
-        if (!variant) {
-          const groupVariants = variantsByGroupId[group.id] || [];
-          if (groupVariants.length === 1) {
-            variant = groupVariants[0];
-          } else if (groupVariants.length > 1) {
-            const nameSuffix = item.product_name?.includes(' - ')
-              ? item.product_name.split(' - ').slice(1).join(' - ').trim()
-              : '';
-            if (nameSuffix) {
-              const suffixParts = nameSuffix.split(' / ').map(s => s.trim());
-              variant = groupVariants.find(v => {
-                const dimVals = Object.values(v.dimensions || {}).map(String);
-                return dimVals.length > 0 && dimVals.every(val => suffixParts.some(p => p === val));
-              }) || null;
-              if (!variant) {
-                const catDims = dimsByCatId[group.category_id] || [];
-                if (catDims.length > 0 && suffixParts.length > 0) {
-                  parsedDimensions = {};
-                  catDims
-                    .filter(d => d.is_active !== false)
-                    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-                    .forEach((d, i) => {
-                      if (suffixParts[i] !== undefined) parsedDimensions[d.name] = suffixParts[i];
-                    });
-                }
-              }
-            }
-          }
-        }
 
         const catId = group.category_id;
         const cat = categoryById[catId];
@@ -252,161 +107,59 @@ export default function AdminCategoryInsights() {
 
         // Must belong to our category tree
         const isDirectChild = catId === categoryId;
-        const isSubCatChild = cat.parent_id === categoryId;
+        const isSubCatChild = !!subCatById[catId];
         if (!isDirectChild && !isSubCatChild) continue;
 
-        // Determine sub-category bucket
-        let subCatId, subCatName;
-
-        // Always try to extract the first suffix part from product name as the primary dimension
-        // e.g. "חולצות - 34/35 / אמריקאי / רגולר" → "34/35"
-        const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
-        const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
-        const firstSuffix = suffixParts[0] || null;
+        // Determine bucket (what slice of the pie this item belongs to)
+        let bucketId, bucketName;
 
         if (isSubCatChild) {
-          // Group directly under a real sub-category
-          subCatId = catId;
-          subCatName = cat.name;
-        } else if (hasRealSubCats) {
-          // Try to match suffix parts to known sub-category names
-          let foundSubCat = null;
-          for (const part of suffixParts) {
-            const sc = thisSubCatByName[part];
-            if (sc) { foundSubCat = sc; break; }
-          }
-          // Try variant dimensions
-          if (!foundSubCat && variant?.dimensions) {
-            for (const val of Object.values(variant.dimensions)) {
-              const sc = thisSubCatByName[String(val)];
-              if (sc) { foundSubCat = sc; break; }
-            }
-          }
-
-          if (foundSubCat) {
-            subCatId = foundSubCat.id;
-            subCatName = foundSubCat.name;
-          } else if (firstSuffix) {
-            // Use the actual suffix value as virtual bucket (e.g. "34/35")
-            subCatId = `__dim__${firstSuffix}`;
-            subCatName = firstSuffix;
-          } else {
-            subCatId = group.id;
-            subCatName = group.name;
-          }
-        } else if (firstSuffix) {
-          // No sub-cats defined — still group by first dimension from product name
-          subCatId = `__dim__${firstSuffix}`;
-          subCatName = firstSuffix;
+          // Group belongs directly to a sub-category → use sub-cat name
+          bucketId = catId;
+          bucketName = cat.name;
         } else {
-          subCatId = group.id;
-          subCatName = group.name;
+          // Group belongs to the parent category itself
+          // Extract first suffix from product name as the bucket key
+          const suffix = getFirstSuffix(item.product_name);
+          if (suffix) {
+            bucketId = `__suffix__${suffix}`;
+            bucketName = suffix;
+          } else {
+            bucketId = group.id;
+            bucketName = group.name;
+          }
         }
-
-        const variantDimensions = variant?.dimensions || parsedDimensions || {};
 
         items.push({
           ...item,
           resolvedGroupId: group.id,
           groupName: group.name,
-          subCatId,
-          subCatName,
-          catId,
-          variantDimensions,
+          bucketId,
+          bucketName,
         });
       }
     }
     return items;
-  }, [dateSales, variantById, variantsByGroupId, groupById, groupsByName, thisSubCatByName, groupsSortedByNameLen, categoryById, categoryId, dimsByCatId, subCategories]);
+  }, [dateSales, groupById, groupByBaseName, categoryById, categoryId, subCatById]);
 
-  // DEBUG
-  React.useEffect(() => {
-    if (dateSales.length > 0) {
-      const sample = dateSales[0]?.items?.slice(0, 3) || [];
-      console.log('[DEBUG] subCategories:', subCategories.map(c => c.name));
-      console.log('[DEBUG] hasRealSubCats:', hasRealSubCats);
-      console.log('[DEBUG] sample items from sales:', JSON.stringify(sample, null, 2));
-      console.log('[DEBUG] soldItems count:', soldItems.length);
-      const breakdown = {};
-      for (const i of soldItems) {
-        breakdown[i.subCatName] = (breakdown[i.subCatName] || 0) + (i.quantity || 0);
-      }
-      console.log('[DEBUG] subCatName breakdown:', breakdown);
-    }
-  }, [dateSales, soldItems, subCategories, hasRealSubCats]);
+  // ── Drill state ──────────────────────────────────────────────────
+  const drillBucket = drillPath[0] || null; // { bucketId, bucketName }
 
-  // ── Drill-path derived state ─────────────────────────────────────
-  // drillPath steps:
-  //   { type: 'subcat', id, name }  — selected a sub-category (or group if no sub-cats)
-  //   { type: 'dim', dimName, dimValue } — selected a dimension value
-  const subcatStep = drillPath.find(s => s.type === 'subcat') || null;
-  const dimSteps = drillPath.filter(s => s.type === 'dim');
-
-  // Items filtered to the selected sub-cat/group
-  const subcatFilteredItems = useMemo(() => {
-    if (!subcatStep) return soldItems;
-    if (hasRealSubCats) {
-      // subcatStep.id is a real category id
-      return soldItems.filter(i => i.subCatId === subcatStep.id);
-    } else {
-      // subcatStep.id is a group id (no sub-cats)
-      return soldItems.filter(i => i.resolvedGroupId === subcatStep.id);
-    }
-  }, [soldItems, subcatStep, hasRealSubCats]);
-
-  // Items after all dimension filters
   const filteredItems = useMemo(() => {
-    let items = subcatFilteredItems;
-    for (const step of dimSteps) {
-      items = items.filter(i => i.variantDimensions[step.dimName] === step.dimValue);
-    }
-    return items;
-  }, [subcatFilteredItems, dimSteps]);
-
-  // Available dimension keys from current filtered items
-  const availableDimKeys = useMemo(() => {
-    if (!subcatStep) return [];
-    const keys = new Set();
-    for (const item of subcatFilteredItems) {
-      for (const k of Object.keys(item.variantDimensions)) keys.add(k);
-    }
-    return [...keys];
-  }, [subcatStep, subcatFilteredItems]);
-
-  // Undrilled dimension keys (exclude already-applied)
-  const undrilledDimKeys = useMemo(
-    () => availableDimKeys.filter(k => !dimSteps.some(s => s.dimName === k)),
-    [availableDimKeys, dimSteps]
-  );
-
-  // Auto-select first undrilled dimension
-  React.useEffect(() => {
-    if (undrilledDimKeys.length > 0 && !undrilledDimKeys.includes(selectedDimension)) {
-      setSelectedDimension(undrilledDimKeys[0]);
-    }
-  }, [undrilledDimKeys]);
-
-  // Can drill: level 0 always yes; level 1+ only if more undrilled dims exist
-  const canDrill = !subcatStep || (subcatStep && selectedDimension && undrilledDimKeys.length > 1);
-
-  const currentLabel = !subcatStep
-    ? (hasRealSubCats ? 'תת-קטגוריה' : 'מוצר')
-    : (selectedDimension || 'וריאציות');
+    if (!drillBucket) return soldItems;
+    return soldItems.filter(i => i.bucketId === drillBucket.bucketId);
+  }, [soldItems, drillBucket]);
 
   // ── Chart data ───────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    // Level 0: if real sub-cats exist → group by sub-category; else group by product (group)
-    if (!subcatStep) {
+    const sourceItems = drillBucket ? filteredItems : soldItems;
+
+    if (!drillBucket) {
+      // Level 0: group by bucket (sub-category or first suffix)
       const map = {};
-      for (const item of soldItems) {
-        let key, label;
-        if (hasRealSubCats) {
-          key = item.subCatId;
-          label = item.subCatName;
-        } else {
-          key = item.resolvedGroupId;
-          label = item.groupName;
-        }
+      for (const item of sourceItems) {
+        const key = item.bucketId;
+        const label = item.bucketName;
         if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
         map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
         map[key].quantity += item.quantity || 0;
@@ -414,43 +167,28 @@ export default function AdminCategoryInsights() {
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // Level 1+: group by selected dimension value
-    if (selectedDimension) {
-      const map = {};
-      for (const item of filteredItems) {
-        const val = String(item.variantDimensions?.[selectedDimension] ?? 'ללא וריאציה');
-        if (!map[val]) map[val] = { id: val, name: val, revenue: 0, quantity: 0 };
-        map[val].revenue += (item.sell_price || 0) * (item.quantity || 0);
-        map[val].quantity += item.quantity || 0;
-      }
-      return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-    }
-
-    // No dimension available — group by product name
+    // Level 1 (drilled): group by second suffix part (e.g. "אמריקאי")
     const map = {};
-    for (const item of filteredItems) {
-      const key = item.resolvedGroupId;
-      const label = item.groupName;
-      if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
-      map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
-      map[key].quantity += item.quantity || 0;
+    for (const item of sourceItems) {
+      const after = item.product_name?.split(' - ').slice(1).join(' - ') || '';
+      const parts = after.split(' / ').map(s => s.trim()).filter(Boolean);
+      const secondPart = parts[1] || parts[0] || item.groupName;
+      if (!map[secondPart]) map[secondPart] = { id: secondPart, name: secondPart, revenue: 0, quantity: 0 };
+      map[secondPart].revenue += (item.sell_price || 0) * (item.quantity || 0);
+      map[secondPart].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [soldItems, filteredItems, subcatStep, selectedDimension, hasRealSubCats, categoryId]);
+  }, [soldItems, filteredItems, drillBucket]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
-  // ── Handlers ─────────────────────────────────────────────────────
-  const handleDrillDown = (row) => {
-    if (!subcatStep) {
-      setDrillPath([{ type: 'subcat', id: row.id, name: row.name }]);
-    } else if (selectedDimension) {
-      setDrillPath(prev => [...prev, { type: 'dim', dimName: selectedDimension, dimValue: row.name }]);
-    }
-  };
+  const currentLabel = !drillBucket ? 'מידה' : 'סוג';
+  const canDrill = !drillBucket;
 
-  const handleBreadcrumbClick = (index) => {
-    setDrillPath(prev => prev.slice(0, index));
+  const handleDrillDown = (row) => {
+    if (canDrill) {
+      setDrillPath([{ bucketId: row.id, bucketName: row.name }]);
+    }
   };
 
   // ── Render ───────────────────────────────────────────────────────
@@ -467,7 +205,6 @@ export default function AdminCategoryInsights() {
             ניתוח קטגוריה: {category?.name || '...'}
           </h1>
         </div>
-        {/* Date filter */}
         <div className="flex items-center gap-2">
           <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setDrillPath([]); }} className="w-40" />
           <span className="text-gray-400">עד</span>
@@ -479,17 +216,12 @@ export default function AdminCategoryInsights() {
       {drillPath.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
           <button onClick={() => setDrillPath([])} className="text-sm text-blue-600 hover:underline font-medium">
-            כל הנתונים
+            כל המידות
           </button>
           {drillPath.map((step, idx) => (
             <React.Fragment key={idx}>
               <ChevronRight className="w-4 h-4 text-gray-400" />
-              <button
-                onClick={() => handleBreadcrumbClick(idx + 1)}
-                className={`text-sm font-medium ${idx === drillPath.length - 1 ? 'text-gray-800' : 'text-blue-600 hover:underline'}`}
-              >
-                {step.type === 'subcat' ? step.name : `${step.dimName}: ${step.dimValue}`}
-              </button>
+              <span className="text-sm font-medium text-gray-800">{step.bucketName}</span>
             </React.Fragment>
           ))}
         </div>
@@ -502,7 +234,7 @@ export default function AdminCategoryInsights() {
       ) : chartData.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-gray-400">
-            {soldItems.length === 0 ? 'אין מכירות לקטגוריה זו בטווח התאריכים' : 'אין עוד נתונים ברמה זו'}
+            אין מכירות לקטגוריה זו בטווח התאריכים
           </CardContent>
         </Card>
       ) : (
@@ -512,29 +244,12 @@ export default function AdminCategoryInsights() {
             <CardHeader>
               <CardTitle className="text-base">
                 פילוח לפי: <span className="text-amber-600">{currentLabel}</span>
-                {drillPath.length > 0 && (
-                  <span className="text-sm text-gray-400 font-normal mr-2">
-                    ({drillPath.map(s => s.type === 'subcat' ? s.name : `${s.dimName}=${s.dimValue}`).join(' › ')})
-                  </span>
+                {drillBucket && (
+                  <span className="text-sm text-gray-400 font-normal mr-2">({drillBucket.bucketName})</span>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Dimension selector — shown when drilled into a sub-cat */}
-              {subcatStep && undrilledDimKeys.length > 0 && (
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-600">קבץ לפי:</span>
-                  <select
-                    value={selectedDimension}
-                    onChange={e => setSelectedDimension(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  >
-                    {undrilledDimKeys.map(k => (
-                      <option key={k} value={k}>{k}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
                   <Pie
