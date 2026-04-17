@@ -28,14 +28,22 @@ export default function AdminCategoryInsights() {
   });
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['sales', user?.email],
-    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000) : [],
+    queryKey: ['insights-sales', user?.email],
+    queryFn: async () => {
+      const result = await base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000);
+      console.log('[INSIGHTS] sales loaded:', result.length, 'for user:', user.email);
+      return result;
+    },
     enabled: !!user,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    queryKey: ['insights-groups', user?.email],
+    queryFn: async () => {
+      const result = await base44.entities.ProductGroup.filter({ created_by: user.email });
+      console.log('[INSIGHTS] groups loaded:', result.length);
+      return result;
+    },
     enabled: !!user,
   });
 
