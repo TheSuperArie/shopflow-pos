@@ -154,6 +154,10 @@ export default function AdminCategoryInsights() {
     return m;
   }, [subCategories]);
 
+  // ── Does this category have real sub-categories? ─────────────────
+  // MUST be defined before soldItems useMemo uses it
+  const hasRealSubCats = subCategories.length > 0;
+
   const soldItems = useMemo(() => {
     const items = [];
     for (const sale of dateSales) {
@@ -314,9 +318,6 @@ export default function AdminCategoryInsights() {
     }
     return items;
   }, [dateSales, variantById, variantsByGroupId, groupById, groupsByName, thisSubCatByName, groupsSortedByNameLen, categoryById, categoryId, dimsByCatId, subCategories]);
-
-  // ── Does this category have real sub-categories? ─────────────────
-  const hasRealSubCats = subCategories.length > 0;
 
   // DEBUG
   React.useEffect(() => {
