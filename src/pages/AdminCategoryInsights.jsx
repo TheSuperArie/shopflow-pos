@@ -76,13 +76,6 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
-  // sub-cat name → category (for suffix-based disambiguation)
-  const subCatByName = useMemo(() => {
-    const m = {};
-    for (const c of categories) m[c.name] = c;
-    return m;
-  }, [categories]);
-
   // Pre-sorted by name length desc for partial matching (longest/most-specific first)
   const groupsSortedByNameLen = useMemo(
     () => [...groups].sort((a, b) => b.name.length - a.name.length),
@@ -154,39 +147,49 @@ export default function AdminCategoryInsights() {
   }, [variants]);
 
   // ── Enrich sold items with catalog context ───────────────────────
+  // sub-cat name → category, scoped to THIS category's children only
+  const thisSubCatByName = useMemo(() => {
+    const m = {};
+    for (const c of subCategories) m[c.name] = c;
+    return m;
+  }, [subCategories]);
+
   const soldItems = useMemo(() => {
     const items = [];
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
-        // 1. Resolve variant — coerce both sides to String to avoid type mismatches
+        // 1. Resolve variant via variant_id
         const rawVarId = item.variant_id ?? item.variantId;
         let variant = rawVarId ? variantById[String(rawVarId)] : null;
 
-        // 2. Resolve group: via variant → group, direct product_id, or name fallback
+        // 2. Resolve group via variant, direct product_id, or name
         const groupId = variant?.group_id || item.product_id;
-        const baseName = item.product_name?.split(' - ')[0]?.trim();
         let group = groupById[groupId] || null;
-        if (!group && baseName) {
-          const matchingGroups = groupsByName[baseName] || [];
-          if (matchingGroups.length === 1) {
-            group = matchingGroups[0];
-          } else if (matchingGroups.length > 1) {
-            const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
-            const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
-            if (suffixParts.length > 0) {
-              // Step 1: check if any suffix part matches a sub-category name
-              let foundByCat = false;
+
+        if (!group) {
+          const baseName = item.product_name?.split(' - ')[0]?.trim();
+          if (baseName) {
+            const matchingGroups = groupsByName[baseName] || [];
+            if (matchingGroups.length === 1) {
+              group = matchingGroups[0];
+            } else if (matchingGroups.length > 1) {
+              // Extract suffix parts (e.g. "13 / רגיל" → ["13", "רגיל"])
+              const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
+              const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
+
+              // Try to match a suffix part against THIS category's sub-category names
+              let resolved = null;
               for (const part of suffixParts) {
-                const subCat = subCatByName[part];
+                const subCat = thisSubCatByName[part];
                 if (subCat) {
                   const match = matchingGroups.find(g => g.category_id === subCat.id);
-                  if (match) { group = match; foundByCat = true; break; }
+                  if (match) { resolved = match; break; }
                 }
               }
-              if (!foundByCat) {
-                // Step 2: score by dimension value matches
-                let bestGroup = null;
-                let bestScore = -1;
+
+              if (!resolved) {
+                // Score by dimension value matches
+                let bestGroup = null, bestScore = -1;
                 for (const g of matchingGroups) {
                   const gVariants = variantsByGroupId[g.id] || [];
                   for (const v of gVariants) {
@@ -195,22 +198,21 @@ export default function AdminCategoryInsights() {
                     if (score > bestScore) { bestScore = score; bestGroup = g; }
                   }
                 }
-                group = (bestGroup && bestScore > 0) ? bestGroup : matchingGroups[0];
+                resolved = (bestGroup && bestScore > 0) ? bestGroup : matchingGroups[0];
               }
+              group = resolved;
             } else {
-              group = matchingGroups[0];
+              group = groupsSortedByNameLen.find(g =>
+                baseName.startsWith(g.name) || g.name.startsWith(baseName)
+              ) || null;
             }
-          } else {
-            group = groupsSortedByNameLen.find(g =>
-              baseName.startsWith(g.name) || g.name.startsWith(baseName)
-            ) || null;
           }
         }
         if (!group) continue;
 
-        // 3. Fallback variant match when ID lookup failed
+        // 3. Resolve variant from group if not yet found
         let parsedDimensions = null;
-        if (!variant && group) {
+        if (!variant) {
           const groupVariants = variantsByGroupId[group.id] || [];
           if (groupVariants.length === 1) {
             variant = groupVariants[0];
@@ -219,14 +221,11 @@ export default function AdminCategoryInsights() {
               ? item.product_name.split(' - ').slice(1).join(' - ').trim()
               : '';
             if (nameSuffix) {
-              // Try to match ALL dimension values (not just any one), to avoid false positives
               const suffixParts = nameSuffix.split(' / ').map(s => s.trim());
               variant = groupVariants.find(v => {
                 const dimVals = Object.values(v.dimensions || {}).map(String);
                 return dimVals.length > 0 && dimVals.every(val => suffixParts.some(p => p === val));
               }) || null;
-
-              // If still no match, build parsedDimensions from suffix parts + dimension names
               if (!variant) {
                 const catDims = dimsByCatId[group.category_id] || [];
                 if (catDims.length > 0 && suffixParts.length > 0) {
@@ -252,11 +251,30 @@ export default function AdminCategoryInsights() {
         const isSubCatChild = cat.parent_id === categoryId;
         if (!isDirectChild && !isSubCatChild) continue;
 
-        // Bucket: use sub-cat if available, otherwise use the group itself
-        const subCatId = isSubCatChild ? catId : group.id;
-        const subCatName = isSubCatChild ? cat.name : group.name;
+        // If item has a variant_id but group resolution landed it in a different sub-cat,
+        // try to use the suffix to find the correct sub-cat directly
+        let subCatId, subCatName;
+        if (isSubCatChild) {
+          subCatId = catId;
+          subCatName = cat.name;
+        } else {
+          // direct child — try to find sub-cat from product name suffix
+          const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
+          const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
+          let foundSubCat = null;
+          for (const part of suffixParts) {
+            const sc = thisSubCatByName[part];
+            if (sc) { foundSubCat = sc; break; }
+          }
+          if (foundSubCat) {
+            subCatId = foundSubCat.id;
+            subCatName = foundSubCat.name;
+          } else {
+            subCatId = group.id;
+            subCatName = group.name;
+          }
+        }
 
-        // Variant dimensions — use variant if found, else parsed from product name, else empty
         const variantDimensions = variant?.dimensions || parsedDimensions || {};
 
         items.push({
@@ -271,23 +289,10 @@ export default function AdminCategoryInsights() {
       }
     }
     return items;
-  }, [dateSales, variantById, variantsByGroupId, groupById, groupsByName, groupByName, subCatByName, groupsSortedByNameLen, categoryById, categoryId, dimsByCatId]);
+  }, [dateSales, variantById, variantsByGroupId, groupById, groupsByName, thisSubCatByName, groupsSortedByNameLen, categoryById, categoryId, dimsByCatId, subCategories]);
 
   // ── Does this category have real sub-categories? ─────────────────
   const hasRealSubCats = subCategories.length > 0;
-
-  // Debug: log what's in soldItems to understand the breakdown
-  React.useEffect(() => {
-    if (soldItems.length > 0) {
-      const summary = {};
-      for (const item of soldItems) {
-        const key = `subCatId=${item.subCatId} | subCatName=${item.subCatName} | catId=${item.catId}`;
-        summary[key] = (summary[key] || 0) + (item.quantity || 0);
-      }
-      console.log('[AdminCategoryInsights] soldItems subcat breakdown:', summary);
-      console.log('[AdminCategoryInsights] hasRealSubCats:', hasRealSubCats, 'subCategories:', subCategories.map(c => c.name));
-    }
-  }, [soldItems, hasRealSubCats, subCategories]);
 
   // ── Drill-path derived state ─────────────────────────────────────
   // drillPath steps:
