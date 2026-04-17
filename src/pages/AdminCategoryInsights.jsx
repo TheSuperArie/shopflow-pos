@@ -23,8 +23,9 @@ export default function AdminCategoryInsights() {
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', user?.email],
-    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }) : [],
+    queryFn: () => base44.entities.Category.filter({ created_by: user.email }),
     enabled: !!user,
+    staleTime: 0,
   });
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
@@ -35,6 +36,7 @@ export default function AdminCategoryInsights() {
       return result;
     },
     enabled: !!user,
+    staleTime: 0,
   });
 
   const { data: groups = [] } = useQuery({
@@ -45,6 +47,7 @@ export default function AdminCategoryInsights() {
       return result;
     },
     enabled: !!user,
+    staleTime: 0,
   });
 
   // ── Lookup maps ──────────────────────────────────────────────────
