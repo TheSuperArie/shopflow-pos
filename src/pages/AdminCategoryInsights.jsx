@@ -30,22 +30,14 @@ export default function AdminCategoryInsights() {
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['insights-sales', user?.email],
-    queryFn: async () => {
-      const result = await base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000);
-      console.log('[INSIGHTS] sales loaded:', result.length, 'for user:', user.email);
-      return result;
-    },
+    queryFn: () => base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000),
     enabled: !!user,
     staleTime: 0,
   });
 
   const { data: groups = [] } = useQuery({
     queryKey: ['insights-groups', user?.email],
-    queryFn: async () => {
-      const result = await base44.entities.ProductGroup.filter({ created_by: user.email });
-      console.log('[INSIGHTS] groups loaded:', result.length);
-      return result;
-    },
+    queryFn: () => base44.entities.ProductGroup.filter({ created_by: user.email }),
     enabled: !!user,
     staleTime: 0,
   });
@@ -63,25 +55,9 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
-  // group name → first matching group (for name-based lookup)
-  const groupByBaseName = useMemo(() => {
-    const m = {};
-    for (const g of groups) {
-      if (!m[g.name]) m[g.name] = g;
-    }
-    return m;
-  }, [groups]);
-
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
-  // Debug: log all categories and groups
-  if (categories.length > 0 && groups.length > 0) {
-    const topCats = categories.filter(c => !c.parent_id);
-    console.log('[INSIGHTS] top-level cats:', topCats.map(c => ({ id: c.id, name: c.name })));
-    console.log('[INSIGHTS] categoryId from URL:', categoryId, '| matched cat:', category?.name);
-    const directGroups = groups.filter(g => g.category_id === categoryId);
-    console.log('[INSIGHTS] groups directly under categoryId:', directGroups.map(g => g.name));
-  }
+
   const subCategories = useMemo(
     () => categories.filter(c => c.parent_id === categoryId),
     [categories, categoryId]
@@ -111,27 +87,29 @@ export default function AdminCategoryInsights() {
   // ── Build sold items with bucket assignment ──────────────────────
   const soldItems = useMemo(() => {
     const items = [];
-    let noGroup = 0, noCat = 0, noMatch = 0;
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
         const baseName = item.product_name?.split(' - ')[0]?.trim();
         if (!baseName) continue;
 
-        // Find the group by product_id or by base name
-        let group = groupById[item.product_id] || groupByBaseName[baseName] || null;
-        if (!group) { noGroup++; continue; }
+        // Find the group by product_id first, then by base name
+        let group = groupById[item.product_id] || null;
+
+        // If not found by ID, find by name but ONLY within our category tree
+        if (!group) {
+          const candidates = groups.filter(g => g.name === baseName);
+          group = candidates.find(g => g.category_id === categoryId || !!subCatById[g.category_id]) || null;
+        }
+        if (!group) continue;
 
         const catId = group.category_id;
         const cat = categoryById[catId];
-        if (!cat) { noCat++; continue; }
+        if (!cat) continue;
 
         // Must belong to our category tree
         const isDirectChild = catId === categoryId;
         const isSubCatChild = !!subCatById[catId];
-        if (!isDirectChild && !isSubCatChild) {
-          if (noMatch === 0) console.log('[INSIGHTS] noMatch sample — group.category_id:', catId, '| cat.parent_id:', cat.parent_id, '| categoryId:', categoryId, '| subCatById keys:', Object.keys(subCatById));
-          noMatch++; continue;
-        }
+        if (!isDirectChild && !isSubCatChild) continue;
 
         // Determine bucket (what slice of the pie this item belongs to)
         let bucketId, bucketName;
@@ -162,9 +140,8 @@ export default function AdminCategoryInsights() {
         });
       }
     }
-    console.log('[INSIGHTS] soldItems:', items.length, '| noGroup:', noGroup, '| noCat:', noCat, '| noMatch:', noMatch, '| dateSales:', dateSales.length, '| categoryId:', categoryId, '| subCats:', Object.keys(subCatById).length);
     return items;
-  }, [dateSales, groupById, groupByBaseName, categoryById, categoryId, subCatById]);
+  }, [dateSales, groups, groupById, categoryById, categoryId, subCatById]);
 
   // ── Drill state ──────────────────────────────────────────────────
   const drillBucket = drillPath[0] || null; // { bucketId, bucketName }
