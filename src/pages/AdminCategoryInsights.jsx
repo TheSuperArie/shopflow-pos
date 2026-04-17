@@ -74,6 +74,8 @@ export default function AdminCategoryInsights() {
 
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
+  // Debug: log all categories to see the tree
+  if (categories.length > 0) console.log('[INSIGHTS] all categories:', categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })), '| looking for categoryId:', categoryId, '| found:', !!category);
   const subCategories = useMemo(
     () => categories.filter(c => c.parent_id === categoryId),
     [categories, categoryId]
