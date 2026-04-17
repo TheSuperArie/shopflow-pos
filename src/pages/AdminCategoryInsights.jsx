@@ -251,14 +251,15 @@ export default function AdminCategoryInsights() {
         const isSubCatChild = cat.parent_id === categoryId;
         if (!isDirectChild && !isSubCatChild) continue;
 
-        // If item has a variant_id but group resolution landed it in a different sub-cat,
-        // try to use the suffix to find the correct sub-cat directly
+        // Determine sub-category bucket
         let subCatId, subCatName;
         if (isSubCatChild) {
+          // Group is directly under a sub-category — use it
           subCatId = catId;
           subCatName = cat.name;
-        } else {
-          // direct child — try to find sub-cat from product name suffix
+        } else if (hasRealSubCats) {
+          // Group is under the parent category, but sub-cats exist (e.g. sizes as sub-cats)
+          // Extract sub-cat from the product name suffix: "חולצות - 13 / רגיל" → "13"
           const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
           const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
           let foundSubCat = null;
@@ -266,13 +267,24 @@ export default function AdminCategoryInsights() {
             const sc = thisSubCatByName[part];
             if (sc) { foundSubCat = sc; break; }
           }
+          // Also try variant dimensions directly
+          if (!foundSubCat && variant?.dimensions) {
+            for (const val of Object.values(variant.dimensions)) {
+              const sc = thisSubCatByName[String(val)];
+              if (sc) { foundSubCat = sc; break; }
+            }
+          }
           if (foundSubCat) {
             subCatId = foundSubCat.id;
             subCatName = foundSubCat.name;
           } else {
+            // fallback: use group as bucket
             subCatId = group.id;
             subCatName = group.name;
           }
+        } else {
+          subCatId = group.id;
+          subCatName = group.name;
         }
 
         const variantDimensions = variant?.dimensions || parsedDimensions || {};
@@ -360,8 +372,6 @@ export default function AdminCategoryInsights() {
       for (const item of soldItems) {
         let key, label;
         if (hasRealSubCats) {
-          // Only show items that belong to a real sub-category
-          if (item.catId === categoryId) continue; // skip direct items when sub-cats exist
           key = item.subCatId;
           label = item.subCatName;
         } else {
