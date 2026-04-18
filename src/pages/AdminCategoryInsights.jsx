@@ -77,6 +77,18 @@ export default function AdminCategoryInsights() {
     return m;
   }, [settledCategories]);
 
+  const groupById = useMemo(() => {
+    const m = {};
+    for (const g of groups) m[g.id] = g;
+    return m;
+  }, [groups]);
+
+  const variantById = useMemo(() => {
+    const m = {};
+    for (const v of variants) m[String(v.id)] = v;
+    return m;
+  }, [variants]);
+
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
 
