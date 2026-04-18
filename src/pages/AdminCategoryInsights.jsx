@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -27,8 +27,20 @@ export default function AdminCategoryInsights() {
     queryKey: ['categories', user?.email],
     queryFn: () => base44.entities.Category.filter({ created_by: user.email }),
     enabled: !!user,
-    staleTime: 30000,
+    staleTime: 0,
   });
+
+  // Use a ref to track the "settled" categories — only update when NOT fetching
+  // This prevents the brief moment where categories is stale/empty while isFetching=true
+  const settledCategoriesRef = useRef([]);
+  const [settledCategories, setSettledCategories] = useState([]);
+
+  useEffect(() => {
+    if (!loadingCategories && !fetchingCategories && categories.length >= 0) {
+      settledCategoriesRef.current = categories;
+      setSettledCategories(categories);
+    }
+  }, [categories, loadingCategories, fetchingCategories]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['insights-sales', user?.email],
@@ -61,28 +73,16 @@ export default function AdminCategoryInsights() {
   // ── Lookup maps ──────────────────────────────────────────────────
   const categoryById = useMemo(() => {
     const m = {};
-    for (const c of categories) m[c.id] = c;
+    for (const c of settledCategories) m[c.id] = c;
     return m;
-  }, [categories]);
-
-  const groupById = useMemo(() => {
-    const m = {};
-    for (const g of groups) m[g.id] = g;
-    return m;
-  }, [groups]);
-
-  const variantById = useMemo(() => {
-    const m = {};
-    for (const v of variants) m[String(v.id)] = v;
-    return m;
-  }, [variants]);
+  }, [settledCategories]);
 
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
 
   const subCategories = useMemo(
-    () => categories.filter(c => c.parent_id === categoryId),
-    [categories, categoryId]
+    () => settledCategories.filter(c => c.parent_id === categoryId),
+    [settledCategories, categoryId]
   );
 
   const subCatById = useMemo(() => {
@@ -132,7 +132,7 @@ export default function AdminCategoryInsights() {
   // Each item gets: resolvedGroup, resolvedVariant, subCatId (if applicable)
   const resolvedItems = useMemo(() => {
     // Wait for categories to load before resolving — otherwise subCatById is empty
-    if (loadingCategories || fetchingCategories) return [];
+    if (loadingCategories || fetchingCategories || settledCategories.length === 0) return [];
     const items = [];
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
@@ -165,7 +165,7 @@ export default function AdminCategoryInsights() {
       }
     }
     return items;
-  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById, variantById, loadingCategories]);
+  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById, variantById, loadingCategories, settledCategories]);
 
   // ── Drill state ──────────────────────────────────────────────────
   // drillBucket stores { bucketId (subCatId or '__direct__'), bucketName }
@@ -203,8 +203,8 @@ export default function AdminCategoryInsights() {
 
   // ── Step 2: Build chart data from filteredItems (dynamic — selectedDimension dep) ──
   const chartData = useMemo(() => {
-    // Don't bucket until categories are loaded — prevents wrong "no sub-cats" branch
-    if (loadingCategories || fetchingCategories) return [];
+    // Don't bucket until categories are fully settled — prevents wrong "no sub-cats" branch
+    if (loadingCategories || fetchingCategories || settledCategories.length === 0) return [];
     const hasSubCatsLocal = subCategories.length > 0;
     const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
 
@@ -274,10 +274,10 @@ export default function AdminCategoryInsights() {
       map[dimVal].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, variants]);
+  }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, fetchingCategories, variants, settledCategories]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
-  const hasSubCats = !loadingCategories && !fetchingCategories && subCategories.length > 0;
+  const hasSubCats = !loadingCategories && !fetchingCategories && settledCategories.length > 0 && subCategories.length > 0;
   const dimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
   // Level 0 + sub-cats → "תת-קטגוריה" (never show dimension name here)
   // Level 0 + no sub-cats → dimension name
