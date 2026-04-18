@@ -258,11 +258,11 @@ export default function AdminCategoryInsights() {
       if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
         dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
       }
-      // Priority 2: Smart Text Scanner — search product name for known dimension values
+      // Priority 2: Smart Text Scanner — search product name for known dimension values (whole-word / segment match only)
       else if (dimKey && item.product_name && knownValuesForDim.size > 0) {
-        const nameLower = item.product_name.toLowerCase();
+        const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim().toLowerCase());
         for (const knownVal of knownValuesForDim) {
-          if (nameLower.includes(knownVal.toLowerCase())) {
+          if (segments.includes(knownVal.toLowerCase())) {
             dimVal = knownVal;
             break;
           }
@@ -303,8 +303,8 @@ export default function AdminCategoryInsights() {
           </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Dimension selector — always shown when drilling, or when no sub-cats at level 0 */}
-          {availableDimensionNames.length > 0 && (!!drillBucket || !hasSubCats) && (
+          {/* Dimension selector — shown only when drilling into a sub-cat, or when no sub-cats at level 0 */}
+          {availableDimensionNames.length > 0 && (!!drillBucket || (!loadingCategories && !hasSubCats)) && (
             <Select
               value={selectedDimension}
               onValueChange={(v) => { setSelectedDimension(v); }}
