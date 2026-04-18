@@ -166,49 +166,45 @@ export default function AdminCategoryInsights() {
   }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById, variantById]);
 
   // ── Drill state ──────────────────────────────────────────────────
+  // drillBucket stores { bucketId (subCatId or '__direct__'), bucketName }
+  // This is STATIC — it only changes when user clicks a slice or hits back
   const drillBucket = drillPath[0] || null;
 
-  // ── Chart data ───────────────────────────────────────────────────
-  // Level 0 (no drill): group by sub-category (if hasSubCats), else by selectedDimension
-  // Level 1 (drilled into sub-cat or dim value): group by selectedDimension within that bucket
+  // ── Step 1: Filter items by drill bucket (static — no selectedDimension dep) ──
+  // At Level 1 this gives us ONLY items inside the drilled sub-category
+  const filteredItems = useMemo(() => {
+    if (!drillBucket) return resolvedItems; // Level 0: use all items
+    if (drillBucket.bucketId === '__direct__') return resolvedItems.filter(item => !item.subCatId);
+    return resolvedItems.filter(item => item.subCatId === drillBucket.bucketId);
+  }, [resolvedItems, drillBucket]);
+
+  // ── Step 2: Build chart data from filteredItems (dynamic — selectedDimension dep) ──
   const chartData = useMemo(() => {
     const hasSubCatsLocal = subCategories.length > 0;
+    const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
 
     if (!drillBucket) {
       // ── LEVEL 0 ──────────────────────────────────────────────────
       if (hasSubCatsLocal) {
-        // Default view: group strictly by sub-category
+        // Group strictly by sub-category ID
         const map = {};
-        for (const item of resolvedItems) {
-          if (!item.subCatId) continue; // skip items not in any sub-cat
-          const key = item.subCatId;
-          const label = item.subCatName;
-          if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
-          map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
-          map[key].quantity += item.quantity || 0;
-        }
-        // Also bucket items that belong directly to the parent category (no sub-cat)
-        for (const item of resolvedItems) {
-          if (item.subCatId) continue;
-          const key = '__direct__';
-          const label = 'כללי';
+        for (const item of filteredItems) {
+          const key = item.subCatId || '__direct__';
+          const label = item.subCatName || 'כללי';
           if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
           map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
           map[key].quantity += item.quantity || 0;
         }
         return Object.values(map).sort((a, b) => b.revenue - a.revenue);
       } else {
-        // No sub-cats: group by the selected dimension
-        const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
+        // No sub-cats: group by selected dimension
         const map = {};
-        for (const item of resolvedItems) {
-          let bucketLabel = null;
-          if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] !== undefined) {
-            bucketLabel = String(item.resolvedVariant.dimensions[dimKey]).trim();
-          }
-          if (!bucketLabel) bucketLabel = item.resolvedGroup?.name || 'אחר';
-          const key = `__dim__${bucketLabel}`;
-          if (!map[key]) map[key] = { id: key, name: bucketLabel, revenue: 0, quantity: 0 };
+        for (const item of filteredItems) {
+          const dimVal = dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null
+            ? String(item.resolvedVariant.dimensions[dimKey]).trim()
+            : (item.resolvedGroup?.name || 'אחר');
+          const key = `__dim__${dimVal}`;
+          if (!map[key]) map[key] = { id: key, name: dimVal, revenue: 0, quantity: 0 };
           map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
           map[key].quantity += item.quantity || 0;
         }
@@ -216,27 +212,19 @@ export default function AdminCategoryInsights() {
       }
     }
 
-    // ── LEVEL 1 (drilled into a sub-category bucket) ─────────────
-    // Filter: only items whose subCatId matches the drilled bucket, OR
-    // if drilled into '__direct__', items with no subCat
-    const bucketItems = drillBucket.bucketId === '__direct__'
-      ? resolvedItems.filter(item => !item.subCatId)
-      : resolvedItems.filter(item => item.subCatId === drillBucket.bucketId);
-
-    // Group by the selected dimension (strictly — only that dimension key)
-    const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
+    // ── LEVEL 1: filteredItems already contains ONLY the drilled bucket's items ──
+    // Now slice them by selectedDimension — this is purely a display bucketing step
     const map = {};
-    for (const item of bucketItems) {
+    for (const item of filteredItems) {
       const dimVal = dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null
         ? String(item.resolvedVariant.dimensions[dimKey]).trim()
         : 'ללא וריאציה';
-      const bucketLabel = dimVal || 'ללא וריאציה';
-      if (!map[bucketLabel]) map[bucketLabel] = { id: bucketLabel, name: bucketLabel, revenue: 0, quantity: 0 };
-      map[bucketLabel].revenue += (item.sell_price || 0) * (item.quantity || 0);
-      map[bucketLabel].quantity += item.quantity || 0;
+      if (!map[dimVal]) map[dimVal] = { id: dimVal, name: dimVal, revenue: 0, quantity: 0 };
+      map[dimVal].revenue += (item.sell_price || 0) * (item.quantity || 0);
+      map[dimVal].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [resolvedItems, drillBucket, subCategories, selectedDimension, availableDimensionNames]);
+  }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   const hasSubCats = subCategories.length > 0;
