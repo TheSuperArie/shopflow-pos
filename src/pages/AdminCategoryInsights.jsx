@@ -214,6 +214,17 @@ export default function AdminCategoryInsights() {
 
     // ── LEVEL 1: filteredItems already contains ONLY the drilled bucket's items ──
     // Now slice them by selectedDimension — this is purely a display bucketing step
+
+    // Build a set of all known valid values for the selected dimension
+    const knownValuesForDim = new Set();
+    if (dimKey) {
+      for (const v of variants) {
+        if (v.dimensions?.[dimKey] != null) {
+          knownValuesForDim.add(String(v.dimensions[dimKey]).trim());
+        }
+      }
+    }
+
     const map = {};
     for (const item of filteredItems) {
       let dimVal = 'ללא וריאציה';
@@ -222,16 +233,14 @@ export default function AdminCategoryInsights() {
       if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
         dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
       }
-      // Priority 2: Parse from product name suffix (e.g. "Product - Size / Cut")
-      else if (dimKey && item.product_name) {
-        const suffix = item.product_name.split(' - ').slice(1).join(' - ');
-        const parts = suffix.split(/\s*\/\s*/).map(s => s.trim()).filter(Boolean);
-        // Find the dimension index from the known dimension names order
-        const dimIndex = availableDimensionNames.indexOf(dimKey);
-        if (dimIndex >= 0 && parts[dimIndex]) {
-          dimVal = parts[dimIndex];
-        } else if (parts.length > 0) {
-          dimVal = parts[0];
+      // Priority 2: Smart Text Scanner — search product name for known dimension values
+      else if (dimKey && item.product_name && knownValuesForDim.size > 0) {
+        const nameLower = item.product_name.toLowerCase();
+        for (const knownVal of knownValuesForDim) {
+          if (nameLower.includes(knownVal.toLowerCase())) {
+            dimVal = knownVal;
+            break;
+          }
         }
       }
 
