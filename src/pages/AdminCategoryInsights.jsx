@@ -120,29 +120,7 @@ export default function AdminCategoryInsights() {
     return [...namesSet];
   }, [dimensions, variants, groupById, treeCategoryIds]);
 
-  // All known dimension values across the tree (for legacy string matching)
-  const allDimValuesSet = useMemo(() => {
-    const s = new Set();
-    for (const dim of dimensions) {
-      if (treeCategoryIds.has(dim.category_id)) {
-        for (const val of (dim.values || [])) s.add(String(val).trim());
-      }
-    }
-    for (const v of variants) {
-      const g = groupById[v.group_id];
-      if (g && treeCategoryIds.has(g.category_id)) {
-        for (const val of Object.values(v.dimensions || {})) s.add(String(val).trim());
-      }
-    }
-    return s;
-  }, [dimensions, variants, groupById, treeCategoryIds]);
 
-  // Sub-category names set (for legacy matching)
-  const subCatNameSet = useMemo(() => {
-    const s = new Set();
-    for (const sc of subCategories) s.add(sc.name.trim());
-    return s;
-  }, [subCategories]);
 
   // ── Date-filtered sales ──────────────────────────────────────────
   const dateSales = useMemo(() => sales.filter(s => {
@@ -150,158 +128,128 @@ export default function AdminCategoryInsights() {
     return d >= dateFrom && d <= dateTo;
   }), [sales, dateFrom, dateTo]);
 
-  // ── Core bucket assignment — 4-level Fallback Chain ──────────────
-  const soldItems = useMemo(() => {
+  // ── Resolve all items belonging to this category tree ───────────
+  // Each item gets: resolvedGroup, resolvedVariant, subCatId (if applicable)
+  const resolvedItems = useMemo(() => {
     const items = [];
-
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
-        // ── Resolve group ────────────────────────────────────────
         const baseName = item.product_name?.split(' - ')[0]?.trim();
         if (!baseName) continue;
 
-        let group = groupById[item.product_id] || null;
-        if (group) {
-          const inTree = treeCategoryIds.has(group.category_id);
-          if (!inTree) group = null;
-        }
+        // Resolve group: try product_id first, then name match
+        let group = groupById[item.product_id] && treeCategoryIds.has(groupById[item.product_id]?.category_id)
+          ? groupById[item.product_id]
+          : null;
         if (!group) {
-          const candidates = groups.filter(g => g.name === baseName);
-          group = candidates.find(g => treeCategoryIds.has(g.category_id)) || null;
+          const candidates = groups.filter(g => g.name === baseName && treeCategoryIds.has(g.category_id));
+          group = candidates[0] || null;
         }
         if (!group) continue;
 
         const catId = group.category_id;
-        const cat = categoryById[catId];
-        if (!cat) continue;
-        if (!treeCategoryIds.has(catId)) continue;
+        if (!categoryById[catId]) continue;
 
-        const isSubCatChild = !!subCatById[catId];
-
-        let bucketId, bucketName;
-
-        // Resolve variant early so it's available for items.push regardless of branch
         const rawVarId = item.variant_id ?? item.variantId;
-        const variant = rawVarId ? variantById[String(rawVarId)] : null;
-
-        // ── PRIORITY 1: Sub-category match ───────────────────────
-        if (isSubCatChild) {
-          bucketId = catId;
-          bucketName = cat.name;
-        } else {
-          // ── PRIORITY 2: Variant dimension lookup ─────────────────
-
-          if (variant && variant.dimensions && Object.keys(variant.dimensions).length > 0) {
-            // Use the user-selected dimension, or pick the first available
-            const dimKey = (selectedDimension !== '__auto__' && variant.dimensions[selectedDimension] !== undefined)
-              ? selectedDimension
-              : Object.keys(variant.dimensions)[0];
-            const dimVal = String(variant.dimensions[dimKey] ?? '').trim();
-            if (dimVal) {
-              bucketId = `__dim__${dimKey}__${dimVal}`;
-              bucketName = dimVal;
-            }
-          }
-
-          // ── PRIORITY 3: Smart legacy string matching ─────────────
-          if (!bucketId) {
-            const parts = (item.product_name || '')
-              .split(/[\s\-\/]+/)
-              .map(p => p.trim())
-              .filter(Boolean);
-
-            // Check each token against known sub-cat names or dim values
-            let matched = null;
-            for (const part of parts) {
-              if (subCatNameSet.has(part)) { matched = part; break; }
-            }
-            if (!matched) {
-              for (const part of parts) {
-                if (allDimValuesSet.has(part)) { matched = part; break; }
-              }
-            }
-            if (matched) {
-              bucketId = `__legacy__${matched}`;
-              bucketName = matched;
-            }
-          }
-
-          // ── PRIORITY 4: Ultimate fallback ─────────────────────────
-          if (!bucketId) {
-            bucketId = group.id;
-            bucketName = group.name;
-          }
-        }
+        const variant = rawVarId ? (variantById[String(rawVarId)] || null) : null;
 
         items.push({
           ...item,
-          resolvedGroupId: group.id,
-          groupName: group.name,
-          bucketId,
-          bucketName,
-          resolvedVariant: variant ?? null,
+          resolvedGroup: group,
+          resolvedVariant: variant,
+          subCatId: subCatById[catId] ? catId : null,
+          subCatName: subCatById[catId] ? categoryById[catId].name : null,
         });
       }
     }
     return items;
-  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById,
-      variantById, selectedDimension, subCatNameSet, allDimValuesSet]);
+  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById, variantById]);
 
   // ── Drill state ──────────────────────────────────────────────────
   const drillBucket = drillPath[0] || null;
 
-  const filteredItems = useMemo(() => {
-    if (!drillBucket) return soldItems;
-    return soldItems.filter(i => i.bucketId === drillBucket.bucketId);
-  }, [soldItems, drillBucket]);
-
   // ── Chart data ───────────────────────────────────────────────────
+  // Level 0 (no drill): group by sub-category (if hasSubCats), else by selectedDimension
+  // Level 1 (drilled into sub-cat or dim value): group by selectedDimension within that bucket
   const chartData = useMemo(() => {
-    const sourceItems = drillBucket ? filteredItems : soldItems;
+    const hasSubCatsLocal = subCategories.length > 0;
 
     if (!drillBucket) {
-      // Level 0: group by bucket
-      const map = {};
-      for (const item of sourceItems) {
-        const key = item.bucketId;
-        const label = item.bucketName;
-        if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
-        map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
-        map[key].quantity += item.quantity || 0;
+      // ── LEVEL 0 ──────────────────────────────────────────────────
+      if (hasSubCatsLocal) {
+        // Default view: group strictly by sub-category
+        const map = {};
+        for (const item of resolvedItems) {
+          if (!item.subCatId) continue; // skip items not in any sub-cat
+          const key = item.subCatId;
+          const label = item.subCatName;
+          if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
+          map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
+          map[key].quantity += item.quantity || 0;
+        }
+        // Also bucket items that belong directly to the parent category (no sub-cat)
+        for (const item of resolvedItems) {
+          if (item.subCatId) continue;
+          const key = '__direct__';
+          const label = 'כללי';
+          if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
+          map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
+          map[key].quantity += item.quantity || 0;
+        }
+        return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+      } else {
+        // No sub-cats: group by the selected dimension
+        const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
+        const map = {};
+        for (const item of resolvedItems) {
+          let bucketLabel = null;
+          if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] !== undefined) {
+            bucketLabel = String(item.resolvedVariant.dimensions[dimKey]).trim();
+          }
+          if (!bucketLabel) bucketLabel = item.resolvedGroup?.name || 'אחר';
+          const key = `__dim__${bucketLabel}`;
+          if (!map[key]) map[key] = { id: key, name: bucketLabel, revenue: 0, quantity: 0 };
+          map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
+          map[key].quantity += item.quantity || 0;
+        }
+        return Object.values(map).sort((a, b) => b.revenue - a.revenue);
       }
-      return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // Level 1 (drilled into a bucket): break down by a secondary dimension
-    // Try to find a second dimension key that differs from the bucket's dim key
-    const map = {};
-    for (const item of sourceItems) {
-      let secondLabel = null;
-
-      const resolvedVariant = item.resolvedVariant;
-      if (resolvedVariant && resolvedVariant.dimensions) {
-        const dims = resolvedVariant.dimensions;
-        const dimKeys = Object.keys(dims);
-        // Pick the first key that was NOT used for the top-level bucket
-        const bucketDimVal = item.bucketName;
-        const secondKey = dimKeys.find(k => String(dims[k]).trim() !== bucketDimVal) || dimKeys[1];
-        if (secondKey) secondLabel = String(dims[secondKey]).trim();
+    // ── LEVEL 1 (drilled into a bucket) ──────────────────────────
+    // Filter to items that belong to this bucket
+    const bucketItems = resolvedItems.filter(item => {
+      if (drillBucket.bucketId.startsWith('__dim__') || drillBucket.bucketId === '__direct__') {
+        // drilled from a sub-cat or "כללי" bucket
+        if (drillBucket.bucketId === '__direct__') return !item.subCatId;
+        // drilled from a top-level dim bucket — match by name
+        return (item.subCatName === drillBucket.bucketName) || (item.resolvedGroup?.name === drillBucket.bucketName);
       }
+      // drilled from a sub-cat bucket (id = catId)
+      return item.subCatId === drillBucket.bucketId;
+    });
 
-      // Legacy fallback: use group name
-      if (!secondLabel) secondLabel = item.groupName;
-
-      if (!map[secondLabel]) map[secondLabel] = { id: secondLabel, name: secondLabel, revenue: 0, quantity: 0 };
-      map[secondLabel].revenue += (item.sell_price || 0) * (item.quantity || 0);
-      map[secondLabel].quantity += item.quantity || 0;
+    // Now group by the selected dimension
+    const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
+    const map = {};
+    for (const item of bucketItems) {
+      let bucketLabel = null;
+      if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] !== undefined) {
+        bucketLabel = String(item.resolvedVariant.dimensions[dimKey]).trim();
+      }
+      if (!bucketLabel) bucketLabel = item.resolvedGroup?.name || 'אחר';
+      if (!map[bucketLabel]) map[bucketLabel] = { id: bucketLabel, name: bucketLabel, revenue: 0, quantity: 0 };
+      map[bucketLabel].revenue += (item.sell_price || 0) * (item.quantity || 0);
+      map[bucketLabel].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [soldItems, filteredItems, drillBucket]);
+  }, [resolvedItems, drillBucket, subCategories, selectedDimension, availableDimensionNames]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   const hasSubCats = subCategories.length > 0;
   const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : (availableDimensionNames[0] || 'קבוצה');
-  const currentLabel = !drillBucket ? topLevelLabel : 'פירוט';
+  const activeDimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
+  const currentLabel = !drillBucket ? topLevelLabel : activeDimLabel;
   const canDrill = !drillBucket;
 
   const handleDrillDown = (row) => {
@@ -323,8 +271,8 @@ export default function AdminCategoryInsights() {
           </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Dimension selector (only when no sub-cats) */}
-          {!hasSubCats && availableDimensionNames.length > 1 && (
+          {/* Dimension selector — always shown when drilling, or when no sub-cats at level 0 */}
+          {availableDimensionNames.length > 0 && (!!drillBucket || !hasSubCats) && (
             <Select
               value={selectedDimension}
               onValueChange={(v) => { setSelectedDimension(v); setDrillPath([]); }}
