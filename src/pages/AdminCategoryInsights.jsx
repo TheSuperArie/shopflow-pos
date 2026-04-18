@@ -131,6 +131,8 @@ export default function AdminCategoryInsights() {
   // ── Resolve all items belonging to this category tree ───────────
   // Each item gets: resolvedGroup, resolvedVariant, subCatId (if applicable)
   const resolvedItems = useMemo(() => {
+    // Wait for categories to load before resolving — otherwise subCatById is empty
+    if (loadingCategories) return [];
     const items = [];
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
@@ -163,7 +165,7 @@ export default function AdminCategoryInsights() {
       }
     }
     return items;
-  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById, variantById]);
+  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById, variantById, loadingCategories]);
 
   // ── Drill state ──────────────────────────────────────────────────
   // drillBucket stores { bucketId (subCatId or '__direct__'), bucketName }
