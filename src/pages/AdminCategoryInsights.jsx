@@ -278,12 +278,12 @@ export default function AdminCategoryInsights() {
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   const hasSubCats = !loadingCategories && subCategories.length > 0;
-  // At Level 0 with sub-cats → always show "תת-קטגוריה"
-  // At Level 0 without sub-cats → show dimension name
-  // At Level 1 (drilled into a sub-cat) → show dimension name
   const dimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
+  // Level 0 + sub-cats → "תת-קטגוריה" (never show dimension name here)
+  // Level 0 + no sub-cats → dimension name
+  // Level 1 → dimension name
+  const currentLabel = (!drillBucket && hasSubCats) ? 'תת-קטגוריה' : dimLabel;
   const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : dimLabel;
-  const currentLabel = drillBucket ? dimLabel : topLevelLabel;
   const canDrill = !drillBucket;
 
   const handleDrillDown = (row) => {
