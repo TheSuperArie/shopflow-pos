@@ -23,11 +23,11 @@ export default function AdminCategoryInsights() {
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
 
   // ── Data fetching ────────────────────────────────────────────────
-  const { data: categories = [], isLoading: loadingCategories } = useQuery({
+  const { data: categories = [], isLoading: loadingCategories, isFetching: fetchingCategories } = useQuery({
     queryKey: ['categories', user?.email],
     queryFn: () => base44.entities.Category.filter({ created_by: user.email }),
     enabled: !!user,
-    staleTime: 0,
+    staleTime: 30000,
   });
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
@@ -132,7 +132,7 @@ export default function AdminCategoryInsights() {
   // Each item gets: resolvedGroup, resolvedVariant, subCatId (if applicable)
   const resolvedItems = useMemo(() => {
     // Wait for categories to load before resolving — otherwise subCatById is empty
-    if (loadingCategories) return [];
+    if (loadingCategories || fetchingCategories) return [];
     const items = [];
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
@@ -204,7 +204,7 @@ export default function AdminCategoryInsights() {
   // ── Step 2: Build chart data from filteredItems (dynamic — selectedDimension dep) ──
   const chartData = useMemo(() => {
     // Don't bucket until categories are loaded — prevents wrong "no sub-cats" branch
-    if (loadingCategories) return [];
+    if (loadingCategories || fetchingCategories) return [];
     const hasSubCatsLocal = subCategories.length > 0;
     const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
 
@@ -277,7 +277,7 @@ export default function AdminCategoryInsights() {
   }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, variants]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
-  const hasSubCats = !loadingCategories && subCategories.length > 0;
+  const hasSubCats = !loadingCategories && !fetchingCategories && subCategories.length > 0;
   const dimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
   // Level 0 + sub-cats → "תת-קטגוריה" (never show dimension name here)
   // Level 0 + no sub-cats → dimension name
@@ -314,7 +314,7 @@ export default function AdminCategoryInsights() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Dimension selector — shown only when drilling into a sub-cat, or when no sub-cats at level 0 */}
-          {availableDimensionNames.length > 0 && (!!drillBucket || (!loadingCategories && !hasSubCats)) && (
+          {availableDimensionNames.length > 0 && (!!drillBucket || (!loadingCategories && !fetchingCategories && !hasSubCats)) && (
             <Select
               value={selectedDimension}
               onValueChange={(v) => { setSelectedDimension(v); }}
@@ -351,7 +351,7 @@ export default function AdminCategoryInsights() {
         </div>
       )}
 
-      {loadingSales || loadingCategories ? (
+      {loadingSales || loadingCategories || fetchingCategories ? (
         <div className="flex justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
         </div>
