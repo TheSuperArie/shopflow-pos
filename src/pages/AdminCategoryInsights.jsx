@@ -216,28 +216,21 @@ export default function AdminCategoryInsights() {
       }
     }
 
-    // ── LEVEL 1 (drilled into a bucket) ──────────────────────────
-    // Filter to items that belong to this bucket
-    const bucketItems = resolvedItems.filter(item => {
-      if (drillBucket.bucketId.startsWith('__dim__') || drillBucket.bucketId === '__direct__') {
-        // drilled from a sub-cat or "כללי" bucket
-        if (drillBucket.bucketId === '__direct__') return !item.subCatId;
-        // drilled from a top-level dim bucket — match by name
-        return (item.subCatName === drillBucket.bucketName) || (item.resolvedGroup?.name === drillBucket.bucketName);
-      }
-      // drilled from a sub-cat bucket (id = catId)
-      return item.subCatId === drillBucket.bucketId;
-    });
+    // ── LEVEL 1 (drilled into a sub-category bucket) ─────────────
+    // Filter: only items whose subCatId matches the drilled bucket, OR
+    // if drilled into '__direct__', items with no subCat
+    const bucketItems = drillBucket.bucketId === '__direct__'
+      ? resolvedItems.filter(item => !item.subCatId)
+      : resolvedItems.filter(item => item.subCatId === drillBucket.bucketId);
 
-    // Now group by the selected dimension
+    // Group by the selected dimension (strictly — only that dimension key)
     const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
     const map = {};
     for (const item of bucketItems) {
-      let bucketLabel = null;
-      if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] !== undefined) {
-        bucketLabel = String(item.resolvedVariant.dimensions[dimKey]).trim();
-      }
-      if (!bucketLabel) bucketLabel = item.resolvedGroup?.name || 'אחר';
+      const dimVal = dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null
+        ? String(item.resolvedVariant.dimensions[dimKey]).trim()
+        : 'ללא וריאציה';
+      const bucketLabel = dimVal || 'ללא וריאציה';
       if (!map[bucketLabel]) map[bucketLabel] = { id: bucketLabel, name: bucketLabel, revenue: 0, quantity: 0 };
       map[bucketLabel].revenue += (item.sell_price || 0) * (item.quantity || 0);
       map[bucketLabel].quantity += item.quantity || 0;
@@ -275,7 +268,7 @@ export default function AdminCategoryInsights() {
           {availableDimensionNames.length > 0 && (!!drillBucket || !hasSubCats) && (
             <Select
               value={selectedDimension}
-              onValueChange={(v) => { setSelectedDimension(v); setDrillPath([]); }}
+              onValueChange={(v) => { setSelectedDimension(v); }}
             >
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="קבץ לפי..." />
