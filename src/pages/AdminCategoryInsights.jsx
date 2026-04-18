@@ -216,9 +216,25 @@ export default function AdminCategoryInsights() {
     // Now slice them by selectedDimension — this is purely a display bucketing step
     const map = {};
     for (const item of filteredItems) {
-      const dimVal = dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null
-        ? String(item.resolvedVariant.dimensions[dimKey]).trim()
-        : 'ללא וריאציה';
+      let dimVal = 'ללא וריאציה';
+
+      // Priority 1: Direct variant dimension lookup
+      if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
+        dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
+      }
+      // Priority 2: Parse from product name suffix (e.g. "Product - Size / Cut")
+      else if (dimKey && item.product_name) {
+        const suffix = item.product_name.split(' - ').slice(1).join(' - ');
+        const parts = suffix.split(/\s*\/\s*/).map(s => s.trim()).filter(Boolean);
+        // Find the dimension index from the known dimension names order
+        const dimIndex = availableDimensionNames.indexOf(dimKey);
+        if (dimIndex >= 0 && parts[dimIndex]) {
+          dimVal = parts[dimIndex];
+        } else if (parts.length > 0) {
+          dimVal = parts[0];
+        }
+      }
+
       if (!map[dimVal]) map[dimVal] = { id: dimVal, name: dimVal, revenue: 0, quantity: 0 };
       map[dimVal].revenue += (item.sell_price || 0) * (item.quantity || 0);
       map[dimVal].quantity += item.quantity || 0;
