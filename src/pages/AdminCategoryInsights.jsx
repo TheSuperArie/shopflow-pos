@@ -23,7 +23,7 @@ export default function AdminCategoryInsights() {
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
 
   // ── Data fetching ────────────────────────────────────────────────
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: loadingCategories } = useQuery({
     queryKey: ['categories', user?.email],
     queryFn: () => base44.entities.Category.filter({ created_by: user.email }),
     enabled: !!user,
@@ -180,6 +180,8 @@ export default function AdminCategoryInsights() {
 
   // ── Step 2: Build chart data from filteredItems (dynamic — selectedDimension dep) ──
   const chartData = useMemo(() => {
+    // Don't bucket until categories are loaded — prevents wrong "no sub-cats" branch
+    if (loadingCategories) return [];
     const hasSubCatsLocal = subCategories.length > 0;
     const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
 
@@ -249,10 +251,11 @@ export default function AdminCategoryInsights() {
       map[dimVal].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames]);
+  }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, variants]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
-  const hasSubCats = subCategories.length > 0;
+  // hasSubCats is only true once categories are loaded (avoids premature "no sub-cats" state)
+  const hasSubCats = !loadingCategories && subCategories.length > 0;
   const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : (availableDimensionNames[0] || 'קבוצה');
   const activeDimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
   const currentLabel = !drillBucket ? topLevelLabel : activeDimLabel;
@@ -315,7 +318,7 @@ export default function AdminCategoryInsights() {
         </div>
       )}
 
-      {loadingSales ? (
+      {loadingSales || loadingCategories ? (
         <div className="flex justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
         </div>
