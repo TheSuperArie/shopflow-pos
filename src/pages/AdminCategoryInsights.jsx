@@ -285,7 +285,15 @@ export default function AdminCategoryInsights() {
   const canDrill = !drillBucket;
 
   const handleDrillDown = (row) => {
-    if (canDrill) setDrillPath([{ bucketId: row.id, bucketName: row.name }]);
+    if (canDrill) {
+      setSelectedDimension('__auto__');
+      setDrillPath([{ bucketId: row.id, bucketName: row.name }]);
+    }
+  };
+
+  const handleBack = () => {
+    setDrillPath([]);
+    setSelectedDimension('__auto__');
   };
 
   // ── Render ───────────────────────────────────────────────────────
@@ -320,16 +328,16 @@ export default function AdminCategoryInsights() {
               </SelectContent>
             </Select>
           )}
-          <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setDrillPath([]); }} className="w-40" />
+          <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); handleBack(); }} className="w-40" />
           <span className="text-gray-400">עד</span>
-          <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setDrillPath([]); }} className="w-40" />
+          <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); handleBack(); }} className="w-40" />
         </div>
       </div>
 
       {/* Breadcrumb */}
       {drillPath.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
-          <button onClick={() => setDrillPath([])} className="text-sm text-blue-600 hover:underline font-medium">
+          <button onClick={handleBack} className="text-sm text-blue-600 hover:underline font-medium">
             {topLevelLabel}
           </button>
           {drillPath.map((step, idx) => (
