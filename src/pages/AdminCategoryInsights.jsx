@@ -379,7 +379,7 @@ export default function AdminCategoryInsights() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                פילוח לפי: <span className="text-amber-600">{currentLabel}</span>
+                פילוח לפי: <span className="text-amber-600">{!drillBucket && hasSubCats ? 'תת-קטגוריות' : currentLabel}</span>
                 {drillBucket && (
                   <span className="text-sm text-gray-400 font-normal mr-2">({drillBucket.bucketName})</span>
                 )}
@@ -413,7 +413,7 @@ export default function AdminCategoryInsights() {
           {/* Breakdown List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">פירוט — {currentLabel}</CardTitle>
+              <CardTitle className="text-base">פירוט — {!drillBucket && hasSubCats ? 'תת-קטגוריות' : currentLabel}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
