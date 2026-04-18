@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, ArrowRight, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
@@ -19,6 +20,7 @@ export default function AdminCategoryInsights() {
   const [drillPath, setDrillPath] = useState([]);
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDimension, setSelectedDimension] = useState('__auto__');
 
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [] } = useQuery({
@@ -42,6 +44,20 @@ export default function AdminCategoryInsights() {
     staleTime: 0,
   });
 
+  const { data: variants = [] } = useQuery({
+    queryKey: ['insights-variants', user?.email],
+    queryFn: () => base44.entities.ProductVariant.filter({ created_by: user.email }),
+    enabled: !!user,
+    staleTime: 0,
+  });
+
+  const { data: dimensions = [] } = useQuery({
+    queryKey: ['insights-dimensions', user?.email],
+    queryFn: () => base44.entities.VariantDimension.filter({ created_by: user.email }),
+    enabled: !!user,
+    staleTime: 0,
+  });
+
   // ── Lookup maps ──────────────────────────────────────────────────
   const categoryById = useMemo(() => {
     const m = {};
@@ -55,6 +71,12 @@ export default function AdminCategoryInsights() {
     return m;
   }, [groups]);
 
+  const variantById = useMemo(() => {
+    const m = {};
+    for (const v of variants) m[String(v.id)] = v;
+    return m;
+  }, [variants]);
+
   // ── Category tree ────────────────────────────────────────────────
   const category = categoryById[categoryId];
 
@@ -63,11 +85,63 @@ export default function AdminCategoryInsights() {
     [categories, categoryId]
   );
 
-  // subCategory id → subCategory object
   const subCatById = useMemo(() => {
     const m = {};
     for (const c of subCategories) m[c.id] = c;
     return m;
+  }, [subCategories]);
+
+  // ── Dimensions available for this category tree ──────────────────
+  // Collect all category IDs in our tree (parent + sub-cats)
+  const treeCategoryIds = useMemo(() => {
+    const ids = new Set([categoryId]);
+    for (const sc of subCategories) ids.add(sc.id);
+    return ids;
+  }, [categoryId, subCategories]);
+
+  // All dimension names used by groups in our tree
+  const availableDimensionNames = useMemo(() => {
+    const namesSet = new Set();
+    // From VariantDimension records belonging to our tree categories
+    for (const dim of dimensions) {
+      if (treeCategoryIds.has(dim.category_id) && dim.is_active !== false) {
+        namesSet.add(dim.name);
+      }
+    }
+    // Also discover from actual variant data
+    for (const v of variants) {
+      const g = groupById[v.group_id];
+      if (g && treeCategoryIds.has(g.category_id)) {
+        for (const key of Object.keys(v.dimensions || {})) {
+          namesSet.add(key);
+        }
+      }
+    }
+    return [...namesSet];
+  }, [dimensions, variants, groupById, treeCategoryIds]);
+
+  // All known dimension values across the tree (for legacy string matching)
+  const allDimValuesSet = useMemo(() => {
+    const s = new Set();
+    for (const dim of dimensions) {
+      if (treeCategoryIds.has(dim.category_id)) {
+        for (const val of (dim.values || [])) s.add(String(val).trim());
+      }
+    }
+    for (const v of variants) {
+      const g = groupById[v.group_id];
+      if (g && treeCategoryIds.has(g.category_id)) {
+        for (const val of Object.values(v.dimensions || {})) s.add(String(val).trim());
+      }
+    }
+    return s;
+  }, [dimensions, variants, groupById, treeCategoryIds]);
+
+  // Sub-category names set (for legacy matching)
+  const subCatNameSet = useMemo(() => {
+    const s = new Set();
+    for (const sc of subCategories) s.add(sc.name.trim());
+    return s;
   }, [subCategories]);
 
   // ── Date-filtered sales ──────────────────────────────────────────
@@ -76,62 +150,82 @@ export default function AdminCategoryInsights() {
     return d >= dateFrom && d <= dateTo;
   }), [sales, dateFrom, dateTo]);
 
-  // ── Extract first suffix from product name ───────────────────────
-  // "חולצות - 34/35 / אמריקאי / רגולר" → "34/35"
-  const getFirstSuffix = (productName) => {
-    if (!productName?.includes(' - ')) return null;
-    const after = productName.split(' - ').slice(1).join(' - ').trim();
-    return after.split(' / ')[0]?.trim() || null;
-  };
-
-  // ── Build sold items with bucket assignment ──────────────────────
+  // ── Core bucket assignment — 4-level Fallback Chain ──────────────
   const soldItems = useMemo(() => {
     const items = [];
+
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
+        // ── Resolve group ────────────────────────────────────────
         const baseName = item.product_name?.split(' - ')[0]?.trim();
         if (!baseName) continue;
 
-        // Find the group by product_id first, then by base name
         let group = groupById[item.product_id] || null;
-
-        // If found by product_id, verify it belongs to our category tree
         if (group) {
-          const belongsToTree = group.category_id === categoryId || !!subCatById[group.category_id];
-          if (!belongsToTree) group = null;
+          const inTree = treeCategoryIds.has(group.category_id);
+          if (!inTree) group = null;
         }
-
-        // If not found by ID, find by name but ONLY within our category tree
         if (!group) {
           const candidates = groups.filter(g => g.name === baseName);
-          group = candidates.find(g => g.category_id === categoryId || !!subCatById[g.category_id]) || null;
+          group = candidates.find(g => treeCategoryIds.has(g.category_id)) || null;
         }
         if (!group) continue;
 
         const catId = group.category_id;
         const cat = categoryById[catId];
         if (!cat) continue;
+        if (!treeCategoryIds.has(catId)) continue;
 
-        // Must belong to our category tree (double-check)
-        const isDirectChild = catId === categoryId;
         const isSubCatChild = !!subCatById[catId];
-        if (!isDirectChild && !isSubCatChild) continue;
 
-        // Determine bucket (what slice of the pie this item belongs to)
         let bucketId, bucketName;
 
+        // ── PRIORITY 1: Sub-category match ───────────────────────
         if (isSubCatChild) {
-          // Group belongs directly to a sub-category → use sub-cat name
           bucketId = catId;
           bucketName = cat.name;
         } else {
-          // Group belongs to the parent category itself
-          // Extract first suffix from product name as the bucket key
-          const suffix = getFirstSuffix(item.product_name);
-          if (suffix) {
-            bucketId = `__suffix__${suffix}`;
-            bucketName = suffix;
-          } else {
+          // ── PRIORITY 2: Variant dimension lookup ─────────────────
+          const rawVarId = item.variant_id ?? item.variantId;
+          const variant = rawVarId ? variantById[String(rawVarId)] : null;
+
+          if (variant && variant.dimensions && Object.keys(variant.dimensions).length > 0) {
+            // Use the user-selected dimension, or pick the first available
+            const dimKey = (selectedDimension !== '__auto__' && variant.dimensions[selectedDimension] !== undefined)
+              ? selectedDimension
+              : Object.keys(variant.dimensions)[0];
+            const dimVal = String(variant.dimensions[dimKey] ?? '').trim();
+            if (dimVal) {
+              bucketId = `__dim__${dimKey}__${dimVal}`;
+              bucketName = dimVal;
+            }
+          }
+
+          // ── PRIORITY 3: Smart legacy string matching ─────────────
+          if (!bucketId) {
+            const parts = (item.product_name || '')
+              .split(/[\s\-\/]+/)
+              .map(p => p.trim())
+              .filter(Boolean);
+
+            // Check each token against known sub-cat names or dim values
+            let matched = null;
+            for (const part of parts) {
+              if (subCatNameSet.has(part)) { matched = part; break; }
+            }
+            if (!matched) {
+              for (const part of parts) {
+                if (allDimValuesSet.has(part)) { matched = part; break; }
+              }
+            }
+            if (matched) {
+              bucketId = `__legacy__${matched}`;
+              bucketName = matched;
+            }
+          }
+
+          // ── PRIORITY 4: Ultimate fallback ─────────────────────────
+          if (!bucketId) {
             bucketId = group.id;
             bucketName = group.name;
           }
@@ -143,16 +237,16 @@ export default function AdminCategoryInsights() {
           groupName: group.name,
           bucketId,
           bucketName,
+          resolvedVariant: variant ?? null,
         });
       }
     }
-    const buckets = [...new Set(items.map(i => i.bucketName))];
-    console.log('[INSIGHTS] total items:', items.length, '| unique buckets:', buckets, '| sample product_names:', [...new Set(items.map(i => i.product_name))].slice(0, 10));
     return items;
-  }, [dateSales, groups, groupById, categoryById, categoryId, subCatById]);
+  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById,
+      variantById, selectedDimension, subCatNameSet, allDimValuesSet]);
 
   // ── Drill state ──────────────────────────────────────────────────
-  const drillBucket = drillPath[0] || null; // { bucketId, bucketName }
+  const drillBucket = drillPath[0] || null;
 
   const filteredItems = useMemo(() => {
     if (!drillBucket) return soldItems;
@@ -164,7 +258,7 @@ export default function AdminCategoryInsights() {
     const sourceItems = drillBucket ? filteredItems : soldItems;
 
     if (!drillBucket) {
-      // Level 0: group by bucket (sub-category or first suffix)
+      // Level 0: group by bucket
       const map = {};
       for (const item of sourceItems) {
         const key = item.bucketId;
@@ -176,28 +270,40 @@ export default function AdminCategoryInsights() {
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
-    // Level 1 (drilled): group by second suffix part (e.g. "אמריקאי")
+    // Level 1 (drilled into a bucket): break down by a secondary dimension
+    // Try to find a second dimension key that differs from the bucket's dim key
     const map = {};
     for (const item of sourceItems) {
-      const after = item.product_name?.split(' - ').slice(1).join(' - ') || '';
-      const parts = after.split(' / ').map(s => s.trim()).filter(Boolean);
-      const secondPart = parts[1] || parts[0] || item.groupName;
-      if (!map[secondPart]) map[secondPart] = { id: secondPart, name: secondPart, revenue: 0, quantity: 0 };
-      map[secondPart].revenue += (item.sell_price || 0) * (item.quantity || 0);
-      map[secondPart].quantity += item.quantity || 0;
+      let secondLabel = null;
+
+      const variant = item.resolvedVariant;
+      if (variant && variant.dimensions) {
+        const dims = variant.dimensions;
+        const dimKeys = Object.keys(dims);
+        // Pick the first key that was NOT used for the top-level bucket
+        const bucketDimVal = item.bucketName;
+        const secondKey = dimKeys.find(k => String(dims[k]).trim() !== bucketDimVal) || dimKeys[1];
+        if (secondKey) secondLabel = String(dims[secondKey]).trim();
+      }
+
+      // Legacy fallback: use group name
+      if (!secondLabel) secondLabel = item.groupName;
+
+      if (!map[secondLabel]) map[secondLabel] = { id: secondLabel, name: secondLabel, revenue: 0, quantity: 0 };
+      map[secondLabel].revenue += (item.sell_price || 0) * (item.quantity || 0);
+      map[secondLabel].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
   }, [soldItems, filteredItems, drillBucket]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
-
-  const currentLabel = !drillBucket ? 'מידה' : 'סוג';
+  const hasSubCats = subCategories.length > 0;
+  const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : (availableDimensionNames[0] || 'קבוצה');
+  const currentLabel = !drillBucket ? topLevelLabel : 'פירוט';
   const canDrill = !drillBucket;
 
   const handleDrillDown = (row) => {
-    if (canDrill) {
-      setDrillPath([{ bucketId: row.id, bucketName: row.name }]);
-    }
+    if (canDrill) setDrillPath([{ bucketId: row.id, bucketName: row.name }]);
   };
 
   // ── Render ───────────────────────────────────────────────────────
@@ -214,7 +320,24 @@ export default function AdminCategoryInsights() {
             ניתוח קטגוריה: {category?.name || '...'}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Dimension selector (only when no sub-cats) */}
+          {!hasSubCats && availableDimensionNames.length > 1 && (
+            <Select
+              value={selectedDimension}
+              onValueChange={(v) => { setSelectedDimension(v); setDrillPath([]); }}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="קבץ לפי..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__auto__">אוטומטי</SelectItem>
+                {availableDimensionNames.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setDrillPath([]); }} className="w-40" />
           <span className="text-gray-400">עד</span>
           <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setDrillPath([]); }} className="w-40" />
@@ -225,7 +348,7 @@ export default function AdminCategoryInsights() {
       {drillPath.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
           <button onClick={() => setDrillPath([])} className="text-sm text-blue-600 hover:underline font-medium">
-            כל המידות
+            {topLevelLabel}
           </button>
           {drillPath.map((step, idx) => (
             <React.Fragment key={idx}>
