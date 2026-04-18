@@ -180,14 +180,16 @@ export default function AdminCategoryInsights() {
 
         let bucketId, bucketName;
 
+        // Resolve variant early so it's available for items.push regardless of branch
+        const rawVarId = item.variant_id ?? item.variantId;
+        const variant = rawVarId ? variantById[String(rawVarId)] : null;
+
         // ── PRIORITY 1: Sub-category match ───────────────────────
         if (isSubCatChild) {
           bucketId = catId;
           bucketName = cat.name;
         } else {
           // ── PRIORITY 2: Variant dimension lookup ─────────────────
-          const rawVarId = item.variant_id ?? item.variantId;
-          const variant = rawVarId ? variantById[String(rawVarId)] : null;
 
           if (variant && variant.dimensions && Object.keys(variant.dimensions).length > 0) {
             // Use the user-selected dimension, or pick the first available
