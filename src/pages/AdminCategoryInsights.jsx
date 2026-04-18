@@ -281,7 +281,7 @@ export default function AdminCategoryInsights() {
   const hasSubCats = !loadingCategories && subCategories.length > 0;
   const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : (selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'קבוצה') : selectedDimension);
   const activeDimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
-  const currentLabel = (!drillBucket && hasSubCats) ? 'תת-קטגוריה' : (!drillBucket ? topLevelLabel : activeDimLabel);
+  const currentLabel = !drillBucket ? (hasSubCats ? 'תת-קטגוריה' : topLevelLabel) : activeDimLabel;
   const canDrill = !drillBucket;
 
   const handleDrillDown = (row) => {
