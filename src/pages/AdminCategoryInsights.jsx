@@ -171,12 +171,33 @@ export default function AdminCategoryInsights() {
   const drillBucket = drillPath[0] || null;
 
   // ── Step 1: Filter items by drill bucket (static — no selectedDimension dep) ──
-  // At Level 1 this gives us ONLY items inside the drilled sub-category
+  // At Level 1 this gives us ONLY items inside the drilled sub-category (or dim-value bucket)
   const filteredItems = useMemo(() => {
     if (!drillBucket) return resolvedItems; // Level 0: use all items
-    if (drillBucket.bucketId === '__direct__') return resolvedItems.filter(item => !item.subCatId);
-    return resolvedItems.filter(item => item.subCatId === drillBucket.bucketId);
-  }, [resolvedItems, drillBucket]);
+
+    const { bucketId } = drillBucket;
+
+    // Sub-category drill (has real sub-cats)
+    if (bucketId === '__direct__') return resolvedItems.filter(item => !item.subCatId);
+    if (!bucketId.startsWith('__dim__')) return resolvedItems.filter(item => item.subCatId === bucketId);
+
+    // Dimension-value drill (no sub-cats at Level 0 — bucketId = "__dim__<value>")
+    const dimValue = bucketId.slice('__dim__'.length);
+    const dimKey = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
+
+    return resolvedItems.filter(item => {
+      // Direct variant match
+      if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
+        return String(item.resolvedVariant.dimensions[dimKey]).trim() === dimValue;
+      }
+      // Smart text scan fallback
+      if (dimKey && item.product_name) {
+        return item.product_name.toLowerCase().includes(dimValue.toLowerCase());
+      }
+      // Fallback: group name match
+      return (item.resolvedGroup?.name || '') === dimValue;
+    });
+  }, [resolvedItems, drillBucket, selectedDimension, availableDimensionNames]);
 
   // ── Step 2: Build chart data from filteredItems (dynamic — selectedDimension dep) ──
   const chartData = useMemo(() => {
