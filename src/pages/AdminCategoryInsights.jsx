@@ -276,9 +276,9 @@ export default function AdminCategoryInsights() {
     for (const item of sourceItems) {
       let secondLabel = null;
 
-      const variant = item.resolvedVariant;
-      if (variant && variant.dimensions) {
-        const dims = variant.dimensions;
+      const resolvedVariant = item.resolvedVariant;
+      if (resolvedVariant && resolvedVariant.dimensions) {
+        const dims = resolvedVariant.dimensions;
         const dimKeys = Object.keys(dims);
         // Pick the first key that was NOT used for the top-level bucket
         const bucketDimVal = item.bucketName;
