@@ -277,9 +277,9 @@ export default function AdminCategoryInsights() {
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   // hasSubCats is only true once categories are loaded (avoids premature "no sub-cats" state)
   const hasSubCats = !loadingCategories && subCategories.length > 0;
-  const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : (availableDimensionNames[0] || 'קבוצה');
+  const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : (selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'קבוצה') : selectedDimension);
   const activeDimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
-  const currentLabel = !drillBucket ? topLevelLabel : activeDimLabel;
+  const currentLabel = (!drillBucket && hasSubCats) ? 'תת-קטגוריה' : (!drillBucket ? topLevelLabel : activeDimLabel);
   const canDrill = !drillBucket;
 
   const handleDrillDown = (row) => {
