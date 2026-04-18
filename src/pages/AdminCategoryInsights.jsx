@@ -289,13 +289,11 @@ export default function AdminCategoryInsights() {
   }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, fetchingCategories, variants, settledCategories]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
-  const hasSubCats = !loadingCategories && !fetchingCategories && settledCategories.length > 0 && subCategories.length > 0;
+  // subCategories is derived from settledCategories, so if subCategories.length > 0 it means cats are settled
+  const hasSubCats = subCategories.length > 0;
   const dimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
-  // Level 0 + sub-cats → "תת-קטגוריה" (never show dimension name here)
-  // Level 0 + no sub-cats → dimension name
-  // Level 1 → dimension name
-  const currentLabel = (!drillBucket && hasSubCats) ? 'תת-קטגוריה' : dimLabel;
-  const topLevelLabel = hasSubCats ? 'תת-קטגוריה' : dimLabel;
+  const currentLabel = (!drillBucket && hasSubCats) ? 'תת-קטגוריות' : dimLabel;
+  const topLevelLabel = hasSubCats ? 'תת-קטגוריות' : dimLabel;
   const canDrill = !drillBucket;
 
   const handleDrillDown = (row) => {
