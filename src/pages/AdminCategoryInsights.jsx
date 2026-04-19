@@ -158,10 +158,10 @@ export default function AdminCategoryInsights() {
 
         // Priority 2: variant_id → group (accurate, avoids name collision)
         if (!group) {
-          const rawVarId = item.variant_id ?? item.variantId;
-          const variant = rawVarId ? (variantById[String(rawVarId)] || null) : null;
-          if (variant && groupById[variant.group_id] && treeCategoryIds.has(groupById[variant.group_id].category_id)) {
-            group = groupById[variant.group_id];
+          const rawVarId2 = item.variant_id ?? item.variantId;
+          const resolvedVariant = rawVarId2 ? (variantById[String(rawVarId2)] || null) : null;
+          if (resolvedVariant && groupById[resolvedVariant.group_id] && treeCategoryIds.has(groupById[resolvedVariant.group_id].category_id)) {
+            group = groupById[resolvedVariant.group_id];
           }
         }
 
