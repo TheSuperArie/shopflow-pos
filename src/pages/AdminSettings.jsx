@@ -4,9 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Lock, Save } from 'lucide-react';
+import { Loader2, Lock, Save, BarChart2 } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
 
@@ -14,6 +15,7 @@ export default function AdminSettings() {
   const [password, setPassword] = useState('');
   const [storeName, setStoreName] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
+  const [defaultDimension, setDefaultDimension] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -25,11 +27,20 @@ export default function AdminSettings() {
     enabled: !!user,
   });
 
+  const { data: dimensions = [] } = useQuery({
+    queryKey: ['variant-dimensions', user?.email],
+    queryFn: () => user ? base44.entities.VariantDimension.filter({ created_by: user.email }) : [],
+    enabled: !!user,
+  });
+
+  const dimensionNames = [...new Set(dimensions.filter(d => d.is_active !== false).map(d => d.name))];
+
   useEffect(() => {
     if (settings[0]) {
       setPassword(settings[0].admin_password || '12345678');
       setStoreName(settings[0].store_name || 'החנות שלי');
       setLowStockThreshold(settings[0].low_stock_threshold || 5);
+      setDefaultDimension(settings[0].dashboard_default_dimension || '');
     }
   }, [settings]);
 
@@ -76,6 +87,23 @@ export default function AdminSettings() {
             <p className="text-xs text-gray-400 mt-1">סיסמה זו נדרשת לכניסה לפאנל הניהול</p>
           </div>
           <div>
+            <Label className="flex items-center gap-2">
+              <BarChart2 className="w-4 h-4" /> ממד ברירת מחדל בלוח הבקרה
+            </Label>
+            <Select value={defaultDimension || '__auto__'} onValueChange={v => setDefaultDimension(v === '__auto__' ? '' : v)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="אוטומטי" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__auto__">אוטומטי (ממד ראשון)</SelectItem>
+                {dimensionNames.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-400 mt-1">הממד שיוצג ב-P4 בלוח הבקרה כשמתעמקים לתוך תיקיית מוצר</p>
+          </div>
+          <div>
             <Label>סף מלאי נמוך (יחידות)</Label>
             <Input 
               type="number" 
@@ -89,7 +117,8 @@ export default function AdminSettings() {
             onClick={() => mutation.mutate({ 
               admin_password: password, 
               store_name: storeName,
-              low_stock_threshold: lowStockThreshold 
+              low_stock_threshold: lowStockThreshold,
+              dashboard_default_dimension: defaultDimension || null,
             })}
             className="bg-amber-500 hover:bg-amber-600 gap-2"
             disabled={!password}
