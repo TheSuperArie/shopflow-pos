@@ -328,6 +328,25 @@ export default function AdminCategoryInsights() {
     setSelectedDimension('__auto__');
   };
 
+  // ── Debug log ────────────────────────────────────────────────────
+  console.log('[CI Debug]', {
+    categoryId,
+    user: user?.email,
+    salesCount: sales.length,
+    dateSalesCount: dateSales.length,
+    groupsCount: groups.length,
+    variantsCount: variants.length,
+    settledCategoriesCount: settledCategories.length,
+    subCategoriesCount: subCategories.length,
+    resolvedItemsCount: resolvedItems.length,
+    chartDataCount: chartData.length,
+    loadingCategories,
+    fetchingCategories,
+    loadingSales,
+    treeCategoryIds: [...treeCategoryIds],
+    sampleItem: sales[0]?.items?.[0],
+  });
+
   // ── Render ───────────────────────────────────────────────────────
   return (
     <div className="space-y-6" dir="rtl">
