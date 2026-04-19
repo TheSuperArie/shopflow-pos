@@ -220,18 +220,21 @@ function StockFormModal({ open, onClose }) {
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.list('sort_order'),
+    queryKey: ['categories', modalUser?.email],
+    queryFn: () => modalUser ? base44.entities.Category.filter({ created_by: modalUser.email }, 'sort_order') : [],
+    enabled: !!modalUser,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups', modalUser?.email],
+    queryFn: () => modalUser ? base44.entities.ProductGroup.filter({ created_by: modalUser.email }) : [],
+    enabled: !!modalUser,
   });
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
+    queryKey: ['product-variants', modalUser?.email],
+    queryFn: () => modalUser ? base44.entities.ProductVariant.filter({ created_by: modalUser.email }) : [],
+    enabled: !!modalUser,
   });
 
   const { data: suppliers = [] } = useQuery({
@@ -241,14 +244,15 @@ function StockFormModal({ open, onClose }) {
   });
 
   const { data: orders = [] } = useQuery({
-    queryKey: ['supplier-orders'],
-    queryFn: () => base44.entities.SupplierOrder.list(),
-    enabled: !!form.supplier_id,
+    queryKey: ['supplier-orders', modalUser?.email],
+    queryFn: () => modalUser ? base44.entities.SupplierOrder.filter({ created_by: modalUser.email }) : [],
+    enabled: !!modalUser && !!form.supplier_id,
   });
 
   const { data: allDimensions = [] } = useQuery({
-    queryKey: ['variant-dimensions'],
-    queryFn: () => base44.entities.VariantDimension.list(),
+    queryKey: ['variant-dimensions', modalUser?.email],
+    queryFn: () => modalUser ? base44.entities.VariantDimension.filter({ created_by: modalUser.email }) : [],
+    enabled: !!modalUser,
   });
 
   const categoryGroups = selectedCategory 
