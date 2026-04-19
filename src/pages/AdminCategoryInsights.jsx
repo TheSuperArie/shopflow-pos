@@ -182,10 +182,13 @@ export default function AdminCategoryInsights() {
         const catId = group.category_id;
         if (!categoryById[catId]) continue;
 
+        const rawVarId3 = item.variant_id ?? item.variantId;
+        const resolvedVariant = rawVarId3 ? (variantById[String(rawVarId3)] || null) : null;
+
         items.push({
           ...item,
           resolvedGroup: group,
-          resolvedVariant: variant,
+          resolvedVariant,
           subCatId: subCatById[catId] ? catId : null,
           subCatName: subCatById[catId] ? categoryById[catId].name : null,
         });
