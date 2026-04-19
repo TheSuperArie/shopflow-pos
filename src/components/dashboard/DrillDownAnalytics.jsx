@@ -52,15 +52,18 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       const map = {};
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          const group = resolveGroup(item, groupById, variantById, groups);
-          if (!group) continue;
-          const cat = categoryById[group.category_id];
-          if (!cat) continue;
-          const rootCat = cat.parent_id ? categoryById[cat.parent_id] : cat;
-          if (!rootCat) continue;
-          if (!map[rootCat.id]) map[rootCat.id] = { id: rootCat.id, name: rootCat.name, revenue: 0, quantity: 0 };
-          map[rootCat.id].revenue += (item.sell_price || 0) * (item.quantity || 0);
-          map[rootCat.id].quantity += item.quantity || 0;
+          const resolved = resolveGroups(item, groupById, variantById, groups);
+          const revenue = (item.sell_price || 0) * (item.quantity || 0);
+          const qty = item.quantity || 0;
+          for (const { group, weight } of resolved) {
+            const cat = categoryById[group.category_id];
+            if (!cat) continue;
+            const rootCat = cat.parent_id ? categoryById[cat.parent_id] : cat;
+            if (!rootCat) continue;
+            if (!map[rootCat.id]) map[rootCat.id] = { id: rootCat.id, name: rootCat.name, revenue: 0, quantity: 0 };
+            map[rootCat.id].revenue += revenue * weight;
+            map[rootCat.id].quantity += qty * weight;
+          }
         }
       }
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
@@ -71,23 +74,24 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       const p1Id = drillPath[0].id;
       const subCats = categories.filter(c => c.parent_id === p1Id);
       const map = {};
-      // init all sub-cats
       for (const sc of subCats) map[sc.id] = { id: sc.id, name: sc.name, revenue: 0, quantity: 0 };
-      // also a "direct" bucket for groups directly under P1
       map['__direct__'] = { id: '__direct__', name: 'כללי', revenue: 0, quantity: 0 };
 
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          const group = resolveGroup(item, groupById, variantById, groups);
-          if (!group) continue;
-          const cat = categoryById[group.category_id];
-          if (!cat) continue;
-          const rootId = cat.parent_id || cat.id;
-          if (rootId !== p1Id) continue;
-          const bucketId = cat.parent_id ? cat.id : '__direct__';
-          if (!map[bucketId]) continue;
-          map[bucketId].revenue += (item.sell_price || 0) * (item.quantity || 0);
-          map[bucketId].quantity += item.quantity || 0;
+          const resolved = resolveGroups(item, groupById, variantById, groups);
+          const revenue = (item.sell_price || 0) * (item.quantity || 0);
+          const qty = item.quantity || 0;
+          for (const { group, weight } of resolved) {
+            const cat = categoryById[group.category_id];
+            if (!cat) continue;
+            const rootId = cat.parent_id || cat.id;
+            if (rootId !== p1Id) continue;
+            const bucketId = cat.parent_id ? cat.id : '__direct__';
+            if (!map[bucketId]) continue;
+            map[bucketId].revenue += revenue * weight;
+            map[bucketId].quantity += qty * weight;
+          }
         }
       }
       return Object.values(map).filter(b => b.revenue > 0).sort((a, b) => b.revenue - a.revenue);
@@ -286,19 +290,27 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
   );
 }
 
-// Helper: resolve group from sale item
-function resolveGroup(item, groupById, variantById, groups) {
-  if (item.group_id && groupById[item.group_id]) return groupById[item.group_id];
+// Helper: resolve group(s) from sale item
+// Returns array of {group, weight} — weight < 1 when ambiguous (split evenly)
+export function resolveGroups(item, groupById, variantById, groups) {
+  if (item.group_id && groupById[item.group_id]) return [{ group: groupById[item.group_id], weight: 1 }];
   const rawVarId = item.variant_id ?? item.variantId;
   if (rawVarId) {
     const v = variantById[String(rawVarId)];
-    if (v && groupById[v.group_id]) return groupById[v.group_id];
+    if (v && groupById[v.group_id]) return [{ group: groupById[v.group_id], weight: 1 }];
   }
-  if (item.product_id && groupById[item.product_id]) return groupById[item.product_id];
+  if (item.product_id && groupById[item.product_id]) return [{ group: groupById[item.product_id], weight: 1 }];
   const baseName = item.product_name?.split(' - ')[0]?.trim();
   if (baseName) {
     const matches = groups.filter(g => g.name === baseName);
-    if (matches.length >= 1) return matches[0];
+    if (matches.length === 1) return [{ group: matches[0], weight: 1 }];
+    if (matches.length > 1) return matches.map(g => ({ group: g, weight: 1 / matches.length }));
   }
-  return null;
+  return [];
+}
+
+// Legacy single-resolve helper (returns first match only, for P3+ where we already drilled in)
+function resolveGroup(item, groupById, variantById, groups) {
+  const results = resolveGroups(item, groupById, variantById, groups);
+  return results.length > 0 ? results[0].group : null;
 }
