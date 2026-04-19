@@ -171,10 +171,11 @@ export default function AdminCategoryInsights() {
           if (g && treeCategoryIds.has(g.category_id)) group = g;
         }
 
-        // Priority 4: name match — ONLY if exactly one match in tree (skip if ambiguous)
+        // Priority 4: name match — if ambiguous, pick the first matching group
+        // (we can't distinguish sub-category from product_name alone, but we still want to show the data)
         if (!group) {
           const candidates = groups.filter(g => g.name === baseName && treeCategoryIds.has(g.category_id));
-          if (candidates.length === 1) group = candidates[0];
+          if (candidates.length >= 1) group = candidates[0];
         }
 
         if (!group) continue;
@@ -327,25 +328,6 @@ export default function AdminCategoryInsights() {
     setDrillPath([]);
     setSelectedDimension('__auto__');
   };
-
-  // ── Debug log ────────────────────────────────────────────────────
-  console.log('[CI Debug]', {
-    categoryId,
-    user: user?.email,
-    salesCount: sales.length,
-    dateSalesCount: dateSales.length,
-    groupsCount: groups.length,
-    variantsCount: variants.length,
-    settledCategoriesCount: settledCategories.length,
-    subCategoriesCount: subCategories.length,
-    resolvedItemsCount: resolvedItems.length,
-    chartDataCount: chartData.length,
-    loadingCategories,
-    fetchingCategories,
-    loadingSales,
-    treeCategoryIds: [...treeCategoryIds],
-    sampleItem: sales[0]?.items?.[0],
-  });
 
   // ── Render ───────────────────────────────────────────────────────
   return (
