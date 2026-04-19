@@ -171,11 +171,18 @@ export default function AdminCategoryInsights() {
           if (g && treeCategoryIds.has(g.category_id)) group = g;
         }
 
-        // Priority 4: name match — if ambiguous, pick the first matching group
-        // (we can't distinguish sub-category from product_name alone, but we still want to show the data)
+        // Priority 4: name match
+        // If ambiguous (multiple groups with same name), mark as ambiguous — no subCatId
+        let isAmbiguous = false;
         if (!group) {
           const candidates = groups.filter(g => g.name === baseName && treeCategoryIds.has(g.category_id));
-          if (candidates.length >= 1) group = candidates[0];
+          if (candidates.length === 1) {
+            group = candidates[0];
+          } else if (candidates.length > 1) {
+            // Can't determine which sub-cat — take first for revenue but mark ambiguous
+            group = candidates[0];
+            isAmbiguous = true;
+          }
         }
 
         if (!group) continue;
@@ -186,12 +193,13 @@ export default function AdminCategoryInsights() {
         const rawVarId3 = item.variant_id ?? item.variantId;
         const resolvedVariant = rawVarId3 ? (variantById[String(rawVarId3)] || null) : null;
 
+        // If ambiguous sub-cat, don't assign subCatId so we fall back to dimension grouping
         items.push({
           ...item,
           resolvedGroup: group,
           resolvedVariant,
-          subCatId: subCatById[catId] ? catId : null,
-          subCatName: subCatById[catId] ? categoryById[catId].name : null,
+          subCatId: (!isAmbiguous && subCatById[catId]) ? catId : null,
+          subCatName: (!isAmbiguous && subCatById[catId]) ? categoryById[catId].name : null,
         });
       }
     }
