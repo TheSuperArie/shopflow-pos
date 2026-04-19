@@ -154,28 +154,22 @@ export default function AdminCategoryInsights() {
         const rawVarId = item.variant_id ?? item.variantId;
         const variant = rawVarId ? (variantById[String(rawVarId)] || null) : null;
 
-        // Resolve group: 
-        // Priority 1: variant → group (most accurate)
+        // Resolve group via variant (most accurate — avoids name collision between sub-cats)
         let group = variant ? (groupById[variant.group_id] || null) : null;
         if (group && !treeCategoryIds.has(group.category_id)) group = null;
 
-        // Priority 2: product_id as group id
+        // Fallback: product_id as group id (for older sales without variant_id)
         if (!group) {
           const g = groupById[item.product_id];
           if (g && treeCategoryIds.has(g.category_id)) group = g;
         }
 
-        // Priority 3: name match — but if variant exists, use variant's group_id to disambiguate
+        // Fallback: name match — only use when there's exactly ONE group with this name in the tree
+        // (avoids picking wrong sub-category when multiple sub-cats have same-named groups)
         if (!group) {
           const candidates = groups.filter(g => g.name === baseName && treeCategoryIds.has(g.category_id));
-          if (candidates.length === 1) {
-            group = candidates[0];
-          } else if (candidates.length > 1 && variant) {
-            // Use the variant's group_id to pick the right one
-            group = candidates.find(g => g.id === variant.group_id) || candidates[0];
-          } else {
-            group = candidates[0] || null;
-          }
+          if (candidates.length === 1) group = candidates[0];
+          // If multiple candidates and no way to disambiguate — skip this item
         }
 
         if (!group) continue;
