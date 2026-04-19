@@ -242,17 +242,27 @@ export default function AdminCategoryInsights() {
     if (!drillBucket) {
       // ── LEVEL 0 ──────────────────────────────────────────────────
       if (hasSubCatsLocal) {
-        // Group strictly by sub-category ID
-        const map = {};
-        for (const item of filteredItems) {
-          const key = item.subCatId || '__direct__';
-          const label = item.subCatName || 'כללי';
-          if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
-          map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
-          map[key].quantity += item.quantity || 0;
+        // Check if items actually have sub-category info (i.e. have group_id/variant_id)
+        const itemsWithSubCat = filteredItems.filter(item => item.subCatId);
+        const itemsWithoutSubCat = filteredItems.filter(item => !item.subCatId);
+
+        // If most items lack sub-category info (legacy sales), fall through to dimension grouping
+        if (itemsWithSubCat.length === 0) {
+          // Fall through to dimension grouping below
+        } else {
+          // Group by sub-category ID
+          const map = {};
+          for (const item of filteredItems) {
+            const key = item.subCatId || '__direct__';
+            const label = item.subCatName || 'כללי';
+            if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
+            map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
+            map[key].quantity += item.quantity || 0;
+          }
+          return Object.values(map).sort((a, b) => b.revenue - a.revenue);
         }
-        return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-      } else {
+      }
+      {
         // No sub-cats: group by selected dimension
         const map = {};
         for (const item of filteredItems) {
@@ -310,9 +320,11 @@ export default function AdminCategoryInsights() {
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   const hasSubCats = subCategories.length > 0;
   const dimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
-  // Level 0: if has sub-cats → "תת-קטגוריות", else → "תיקייה" (ProductGroup)
-  // Level 1: show dimension name
-  const level0Label = hasSubCats ? 'תת-קטגוריות' : 'תיקייה';
+  // Check if items actually carry sub-cat info
+  const itemsWithSubCat = resolvedItems.filter(item => item.subCatId);
+  const hasSubCatData = itemsWithSubCat.length > 0;
+  // Level 0: if has sub-cats WITH data → "תת-קטגוריות", else → dimension name
+  const level0Label = (hasSubCats && hasSubCatData) ? 'תת-קטגוריות' : dimLabel;
   const currentLabel = !drillBucket ? level0Label : dimLabel;
   const topLevelLabel = level0Label;
   const canDrill = !drillBucket;
