@@ -48,12 +48,16 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
     const groupsSortedByNameLen = [...groups].sort((a, b) => b.name.length - a.name.length);
 
     function resolveGroup(item) {
-      // 1. Primary: variant_id → group (most accurate, String-coerced)
+      // 1. group_id directly on item (new sales — most accurate)
+      if (item.group_id && groupById[item.group_id]) {
+        return groupById[item.group_id];
+      }
+      // 2. variant_id → group (accurate, String-coerced)
       const rawVarId = item.variant_id ?? item.variantId;
       if (rawVarId && groupByVariantId[String(rawVarId)]) {
         return groupByVariantId[String(rawVarId)];
       }
-      // 2. product_id might be a group id directly (older sales)
+      // 3. product_id might be a group id directly (older sales)
       if (item.product_id && groupById[item.product_id]) {
         return groupById[item.product_id];
       }

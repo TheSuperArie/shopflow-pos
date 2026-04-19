@@ -151,25 +151,30 @@ export default function AdminCategoryInsights() {
         const baseName = item.product_name?.split(' - ')[0]?.trim();
         if (!baseName) continue;
 
-        const rawVarId = item.variant_id ?? item.variantId;
-        const variant = rawVarId ? (variantById[String(rawVarId)] || null) : null;
+        // Priority 1: group_id directly on item (new sales — most accurate)
+        let group = (item.group_id && groupById[item.group_id] && treeCategoryIds.has(groupById[item.group_id].category_id))
+          ? groupById[item.group_id]
+          : null;
 
-        // Resolve group via variant (most accurate — avoids name collision between sub-cats)
-        let group = variant ? (groupById[variant.group_id] || null) : null;
-        if (group && !treeCategoryIds.has(group.category_id)) group = null;
+        // Priority 2: variant_id → group (accurate, avoids name collision)
+        if (!group) {
+          const rawVarId = item.variant_id ?? item.variantId;
+          const variant = rawVarId ? (variantById[String(rawVarId)] || null) : null;
+          if (variant && groupById[variant.group_id] && treeCategoryIds.has(groupById[variant.group_id].category_id)) {
+            group = groupById[variant.group_id];
+          }
+        }
 
-        // Fallback: product_id as group id (for older sales without variant_id)
+        // Priority 3: product_id as group id (older sales)
         if (!group) {
           const g = groupById[item.product_id];
           if (g && treeCategoryIds.has(g.category_id)) group = g;
         }
 
-        // Fallback: name match — only use when there's exactly ONE group with this name in the tree
-        // (avoids picking wrong sub-category when multiple sub-cats have same-named groups)
+        // Priority 4: name match — ONLY if exactly one match in tree (skip if ambiguous)
         if (!group) {
           const candidates = groups.filter(g => g.name === baseName && treeCategoryIds.has(g.category_id));
           if (candidates.length === 1) group = candidates[0];
-          // If multiple candidates and no way to disambiguate — skip this item
         }
 
         if (!group) continue;

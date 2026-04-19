@@ -238,6 +238,7 @@ export default function POS() {
 
     setCartItems(prev => [...prev, {
       variant_id: variant.id,
+      group_id: group.id,
       product_name: dimText ? `${group.name} - ${dimText}` : group.name,
       quantity: 1,
       sell_price: sellPrice,
