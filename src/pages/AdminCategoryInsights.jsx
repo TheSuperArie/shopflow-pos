@@ -231,12 +231,12 @@ export default function AdminCategoryInsights() {
       if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
         return String(item.resolvedVariant.dimensions[dimKey]).trim() === dimValue;
       }
-      // Smart text scan fallback
-      if (dimKey && item.product_name) {
-        return item.product_name.toLowerCase().includes(dimValue.toLowerCase());
+      // Parse product_name segments
+      if (item.product_name) {
+        const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim());
+        return segments.some(s => s.toLowerCase() === dimValue.toLowerCase());
       }
-      // Fallback: group name match
-      return (item.resolvedGroup?.name || '') === dimValue;
+      return false;
     });
   }, [resolvedItems, drillBucket, selectedDimension, availableDimensionNames]);
 
@@ -271,12 +271,38 @@ export default function AdminCategoryInsights() {
         }
       }
       {
-        // No sub-cats: group by selected dimension
+        // No sub-cats (or all ambiguous): group by selected dimension
+        // Build known values for all dimensions from VariantDimension records
+        const allKnownValues = {};
+        for (const dim of dimensions) {
+          if (treeCategoryIds.has(dim.category_id) && dim.is_active !== false) {
+            allKnownValues[dim.name.trim()] = (dim.values || []).map(v => v.trim());
+          }
+        }
+
         const map = {};
         for (const item of filteredItems) {
-          const dimVal = dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null
-            ? String(item.resolvedVariant.dimensions[dimKey]).trim()
-            : (item.resolvedGroup?.name || 'אחר');
+          let dimVal = null;
+
+          // Priority 1: direct variant dimension
+          if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
+            dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
+          }
+
+          // Priority 2: parse product_name segments against known dimension values
+          if (!dimVal && item.product_name) {
+            const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim()).filter(Boolean);
+            const targetValues = dimKey ? (allKnownValues[dimKey] || []) : Object.values(allKnownValues).flat();
+            for (const seg of segments) {
+              if (targetValues.some(v => v.toLowerCase() === seg.toLowerCase())) {
+                dimVal = seg;
+                break;
+              }
+            }
+          }
+
+          if (!dimVal) dimVal = item.resolvedGroup?.name || 'אחר';
+
           const key = `__dim__${dimVal}`;
           if (!map[key]) map[key] = { id: key, name: dimVal, revenue: 0, quantity: 0 };
           map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
@@ -299,24 +325,36 @@ export default function AdminCategoryInsights() {
       }
     }
 
+    // Build known values for the selected dimension
+    const allKnownValuesL1 = {};
+    for (const dim of dimensions) {
+      if (treeCategoryIds.has(dim.category_id) && dim.is_active !== false) {
+        allKnownValuesL1[dim.name.trim()] = (dim.values || []).map(v => v.trim());
+      }
+    }
+    const targetValuesL1 = dimKey ? (allKnownValuesL1[dimKey] || [...knownValuesForDim]) : Object.values(allKnownValuesL1).flat();
+
     const map = {};
     for (const item of filteredItems) {
-      let dimVal = 'ללא וריאציה';
+      let dimVal = null;
 
       // Priority 1: Direct variant dimension lookup
       if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
         dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
       }
-      // Priority 2: Smart Text Scanner — search product name for known dimension values (whole-word / segment match only)
-      else if (dimKey && item.product_name && knownValuesForDim.size > 0) {
-        const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim().toLowerCase());
-        for (const knownVal of knownValuesForDim) {
-          if (segments.includes(knownVal.toLowerCase())) {
-            dimVal = knownVal;
+
+      // Priority 2: Parse product_name segments against known values
+      if (!dimVal && item.product_name) {
+        const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim()).filter(Boolean);
+        for (const seg of segments) {
+          if (targetValuesL1.some(v => v.toLowerCase() === seg.toLowerCase())) {
+            dimVal = seg;
             break;
           }
         }
       }
+
+      if (!dimVal) dimVal = 'ללא וריאציה';
 
       if (!map[dimVal]) map[dimVal] = { id: dimVal, name: dimVal, revenue: 0, quantity: 0 };
       map[dimVal].revenue += (item.sell_price || 0) * (item.quantity || 0);
@@ -365,7 +403,7 @@ export default function AdminCategoryInsights() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Dimension selector — shown only when drilling into a sub-cat, or when no sub-cats at level 0 */}
-          {availableDimensionNames.length > 0 && (!!drillBucket || (!loadingCategories && !fetchingCategories && !hasSubCats)) && (
+          {availableDimensionNames.length > 0 && (!!drillBucket || (!loadingCategories && !fetchingCategories && (!hasSubCats || !hasSubCatData))) && (
             <Select
               value={selectedDimension}
               onValueChange={(v) => { setSelectedDimension(v); }}
