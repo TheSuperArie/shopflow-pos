@@ -95,21 +95,26 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
   }, [query, isBarcodeSearch, cachedVariants, cachedGroups, onSelectVariant]);
 
   const searchResults = query.trim().length >= 2 ? cachedGroups.filter(group => {
-    const searchLower = query.toLowerCase();
+    const searchLower = query.toLowerCase().trim();
     const nameMatch = group.name.toLowerCase().includes(searchLower);
-    
+
     // Check if any variant has stock
     const groupVariants = cachedVariants.filter(v => v.group_id === group.id);
     const hasStock = groupVariants.some(v => (v.stock || 0) > 0);
-    
-    // Search by name, last 4 digits of variant barcode, or group barcode
-    const barcodeMatch = groupVariants.some(v => 
-      v.barcode && 
-      v.barcode.slice(-4).includes(query)
+
+    // Match variant barcode or SKU (full or last 4 digits)
+    const variantMatch = groupVariants.some(v =>
+      (v.barcode && (v.barcode.toLowerCase().includes(searchLower) || v.barcode.slice(-4) === searchLower)) ||
+      (v.sku && (v.sku.toLowerCase().includes(searchLower) || v.sku.slice(-4) === searchLower))
     );
-    const groupBarcodeMatch = group.barcode && group.barcode.slice(-4).includes(query);
-    
-    return (nameMatch || barcodeMatch || groupBarcodeMatch) && hasStock;
+
+    // Match group-level barcode
+    const groupBarcodeMatch = group.barcode && (
+      group.barcode.toLowerCase().includes(searchLower) ||
+      group.barcode.slice(-4) === searchLower
+    );
+
+    return (nameMatch || variantMatch || groupBarcodeMatch) && hasStock;
   }).slice(0, 8) : [];
 
   const handleSelectGroup = (group) => {

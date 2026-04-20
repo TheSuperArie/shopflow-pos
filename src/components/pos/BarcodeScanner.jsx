@@ -17,10 +17,6 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
     if (!enabled) return;
 
     const handleKeyDown = (e) => {
-      // Ignore if the user is typing in an input/textarea
-      const tag = e.target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return;
-
       if (e.key === 'Enter') {
         const code = bufferRef.current.trim();
         bufferRef.current = '';
@@ -28,11 +24,10 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
 
         if (code.length < 2) return;
 
-        // Search by sku or barcode field on variants
+        // Search variant by exact barcode or SKU (full or last 4 digits)
         const variant = variants.find(v =>
-          (v.sku && v.sku === code) ||
-          (v.barcode && v.barcode === code) ||
-          (v.barcode && v.barcode.slice(-4) === code)
+          (v.sku && (v.sku === code || v.sku.slice(-4) === code)) ||
+          (v.barcode && (v.barcode === code || v.barcode.slice(-4) === code))
         );
 
         if (variant) {
@@ -42,20 +37,39 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
             onVariantFound(variant, group);
             toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
           }
-        } else {
-          toast({ title: `⛔ ברקוד לא נמצא: ${code}`, duration: 2000, variant: 'destructive' });
+          return;
         }
+
+        // Fallback: search group by barcode
+        const group = groups.find(g =>
+          g.barcode && (g.barcode === code || g.barcode.slice(-4) === code)
+        );
+        if (group) {
+          const groupVariants = variants.filter(v => v.group_id === group.id && (v.stock || 0) > 0);
+          if (groupVariants.length === 1) {
+            setLastScanned(code);
+            onVariantFound(groupVariants[0], group);
+            toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
+          } else if (groupVariants.length > 1) {
+            setLastScanned(code);
+            onVariantFound(null, group); // open variant selector
+            toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
+          }
+          return;
+        }
+
+        toast({ title: `⛔ ברקוד לא נמצא: ${code}`, duration: 2000, variant: 'destructive' });
         return;
       }
 
-      // Accumulate characters
+      // Accumulate printable characters (ignore modifier-only keys)
       if (e.key.length === 1) {
         bufferRef.current += e.key;
         clearTimeout(timerRef.current);
-        // Clear buffer if user types slowly (>300ms between chars = human typing)
+        // Clear buffer if no char arrives within 500ms (human typing pace)
         timerRef.current = setTimeout(() => {
           bufferRef.current = '';
-        }, 300);
+        }, 500);
       }
     };
 
