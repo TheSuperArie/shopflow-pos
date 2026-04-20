@@ -50,6 +50,44 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle Enter key — treat as barcode/SKU scan (exact match)
+  const handleKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    const code = query.trim();
+    if (!code) return;
+
+    // Exact match on variant barcode or SKU
+    const exactVariant = cachedVariants.find(v =>
+      (v.barcode && (v.barcode === code || v.barcode.slice(-4) === code)) ||
+      (v.sku && (v.sku === code || v.sku.slice(-4) === code))
+    );
+    if (exactVariant) {
+      const group = cachedGroups.find(g => g.id === exactVariant.group_id);
+      if (group && onSelectVariant) {
+        onSelectVariant(exactVariant, group);
+        setQuery('');
+        setShowResults(false);
+        return;
+      }
+    }
+
+    // Exact match on group barcode
+    const exactGroup = cachedGroups.find(g =>
+      g.barcode && (g.barcode === code || g.barcode.slice(-4) === code)
+    );
+    if (exactGroup) {
+      onSelectGroup(exactGroup);
+      setQuery('');
+      setShowResults(false);
+      return;
+    }
+
+    // If only one result in search — auto-select it
+    if (searchResults.length === 1) {
+      handleSelectGroup(searchResults[0]);
+    }
+  };
+
   // Check if query is exactly 4 digits (barcode scan)
   const isBarcodeSearch = /^\d{4}$/.test(query);
   
@@ -144,7 +182,8 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
             setShowResults(true);
           }}
           onFocus={() => query.trim().length >= 2 && setShowResults(true)}
-          placeholder="חיפוש מהיר - הקלד שם מוצר או 4 ספרות אחרונות של ברקוד..."
+          onKeyDown={handleKeyDown}
+          placeholder="חיפוש מהיר - הקלד שם מוצר, ברקוד או מק״ט..."
           className="pr-10 pl-10 h-12 text-base border-2 border-gray-300 focus:border-amber-400"
         />
         {query && (
