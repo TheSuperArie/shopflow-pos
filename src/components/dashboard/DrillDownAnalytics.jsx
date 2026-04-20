@@ -172,7 +172,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
 
   const canDrill = currentLevel < 3;
 
-  const levelLabel = ['P1 — קטגוריות', 'P2 — תת-קטגוריות', 'P3 — תיקיות מוצרים', `P4 — ${effectiveDimension || 'ממד'}`][Math.min(currentLevel, 3)];
+  const levelLabel = ['קטגוריות', 'תת-קטגוריות', 'תיקיות מוצרים', effectiveDimension || 'ממד'][Math.min(currentLevel, 3)];
 
   return (
     <div className="space-y-4" dir="rtl">
