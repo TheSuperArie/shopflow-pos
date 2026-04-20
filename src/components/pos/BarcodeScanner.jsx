@@ -12,12 +12,14 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
   const timerRef  = useRef(null);
   const { toast } = useToast();
   const [lastScanned, setLastScanned] = useState('');
+  const [debugKeys, setDebugKeys] = useState([]);
 
   useEffect(() => {
     if (!enabled) return;
 
     const handleKeyDown = (e) => {
       console.log('Scanner Key Received:', e.key, e.keyCode);
+      setDebugKeys(prev => [...prev, e.key + ' (Code: ' + e.keyCode + ')'].slice(-12));
 
       if (e.key === 'Enter' || e.key === 'Tab') {
         const code = bufferRef.current.trim();
@@ -92,10 +94,28 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
   if (!enabled) return null;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-300 rounded-xl text-green-700 text-xs font-semibold animate-pulse">
-      <Barcode className="w-4 h-4" />
-      מצב סריקה פעיל
-      {lastScanned && <span className="opacity-60">· {lastScanned}</span>}
+    <div className="flex flex-col gap-2 w-full">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-300 rounded-xl text-green-700 text-xs font-semibold animate-pulse">
+        <Barcode className="w-4 h-4" />
+        מצב סריקה פעיל
+        {lastScanned && <span className="opacity-60">· {lastScanned}</span>}
+      </div>
+      <div className="bg-red-600 text-white text-xs rounded-xl p-3 font-mono w-full">
+        <div className="font-bold mb-1 text-yellow-300">🔍 DEBUG — Raw Keys (last 12):</div>
+        {debugKeys.length === 0 ? (
+          <div className="opacity-60">ממתין לקלט מהסורק...</div>
+        ) : (
+          debugKeys.map((k, i) => (
+            <div key={i}>{i + 1}. {k}</div>
+          ))
+        )}
+        <button
+          onClick={() => setDebugKeys([])}
+          className="mt-2 px-2 py-0.5 bg-white text-red-700 rounded text-xs font-bold"
+        >
+          נקה
+        </button>
+      </div>
     </div>
   );
 }
