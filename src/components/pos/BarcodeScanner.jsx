@@ -17,17 +17,25 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
     if (!enabled) return;
 
     const handleKeyDown = (e) => {
-      if (e.key === 'Enter') {
+      console.log('Scanner Key Received:', e.key, e.keyCode);
+
+      if (e.key === 'Enter' || e.key === 'Tab') {
         const code = bufferRef.current.trim();
         bufferRef.current = '';
         clearTimeout(timerRef.current);
 
+        if (code.length >= 2) {
+          e.preventDefault();
+        }
+
+        console.log('Scanner buffer on terminator:', code);
+
         if (code.length < 2) return;
 
-        // Search variant by exact barcode or SKU (full or last 4 digits)
+        // Search variant by exact barcode or SKU (case-insensitive, full or last 4)
         const variant = variants.find(v =>
-          (v.sku && (v.sku === code || v.sku.slice(-4) === code)) ||
-          (v.barcode && (v.barcode === code || v.barcode.slice(-4) === code))
+          (v.sku && (v.sku.toLowerCase() === code.toLowerCase() || v.sku.slice(-4).toLowerCase() === code.toLowerCase())) ||
+          (v.barcode && (v.barcode.toLowerCase() === code.toLowerCase() || v.barcode.slice(-4).toLowerCase() === code.toLowerCase()))
         );
 
         if (variant) {
@@ -42,7 +50,7 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
 
         // Fallback: search group by barcode
         const group = groups.find(g =>
-          g.barcode && (g.barcode === code || g.barcode.slice(-4) === code)
+          g.barcode && (g.barcode.toLowerCase() === code.toLowerCase() || g.barcode.slice(-4).toLowerCase() === code.toLowerCase())
         );
         if (group) {
           const groupVariants = variants.filter(v => v.group_id === group.id && (v.stock || 0) > 0);
@@ -52,7 +60,7 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
             toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
           } else if (groupVariants.length > 1) {
             setLastScanned(code);
-            onVariantFound(null, group); // open variant selector
+            onVariantFound(null, group);
             toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
           }
           return;
@@ -66,10 +74,11 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
       if (e.key.length === 1) {
         bufferRef.current += e.key;
         clearTimeout(timerRef.current);
-        // Clear buffer if no char arrives within 500ms (human typing pace)
+        // Clear buffer after 2500ms to handle Bluetooth latency
         timerRef.current = setTimeout(() => {
+          console.log('Buffer cleared due to timeout. Current buffer was:', bufferRef.current);
           bufferRef.current = '';
-        }, 500);
+        }, 2500);
       }
     };
 
