@@ -56,6 +56,7 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
   // Find exact variant by last 4 digits of barcode (use cache if needed)
   useEffect(() => {
     if (isBarcodeSearch && onSelectVariant) {
+      // Priority 1: search on variants directly
       const exactVariant = cachedVariants.find(v => 
         v.barcode && 
         v.barcode.slice(-4) === query && 
@@ -66,6 +67,26 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
         const group = cachedGroups.find(g => g.id === exactVariant.group_id);
         if (group) {
           onSelectVariant(exactVariant, group);
+          setQuery('');
+          setShowResults(false);
+          return;
+        }
+      }
+
+      // Priority 2: search on group barcode
+      const exactGroup = cachedGroups.find(g => 
+        g.barcode && g.barcode.slice(-4) === query
+      );
+      if (exactGroup) {
+        const groupVariants = cachedVariants.filter(v => v.group_id === exactGroup.id && (v.stock || 0) > 0);
+        if (groupVariants.length === 1) {
+          // Single variant - select directly
+          onSelectVariant(groupVariants[0], exactGroup);
+          setQuery('');
+          setShowResults(false);
+        } else {
+          // Multiple variants - open group selector
+          onSelectGroup(exactGroup);
           setQuery('');
           setShowResults(false);
         }
@@ -81,13 +102,14 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
     const groupVariants = cachedVariants.filter(v => v.group_id === group.id);
     const hasStock = groupVariants.some(v => (v.stock || 0) > 0);
     
-    // Search by name or last 4 digits of barcode
+    // Search by name, last 4 digits of variant barcode, or group barcode
     const barcodeMatch = groupVariants.some(v => 
       v.barcode && 
       v.barcode.slice(-4).includes(query)
     );
+    const groupBarcodeMatch = group.barcode && group.barcode.slice(-4).includes(query);
     
-    return (nameMatch || barcodeMatch) && hasStock;
+    return (nameMatch || barcodeMatch || groupBarcodeMatch) && hasStock;
   }).slice(0, 8) : [];
 
   const handleSelectGroup = (group) => {
