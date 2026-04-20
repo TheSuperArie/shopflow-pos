@@ -56,10 +56,10 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
     const code = query.trim();
     if (!code) return;
 
-    // Exact match on variant barcode or SKU
+    // Exact match on variant barcode or SKU (case-insensitive)
     const exactVariant = cachedVariants.find(v =>
-      (v.barcode && (v.barcode === code || v.barcode.slice(-4) === code)) ||
-      (v.sku && (v.sku === code || v.sku.slice(-4) === code))
+      (v.barcode && v.barcode.toLowerCase() === code.toLowerCase()) ||
+      (v.sku && v.sku.toLowerCase() === code.toLowerCase())
     );
     if (exactVariant) {
       const group = cachedGroups.find(g => g.id === exactVariant.group_id);
@@ -88,49 +88,7 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
     }
   };
 
-  // Check if query is exactly 4 digits (barcode scan)
-  const isBarcodeSearch = /^\d{4}$/.test(query);
-  
-  // Find exact variant by last 4 digits of barcode (use cache if needed)
-  useEffect(() => {
-    if (isBarcodeSearch && onSelectVariant) {
-      // Priority 1: search on variants directly
-      const exactVariant = cachedVariants.find(v => 
-        v.barcode && 
-        v.barcode.slice(-4) === query && 
-        (v.stock || 0) > 0
-      );
-      
-      if (exactVariant) {
-        const group = cachedGroups.find(g => g.id === exactVariant.group_id);
-        if (group) {
-          onSelectVariant(exactVariant, group);
-          setQuery('');
-          setShowResults(false);
-          return;
-        }
-      }
 
-      // Priority 2: search on group barcode
-      const exactGroup = cachedGroups.find(g => 
-        g.barcode && g.barcode.slice(-4) === query
-      );
-      if (exactGroup) {
-        const groupVariants = cachedVariants.filter(v => v.group_id === exactGroup.id && (v.stock || 0) > 0);
-        if (groupVariants.length === 1) {
-          // Single variant - select directly
-          onSelectVariant(groupVariants[0], exactGroup);
-          setQuery('');
-          setShowResults(false);
-        } else {
-          // Multiple variants - open group selector
-          onSelectGroup(exactGroup);
-          setQuery('');
-          setShowResults(false);
-        }
-      }
-    }
-  }, [query, isBarcodeSearch, cachedVariants, cachedGroups, onSelectVariant]);
 
   const searchResults = query.trim().length >= 2 ? cachedGroups.filter(group => {
     const searchLower = query.toLowerCase().trim();
@@ -140,17 +98,14 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
     const groupVariants = cachedVariants.filter(v => v.group_id === group.id);
     const hasStock = groupVariants.some(v => (v.stock || 0) > 0);
 
-    // Match variant barcode or SKU (full or last 4 digits)
+    // Match variant barcode or SKU — full match, suffix match, or contains
     const variantMatch = groupVariants.some(v =>
-      (v.barcode && (v.barcode.toLowerCase().includes(searchLower) || v.barcode.slice(-4) === searchLower)) ||
-      (v.sku && (v.sku.toLowerCase().includes(searchLower) || v.sku.slice(-4) === searchLower))
+      (v.barcode && v.barcode.toLowerCase().includes(searchLower)) ||
+      (v.sku && v.sku.toLowerCase().includes(searchLower))
     );
 
     // Match group-level barcode
-    const groupBarcodeMatch = group.barcode && (
-      group.barcode.toLowerCase().includes(searchLower) ||
-      group.barcode.slice(-4) === searchLower
-    );
+    const groupBarcodeMatch = group.barcode && group.barcode.toLowerCase().includes(searchLower);
 
     return (nameMatch || variantMatch || groupBarcodeMatch) && hasStock;
   }).slice(0, 8) : [];
