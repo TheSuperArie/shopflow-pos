@@ -3,20 +3,15 @@ import { Barcode } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 /**
- * Hidden Input Trap pattern — the only reliable way to capture hardware
- * barcode scanners on Android WebViews where global keydown events are
- * masked as 'Unidentified' composition events.
- *
- * A visually hidden input aggressively holds focus when enabled.
- * The scanner types into it and sends Enter, which we intercept to
- * read the full barcode value directly from e.target.value.
+ * Off-Screen Form Submit Trap — the most reliable pattern for Android PDA scanners.
+ * PDAs trigger native form submission (Enter key) even when keyboard events are masked.
+ * The input is placed off-screen (not hidden) so Android Chrome treats it as fully focusable.
  */
 export default function BarcodeScanner({ variants, groups, onVariantFound, enabled }) {
   const inputRef = useRef(null);
   const { toast } = useToast();
   const [lastScanned, setLastScanned] = useState('');
 
-  // Focus the hidden input whenever enabled becomes true
   useEffect(() => {
     if (enabled) {
       inputRef.current?.focus();
@@ -63,28 +58,31 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
     toast({ title: `⛔ ברקוד לא נמצא: ${code}`, duration: 2000, variant: 'destructive' });
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      const code = e.target.value.trim();
-      e.target.value = '';
-      processCode(code);
-    }
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    const code = inputRef.current.value.trim();
+    inputRef.current.value = '';
+    inputRef.current.focus();
+    processCode(code);
   };
 
   if (!enabled) return null;
 
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-300 rounded-xl text-green-700 text-xs font-semibold animate-pulse">
-      <input
-        ref={inputRef}
-        type="text"
-        className="absolute opacity-0 w-0 h-0"
-        onKeyDown={handleKeyDown}
-        onBlur={(e) => { if (enabled) e.target.focus(); }}
-        autoComplete="off"
-        readOnly={false}
-      />
+      <form onSubmit={handleFormSubmit}>
+        <input
+          ref={inputRef}
+          type="text"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+          className="absolute"
+          style={{ left: '-9999px', top: '-9999px' }}
+          onBlur={() => { if (enabled) setTimeout(() => inputRef.current?.focus(), 10); }}
+        />
+      </form>
       <Barcode className="w-4 h-4" />
       מצב סריקה פעיל
       {lastScanned && <span className="opacity-60">· {lastScanned}</span>}
