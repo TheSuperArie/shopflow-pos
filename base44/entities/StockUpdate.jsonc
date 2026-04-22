@@ -1,0 +1,38 @@
+{
+  "name": "StockUpdate",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "quantity_added": {
+      "type": "number"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05e4\u05e7"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d6\u05de\u05e0\u05d4 \u05de\u05e1\u05e4\u05e7"
+    },
+    "arrival_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "product_id",
+    "quantity_added",
+    "arrival_date"
+  ]
+}

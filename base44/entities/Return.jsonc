@@ -1,0 +1,75 @@
+{
+  "name": "Return",
+  "type": "object",
+  "properties": {
+    "sale_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4 \u05d4\u05de\u05e7\u05d5\u05e8\u05d9\u05ea"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05dc\u05e7\u05d5\u05d7"
+    },
+    "customer_email": {
+      "type": "string",
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7"
+    },
+    "customer_phone": {
+      "type": "string",
+      "description": "\u05d8\u05dc\u05e4\u05d5\u05df \u05d4\u05dc\u05e7\u05d5\u05d7"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "\u05e4\u05e8\u05d9\u05d8\u05d9\u05dd \u05dc\u05d4\u05d7\u05d6\u05e8\u05d4"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
+    },
+    "reason": {
+      "type": "string",
+      "description": "\u05e1\u05d9\u05d1\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "\u05de\u05de\u05ea\u05d9\u05df",
+        "\u05d0\u05d5\u05e9\u05e8",
+        "\u05e0\u05d3\u05d7\u05d4",
+        "\u05d4\u05d5\u05e9\u05dc\u05dd"
+      ],
+      "default": "\u05de\u05de\u05ea\u05d9\u05df",
+      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
+    },
+    "refund_method": {
+      "type": "string",
+      "enum": [
+        "\u05d6\u05d9\u05db\u05d5\u05d9",
+        "\u05d4\u05d7\u05d6\u05e8 \u05db\u05e1\u05e4\u05d9",
+        "\u05d4\u05d7\u05dc\u05e4\u05d4"
+      ],
+      "description": "\u05d0\u05d5\u05e4\u05df \u05d4\u05d4\u05d7\u05d6\u05e8"
+    },
+    "processed_by": {
+      "type": "string",
+      "description": "\u05de\u05d9 \u05e2\u05d9\u05d1\u05d3 \u05d0\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
+    },
+    "notes": {
+      "type": "string",
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05e0\u05d5\u05e1\u05e4\u05d5\u05ea"
+    },
+    "approval_date": {
+      "type": "string",
+      "format": "date",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d0\u05d9\u05e9\u05d5\u05e8"
+    }
+  },
+  "required": [
+    "items",
+    "total_amount",
+    "reason"
+  ]
+}

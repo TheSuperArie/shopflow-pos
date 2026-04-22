@@ -1,0 +1,35 @@
+{
+  "name": "Category",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Category name"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Icon name from lucide"
+    },
+    "parent_id": {
+      "type": "string",
+      "description": "Optional parent category ID for sub-categories"
+    },
+    "inherit_dimensions": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, sub-category uses parent's VariantDimensions instead of its own"
+    },
+    "is_shirts": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this category is for shirts with special fields"
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

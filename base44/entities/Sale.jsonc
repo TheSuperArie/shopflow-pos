@@ -1,0 +1,61 @@
+{
+  "name": "Sale",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "sell_price": {
+            "type": "number"
+          },
+          "cost_price": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "total": {
+      "type": "number"
+    },
+    "total_cost": {
+      "type": "number"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "\u05de\u05d6\u05d5\u05de\u05df",
+        "\u05d0\u05e9\u05e8\u05d0\u05d9"
+      ]
+    },
+    "cash_received": {
+      "type": "number",
+      "description": "\u05e1\u05db\u05d5\u05dd \u05e9\u05d4\u05ea\u05e7\u05d1\u05dc \u05d1\u05de\u05d6\u05d5\u05de\u05df"
+    },
+    "cash_change": {
+      "type": "number",
+      "description": "\u05e2\u05d5\u05d3\u05e3 \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8"
+    },
+    "seller_email": {
+      "type": "string"
+    },
+    "seller_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "items",
+    "total",
+    "payment_method"
+  ]
+}

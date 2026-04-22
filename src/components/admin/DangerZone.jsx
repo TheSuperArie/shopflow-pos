@@ -127,10 +127,14 @@ export default function DangerZone({ user }) {
       }
 
       if (activeAction.id === 'clear_catalog') {
-        // Delete in dependency order: variants → groups → dimensions → categories
+        // Delete in dependency order: variants → flexible variants → groups → dimensions → categories
         await batchDelete(
           () => base44.entities.ProductVariant.filter({ created_by: email }),
           (id) => base44.entities.ProductVariant.delete(id)
+        );
+        await batchDelete(
+          () => base44.entities.FlexibleVariant.filter({ created_by: email }),
+          (id) => base44.entities.FlexibleVariant.delete(id)
         );
         await batchDelete(
           () => base44.entities.ProductGroup.filter({ created_by: email }),

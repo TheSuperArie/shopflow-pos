@@ -1,0 +1,20 @@
+{
+  "name": "CashCount",
+  "type": "object",
+  "properties": {
+    "amount": {
+      "type": "number"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "amount",
+    "date"
+  ]
+}
