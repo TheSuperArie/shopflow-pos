@@ -65,8 +65,8 @@ export default function DangerZone({ user }) {
   };
 
   const invalidateAll = () => {
-    // Invalidate every cached query so ALL pages refresh immediately
-    queryClient.invalidateQueries();
+    // Clear the entire cache so ALL pages re-fetch fresh data from server
+    queryClient.clear();
   };
 
   const handleConfirm = async () => {
