@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Lock, Save, BarChart2 } from 'lucide-react';
+import { Loader2, Lock, Save, BarChart2, LogOut } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
 
@@ -144,6 +144,24 @@ export default function AdminSettings() {
           <p className="text-xs text-gray-400">* זוהי הדרך הרשמית להגדיר סיסמה לכניסה דרך אימייל במערכת</p>
         </CardContent>
       </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <LogOut className="w-5 h-5" /> החלפת משתמש
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-600">יש לך יותר מחנות אחת? התנתק וכנס עם חשבון אחר.</p>
+          <Button
+            variant="outline"
+            className="gap-2 border-red-300 text-red-600 hover:bg-red-50"
+            onClick={() => base44.auth.logout()}
+          >
+            <LogOut className="w-4 h-4" /> התנתק והחלף משתמש
+          </Button>
+        </CardContent>
+      </Card>
+
       <DangerZone user={user} />
     </div>
   );
