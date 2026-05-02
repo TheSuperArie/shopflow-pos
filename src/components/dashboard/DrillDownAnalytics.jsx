@@ -304,7 +304,14 @@ export function resolveGroups(item, groupById, variantById, groups) {
   if (baseName) {
     const matches = groups.filter(g => g.name === baseName);
     if (matches.length === 1) return [{ group: matches[0], weight: 1 }];
-    if (matches.length > 1) return matches.map(g => ({ group: g, weight: 1 / matches.length }));
+    if (matches.length > 1) {
+      // Try to disambiguate by sell_price
+      if (item.sell_price != null) {
+        const priceMatch = matches.find(g => g.uniform_sell_price === item.sell_price);
+        if (priceMatch) return [{ group: priceMatch, weight: 1 }];
+      }
+      return matches.map(g => ({ group: g, weight: 1 / matches.length }));
+    }
   }
   return [];
 }

@@ -64,35 +64,41 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
       // 3. Legacy: name match (strip dimension suffix after " - ")
       const baseName = item.product_name?.split(' - ')[0]?.trim();
       if (baseName) {
-        const matchingGroups = groupsByName[baseName] || [];
-        if (matchingGroups.length === 1) return matchingGroups[0];
-        if (matchingGroups.length > 1) {
-          const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
-          const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
-          if (suffixParts.length > 0) {
-            // Step 1: check if any suffix part matches a sub-category name
-            for (const part of suffixParts) {
-              const subCat = subCatByName[part];
-              if (subCat) {
-                const match = matchingGroups.find(g => g.category_id === subCat.id);
-                if (match) return match;
-              }
-            }
-            // Step 2: score by how many dimension values of each group's variants match suffix parts
-            let bestGroup = null;
-            let bestScore = -1;
-            for (const g of matchingGroups) {
-              const gVariants = variantsByGroupId[g.id] || [];
-              for (const v of gVariants) {
-                const dimVals = Object.values(v.dimensions || {}).map(String);
-                const score = suffixParts.filter(p => dimVals.includes(p)).length;
-                if (score > bestScore) { bestScore = score; bestGroup = g; }
-              }
-            }
-            if (bestGroup && bestScore > 0) return bestGroup;
-          }
-          return matchingGroups[0];
+      const matchingGroups = groupsByName[baseName] || [];
+      if (matchingGroups.length === 1) return matchingGroups[0];
+      if (matchingGroups.length > 1) {
+        // Step 0: match by sell_price — most reliable disambiguation for same-name groups
+        if (item.sell_price != null) {
+          const priceMatch = matchingGroups.find(g => g.uniform_sell_price === item.sell_price);
+          if (priceMatch) return priceMatch;
         }
+
+        const suffixStr = item.product_name?.split(' - ').slice(1).join(' - ') || '';
+        const suffixParts = suffixStr.split(' / ').map(s => s.trim()).filter(Boolean);
+        if (suffixParts.length > 0) {
+          // Step 1: check if any suffix part matches a sub-category name
+          for (const part of suffixParts) {
+            const subCat = subCatByName[part];
+            if (subCat) {
+              const match = matchingGroups.find(g => g.category_id === subCat.id);
+              if (match) return match;
+            }
+          }
+          // Step 2: score by how many dimension values of each group's variants match suffix parts
+          let bestGroup = null;
+          let bestScore = -1;
+          for (const g of matchingGroups) {
+            const gVariants = variantsByGroupId[g.id] || [];
+            for (const v of gVariants) {
+              const dimVals = Object.values(v.dimensions || {}).map(String);
+              const score = suffixParts.filter(p => dimVals.includes(p)).length;
+              if (score > bestScore) { bestScore = score; bestGroup = g; }
+            }
+          }
+          if (bestGroup && bestScore > 0) return bestGroup;
+        }
+        return matchingGroups[0];
+      }
         // Partial name match fallback
         const partial = groupsSortedByNameLen.find(g =>
           baseName.startsWith(g.name) || g.name.startsWith(baseName)
