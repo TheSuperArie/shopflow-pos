@@ -34,6 +34,7 @@ export default function POS() {
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
   const [scannerEnabled, setScannerEnabled] = useState(false);
+  const [scannerFocusSignal, setScannerFocusSignal] = useState(0);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -277,7 +278,7 @@ export default function POS() {
 
   // ── Render ───────────────────────────────────────────────────────
   return (
-    <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
+    <div dir="rtl" className="h-screen flex flex-col bg-gray-50" onClick={() => { if (scannerEnabled) setScannerFocusSignal(s => s + 1); }}>
       <OfflineSyncStatus syncStatus={syncStatus} failedCount={failedCount} processedCount={processedCount} retryFailedSync={retryFailedSync} />
       {scannerEnabled && (
         <div className="bg-green-500 text-white text-center text-xs py-1 font-semibold">
@@ -464,6 +465,7 @@ export default function POS() {
         variants={allVariants}
         groups={allGroups}
         onVariantFound={handleBarcodeSelect}
+        focusSignal={scannerFocusSignal}
       />
 
       <DynamicVariantSelector
@@ -487,7 +489,7 @@ export default function POS() {
       <ReceiptModal
         open={showReceipt}
         sale={lastSale}
-        onClose={() => { setShowReceipt(false); setLastSale(null); }}
+        onClose={() => { setShowReceipt(false); setLastSale(null); setScannerFocusSignal(s => s + 1); }}
       />
 
       <ReturnFormModal open={showReturnForm} onClose={() => setShowReturnForm(false)} />

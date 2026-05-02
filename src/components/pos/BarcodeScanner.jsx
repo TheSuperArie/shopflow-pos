@@ -7,16 +7,19 @@ import { useToast } from '@/components/ui/use-toast';
  * PDAs trigger native form submission (Enter key) even when keyboard events are masked.
  * The input is placed off-screen (not hidden) so Android Chrome treats it as fully focusable.
  */
-export default function BarcodeScanner({ variants, groups, onVariantFound, enabled }) {
+export default function BarcodeScanner({ variants, groups, onVariantFound, enabled, focusSignal }) {
   const inputRef = useRef(null);
   const { toast } = useToast();
   const [lastScanned, setLastScanned] = useState('');
 
+  const refocus = (delay = 50) => {
+    setTimeout(() => inputRef.current?.focus(), delay);
+  };
+
+  // Re-focus whenever enabled turns true or focusSignal changes
   useEffect(() => {
-    if (enabled) {
-      inputRef.current?.focus();
-    }
-  }, [enabled]);
+    if (enabled) refocus(100);
+  }, [enabled, focusSignal]);
 
   const processCode = (code) => {
     if (!code || code.length < 2) return;
@@ -80,7 +83,7 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
           spellCheck="false"
           className="absolute"
           style={{ left: '-9999px', top: '-9999px' }}
-          onBlur={() => { if (enabled) setTimeout(() => inputRef.current?.focus(), 10); }}
+          onBlur={() => { if (enabled) refocus(50); }}
         />
       </form>
       <Barcode className="w-4 h-4" />
