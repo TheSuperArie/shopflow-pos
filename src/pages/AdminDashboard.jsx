@@ -18,10 +18,10 @@ export default function AdminDashboard() {
   // Real-time sync
   useEffect(() => {
     const unsub1 = base44.entities.Sale.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
     });
     const unsub2 = base44.entities.Expense.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
     });
     const unsub3 = base44.entities.ProductVariant.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
@@ -30,15 +30,15 @@ export default function AdminDashboard() {
   }, [queryClient]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['dashboard-sales', user?.email],
-    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000) : [],
+    queryKey: ['sales', user?.email],
+    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date') : [],
     staleTime: 0,
     enabled: !!user,
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['dashboard-expenses', user?.email],
-    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date', 2000) : [],
+    queryKey: ['expenses', user?.email],
+    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date') : [],
     staleTime: 0,
     enabled: !!user,
   });
@@ -92,7 +92,8 @@ export default function AdminDashboard() {
   const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (sale.total || 0), 0);
   const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (sale.total || 0), 0);
 
-  const lowStockVariants = variants.filter(v => (v.stock || 0) <= 3).map(v => {
+  const lowStockThreshold = appSettings[0]?.low_stock_threshold ?? 5;
+  const lowStockVariants = variants.filter(v => (v.stock || 0) < lowStockThreshold).map(v => {
     const group = groups.find(g => g.id === v.group_id);
     const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
       ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(', ')
