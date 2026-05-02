@@ -266,7 +266,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                       {canDrill && <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                       <div className="text-left shrink-0">
                         <p className="text-sm font-bold text-amber-600">₪{row.revenue.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">{row.quantity} יח׳ • {totalRevenue > 0 ? ((row.revenue / totalRevenue) * 100).toFixed(1) : 0}%</p>
+                        <p className="text-xs text-gray-400">{Math.round(row.quantity)} יח׳ • {totalRevenue > 0 ? ((row.revenue / totalRevenue) * 100).toFixed(1) : 0}%</p>
                       </div>
                     </button>
                     {/* Link to full insights page for P1 categories */}

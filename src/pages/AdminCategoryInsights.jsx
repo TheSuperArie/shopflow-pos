@@ -511,7 +511,7 @@ export default function AdminCategoryInsights() {
                       <div className="text-left">
                         <p className="text-sm font-bold text-amber-600">₪{row.revenue.toLocaleString()}</p>
                         <p className="text-xs text-gray-400">
-                          {row.quantity} יח׳ • {totalRevenue > 0 ? ((row.revenue / totalRevenue) * 100).toFixed(1) : 0}%
+                          {Math.round(row.quantity)} יח׳ • {totalRevenue > 0 ? ((row.revenue / totalRevenue) * 100).toFixed(1) : 0}%
                         </p>
                       </div>
                     </div>
@@ -534,7 +534,7 @@ export default function AdminCategoryInsights() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">סה"כ יחידות</p>
-                <p className="text-xl font-bold text-gray-700">{chartData.reduce((s, d) => s + d.quantity, 0)}</p>
+                <p className="text-xl font-bold text-gray-700">{Math.round(chartData.reduce((s, d) => s + d.quantity, 0))}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">ערכים שונים</p>
