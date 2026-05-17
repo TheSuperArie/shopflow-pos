@@ -24,6 +24,7 @@ import AdminEmployees from './pages/AdminEmployees';
 import AdminCashReport from './pages/AdminCashReport';
 import AdminCategoryInsights from './pages/AdminCategoryInsights';
 import AdminNetwork from './pages/AdminNetwork';
+import NetworkMasterDashboard from './pages/NetworkMasterDashboard';
 import BatchShipmentEntry from './pages/BatchShipmentEntry';
 import Layout from './components/Layout';
 import AdminLayout from './components/admin/AdminLayout';
@@ -76,6 +77,7 @@ const AuthenticatedApp = () => {
             <Route path="/AdminNetwork" element={<AdminNetwork />} />
           </Route>
         </Route>
+        <Route path="/NetworkMasterDashboard" element={<NetworkMasterDashboard />} />
         <Route path="/BatchShipmentEntry" element={<BatchShipmentEntry />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>

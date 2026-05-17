@@ -30,7 +30,7 @@ export default function AdminLogin() {
     if (password === networkPassword) {
       sessionStorage.setItem('admin_auth', 'true');
       sessionStorage.setItem('admin_role', 'NETWORK_MASTER');
-      navigate('/AdminNetwork');
+      navigate('/NetworkMasterDashboard');
       return;
     }
 
