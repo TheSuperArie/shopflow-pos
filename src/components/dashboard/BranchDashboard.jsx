@@ -38,9 +38,12 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
         base44.entities.Sale.filter({ branch_id: null }, '-created_date', 2000),
       ]);
       const merged = [...branchSales, ...nullBranchSales];
-      // Debug: log first recent item so we can inspect saved fields
-      const recentItem = merged[0]?.items?.[0];
-      if (recentItem) console.log('Dashboard received recent sale item:', recentItem);
+      // Debug: log ALL items from most recent sale to inspect saved fields
+      const recentSale = merged[0];
+      if (recentSale) {
+        console.log('Dashboard most recent sale:', JSON.stringify(recentSale, null, 2));
+        (recentSale.items || []).forEach((item, i) => console.log(`Dashboard sale item[${i}]:`, JSON.stringify(item)));
+      }
       return merged;
     },
     enabled: !!branchId,

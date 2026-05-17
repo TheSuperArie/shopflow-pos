@@ -53,9 +53,6 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       const UNCATEGORIZED_ID = '__uncategorized__';
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          // Skip broken historical items with no linkable ID
-          if (!item.variant_id && !item.variantId && !item.product_id && !item.group_id) continue;
-
           const resolved = resolveGroups(item, groupById, variantById, groups);
           const revenue = (item.sell_price || 0) * (item.quantity || 0);
           const qty = item.quantity || 0;
@@ -103,7 +100,6 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
 
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          if (!item.variant_id && !item.variantId && !item.product_id && !item.group_id) continue;
           const resolved = resolveGroups(item, groupById, variantById, groups);
           const revenue = (item.sell_price || 0) * (item.quantity || 0);
           const qty = item.quantity || 0;
@@ -128,7 +124,6 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       const map = {};
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          if (!item.variant_id && !item.variantId && !item.product_id && !item.group_id) continue;
           const group = resolveGroup(item, groupById, variantById, groups);
           if (!group) continue;
           const cat = categoryById[group.category_id];

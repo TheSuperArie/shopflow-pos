@@ -113,8 +113,6 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
 
     for (const sale of sales) {
       for (const item of (sale.items || [])) {
-        // Skip broken historical items that have no linkable ID at all
-        if (!item.variant_id && !item.variantId && !item.product_id && !item.group_id) continue;
         const itemRevenue = (item.sell_price || 0) * (item.quantity || 0);
         const itemCost    = (item.cost_price  || 0) * (item.quantity || 0);
         const itemQty     = item.quantity || 0;
