@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Crown, Save, Loader2, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import LegacyDataMigration from './LegacyDataMigration';
 
 export default function NetworkSettingsTab({ tenantEmail }) {
   const [networkPassword, setNetworkPassword] = useState('');
@@ -89,6 +90,8 @@ export default function NetworkSettingsTab({ tenantEmail }) {
           </Button>
         </CardContent>
       </Card>
+
+      <LegacyDataMigration tenantEmail={tenantEmail} />
     </div>
   );
 }
