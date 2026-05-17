@@ -78,7 +78,7 @@ export default function NetworkMasterDashboard() {
           <h1 className="font-bold text-gray-800 flex-1">מרכז פיקוד רשת</h1>
           {tenantEmail && (
             <div className="bg-gray-900 rounded-xl p-1">
-              <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} />
+              <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} onNavigateToBranches={() => setActiveTab('branches')} />
             </div>
           )}
         </header>
@@ -86,7 +86,7 @@ export default function NetworkMasterDashboard() {
         {/* Desktop notification bell in top-right */}
         {tenantEmail && (
           <div className="hidden lg:flex items-center justify-end px-6 py-2 bg-gray-950 border-b border-white/5">
-            <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} />
+            <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} onNavigateToBranches={() => setActiveTab('branches')} />
           </div>
         )}
 

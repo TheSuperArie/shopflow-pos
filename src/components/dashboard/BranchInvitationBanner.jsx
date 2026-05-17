@@ -15,7 +15,20 @@ export default function BranchInvitationBanner({ invitation, userEmail }) {
   const [done, setDone] = useState(false);
 
   const accept = useMutation({
-    mutationFn: () => base44.entities.Branch.update(invitation.id, { status: 'ACTIVE', is_active: true }),
+    mutationFn: async () => {
+      await base44.entities.Branch.update(invitation.id, { status: 'ACTIVE', is_active: true });
+      // Notify the Master Admin (tenant_email on the branch is the master's email)
+      await base44.entities.NetworkAlert.create({
+        tenant_email: invitation.tenant_email,
+        type: 'INVITE_ACCEPTED',
+        title: 'סניף אישר הזמנה',
+        body: `"${invitation.name}" אישר את ההזמנה והצטרף לרשת!`,
+        branch_id: invitation.id,
+        branch_name: invitation.name,
+        is_read: false,
+        navigate_to: 'branches',
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', userEmail] });
       queryClient.invalidateQueries({ queryKey: ['pending-invitations', userEmail] });
