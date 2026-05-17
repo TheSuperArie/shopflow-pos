@@ -250,15 +250,22 @@ export default function POS() {
       ? Object.values(variant.dimensions).join(' / ')
       : '';
 
-    setCartItems(prev => [...prev, {
-      variant_id: variant.id,
-      group_id: group.id,
-      product_name: dimText ? `${group.name} - ${dimText}` : group.name,
-      quantity: 1,
-      sell_price: sellPrice,
-      cost_price: costPrice || 0,
-      variant_stock: liveVariant?.stock || 0,
-    }]);
+    setCartItems(prev => {
+      const existingIdx = prev.findIndex(item => item.variant_id === variant.id);
+      if (existingIdx !== -1) {
+        // Auto-increment existing item
+        return prev.map((item, i) => i === existingIdx ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, {
+        variant_id: variant.id,
+        group_id: group.id,
+        product_name: dimText ? `${group.name} - ${dimText}` : group.name,
+        quantity: 1,
+        sell_price: sellPrice,
+        cost_price: costPrice || 0,
+        variant_stock: liveVariant?.stock || 0,
+      }];
+    });
 
     toast({ title: '✅ נוסף לעגלה', description: dimText ? `${group.name} - ${dimText}` : group.name, duration: 1200 });
     setSelectedCategory(null);
@@ -276,7 +283,16 @@ export default function POS() {
   };
 
   const handleVariantConfirm = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
-  const handleBarcodeSelect = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
+  // Barcode scan: bypass modal entirely — add directly to cart (or open selector only if multi-variant needed)
+  const handleBarcodeSelect = (variant, group) => {
+    if (variant) {
+      // Exact variant matched — instant add, no modal
+      addToCart(variant, group);
+    } else {
+      // Group matched but multiple variants — open selector (no way around it)
+      setSelectedGroup(group);
+    }
+  };
 
   const updateCartQty = (idx, newQty) => {
     if (newQty <= 0) {
