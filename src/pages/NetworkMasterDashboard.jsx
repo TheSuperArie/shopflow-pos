@@ -8,6 +8,8 @@ import NetworkBranchesTab from '@/components/network/master/NetworkBranchesTab';
 import NetworkAnalyticsTab from '@/components/network/master/NetworkAnalyticsTab';
 import NetworkSettingsTab from '@/components/network/master/NetworkSettingsTab';
 import NetworkSuppliersTab from '@/components/network/master/NetworkSuppliersTab';
+import NetworkOrdersTab from '@/components/network/master/NetworkOrdersTab';
+import NotificationBell from '@/components/network/master/NotificationBell';
 
 export default function NetworkMasterDashboard() {
   const [activeTab, setActiveTab] = useState('branches');
@@ -73,14 +75,27 @@ export default function NetworkMasterDashboard() {
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-xl bg-gray-100">
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="font-bold text-gray-800">מרכז פיקוד רשת</h1>
+          <h1 className="font-bold text-gray-800 flex-1">מרכז פיקוד רשת</h1>
+          {tenantEmail && (
+            <div className="bg-gray-900 rounded-xl p-1">
+              <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} />
+            </div>
+          )}
         </header>
+
+        {/* Desktop notification bell in top-right */}
+        {tenantEmail && (
+          <div className="hidden lg:flex items-center justify-end px-6 py-2 bg-gray-950 border-b border-white/5">
+            <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} />
+          </div>
+        )}
 
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           {tenantEmail && (
             <>
               {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
+              {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'suppliers' && <NetworkSuppliersTab tenantEmail={tenantEmail} />}
               {activeTab === 'settings' && <NetworkSettingsTab tenantEmail={tenantEmail} />}
             </>

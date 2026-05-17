@@ -26,6 +26,7 @@ import AdminCategoryInsights from './pages/AdminCategoryInsights';
 import AdminNetwork from './pages/AdminNetwork';
 import NetworkMasterDashboard from './pages/NetworkMasterDashboard';
 import BatchShipmentEntry from './pages/BatchShipmentEntry';
+import BranchNetworkOrders from './pages/BranchNetworkOrders';
 import Layout from './components/Layout';
 import AdminLayout from './components/admin/AdminLayout';
 
@@ -66,7 +67,7 @@ const AuthenticatedApp = () => {
             <Route path="/AdminSales" element={<AdminSales />} />
             <Route path="/AdminExpenses" element={<AdminExpenses />} />
             <Route path="/AdminStock" element={<AdminStock />} />
-            <Route path="/AdminOrders" element={<AdminOrders />} />
+            <Route path="/AdminOrders" element={<BranchNetworkOrders />} />
             <Route path="/AdminSuppliers" element={<AdminSuppliers />} />
             <Route path="/AdminReturns" element={<AdminReturns />} />
             <Route path="/AdminDailyReport" element={<AdminDailyReport />} />

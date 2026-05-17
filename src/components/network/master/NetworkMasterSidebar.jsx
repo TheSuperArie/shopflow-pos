@@ -1,12 +1,13 @@
 import React from 'react';
-import { Crown, GitBranch, BarChart2, LogOut, X, ShoppingCart, Settings, Building2 } from 'lucide-react';
+import { Crown, GitBranch, BarChart2, LogOut, X, ShoppingCart, Settings, Building2, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const NAV_ITEMS = [
-  { tab: 'branches', label: 'רשימת סניפים', icon: GitBranch },
-  { tab: 'analytics', label: 'דוחות וגרפים', icon: BarChart2 },
-  { tab: 'suppliers', label: 'ניהול ספקים', icon: Building2 },
-  { tab: 'settings', label: 'הגדרות רשת', icon: Settings },
+  { tab: 'branches',  label: 'רשימת סניפים',     icon: GitBranch },
+  { tab: 'analytics', label: 'דוחות וגרפים',      icon: BarChart2 },
+  { tab: 'orders',    label: 'הזמנות מהסניפים',   icon: ClipboardList },
+  { tab: 'suppliers', label: 'ניהול ספקים',        icon: Building2 },
+  { tab: 'settings',  label: 'הגדרות רשת',         icon: Settings },
 ];
 
 export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpen, setMobileOpen }) {

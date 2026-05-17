@@ -24,7 +24,7 @@ const BRANCH_MANAGER_ITEMS = [
   { path: '/AdminProducts', label: 'מוצרים וקטלוג', icon: Package },
   { path: '/AdminLowStock', label: 'מלאי חסר', icon: AlertTriangle },
   { path: '/AdminStock', label: 'עדכון מלאי', icon: TruckIcon },
-  { path: '/AdminOrders', label: 'הזמנות לספקים', icon: ShoppingCart },
+  { path: '/AdminOrders', label: 'הזמנות לרשת', icon: ShoppingCart },
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
   { path: '/AdminReturns', label: 'החזרות', icon: RotateCcw },
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
