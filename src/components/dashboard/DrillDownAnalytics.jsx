@@ -20,12 +20,26 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
   const [selectedDimension, setSelectedDimension] = useState(defaultDimension || '__auto__');
 
   // ── Lookup maps ──────────────────────────────────────────────────
-  const categoryById = useMemo(() => Object.fromEntries(categories.map(c => [c.id, c])), [categories]);
-  const groupById = useMemo(() => Object.fromEntries(groups.map(g => [g.id, g])), [groups]);
-  const variantById = useMemo(() => Object.fromEntries(variants.map(v => [String(v.id), v])), [variants]);
+  // Deduplicate by ID to prevent duplicate category entries causing double-counting
+  const uniqueCategories = useMemo(() => {
+    const seen = new Set();
+    return categories.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+  }, [categories]);
+  const uniqueGroups = useMemo(() => {
+    const seen = new Set();
+    return groups.filter(g => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
+  }, [groups]);
+  const uniqueVariants = useMemo(() => {
+    const seen = new Set();
+    return variants.filter(v => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
+  }, [variants]);
 
-  // Top-level categories (no parent)
-  const topLevelCats = useMemo(() => categories.filter(c => !c.parent_id), [categories]);
+  const categoryById = useMemo(() => Object.fromEntries(uniqueCategories.map(c => [c.id, c])), [uniqueCategories]);
+  const groupById = useMemo(() => Object.fromEntries(uniqueGroups.map(g => [g.id, g])), [uniqueGroups]);
+  const variantById = useMemo(() => Object.fromEntries(uniqueVariants.map(v => [String(v.id), v])), [uniqueVariants]);
+
+  // Top-level categories (no parent) — unused variable kept for reference only
+  // const topLevelCats = useMemo(() => uniqueCategories.filter(c => !c.parent_id), [uniqueCategories]);
 
   // ── Current drill state ──────────────────────────────────────────
   const currentLevel = drillPath.length; // 0=P1, 1=P2, 2=P3, 3+=Pn
@@ -37,23 +51,23 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
     for (const dim of dimensions) {
       if (dim.is_active !== false) names.add(dim.name);
     }
-    for (const v of variants) {
+    for (const v of uniqueVariants) {
       for (const k of Object.keys(v.dimensions || {})) names.add(k);
     }
     return [...names];
-  }, [dimensions, variants]);
+  }, [dimensions, uniqueVariants]);
 
   const effectiveDimension = selectedDimension === '__auto__' ? (availableDimensions[0] || null) : selectedDimension;
 
   // ── Build chart data based on current level ──────────────────────
   const chartData = useMemo(() => {
     if (currentLevel === 0) {
-      // P1: group by top-level category
+      // P1: group by top-level category — keyed strictly by rootCat.id so no duplicates
       const map = {};
       const UNCATEGORIZED_ID = '__uncategorized__';
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          const resolved = resolveGroups(item, groupById, variantById, groups);
+          const resolved = resolveGroups(item, groupById, variantById, uniqueGroups);
           const revenue = (item.sell_price || 0) * (item.quantity || 0);
           const qty = item.quantity || 0;
 
@@ -93,14 +107,14 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
     if (currentLevel === 1) {
       // P2: sub-categories of selected P1
       const p1Id = drillPath[0].id;
-      const subCats = categories.filter(c => c.parent_id === p1Id);
+      const subCats = uniqueCategories.filter(c => c.parent_id === p1Id);
       const map = {};
       for (const sc of subCats) map[sc.id] = { id: sc.id, name: sc.name, revenue: 0, quantity: 0 };
       map['__direct__'] = { id: '__direct__', name: 'כללי', revenue: 0, quantity: 0 };
 
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          const resolved = resolveGroups(item, groupById, variantById, groups);
+          const resolved = resolveGroups(item, groupById, variantById, uniqueGroups);
           const revenue = (item.sell_price || 0) * (item.quantity || 0);
           const qty = item.quantity || 0;
           for (const { group, weight } of resolved) {
@@ -124,7 +138,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       const map = {};
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
-          const group = resolveGroup(item, groupById, variantById, groups);
+          const group = resolveGroup(item, groupById, variantById, uniqueGroups);
           if (!group) continue;
           const cat = categoryById[group.category_id];
           if (!cat) continue;
@@ -152,7 +166,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
     const map = {};
     for (const sale of sales) {
       for (const item of (sale.items || [])) {
-        const group = resolveGroup(item, groupById, variantById, groups);
+        const group = resolveGroup(item, groupById, variantById, uniqueGroups);
         if (!group || group.id !== p3GroupId) continue;
 
         const rawVarId = item.variant_id ?? item.variantId;
@@ -176,7 +190,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       }
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [sales, drillPath, currentLevel, categories, groups, variants, dimensions, effectiveDimension, categoryById, groupById, variantById]);
+  }, [sales, drillPath, currentLevel, uniqueCategories, uniqueGroups, uniqueVariants, dimensions, effectiveDimension, categoryById, groupById, variantById]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
