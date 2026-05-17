@@ -19,21 +19,19 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
 
   const { data: groups = [] } = useQuery({
     queryKey: ['product-groups-all'],
-    queryFn: () => base44.entities.ProductGroup.list('name', 500),
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getProductGroups', {});
+      return res.data?.groups || [];
+    },
     enabled: open,
   });
 
-  // Fetch variants only for the selected group, on-demand
+  // Fetch variants via backend function (service role) to bypass owner scoping
   const { data: groupVariants = [], isFetching: loadingVariants } = useQuery({
     queryKey: ['flexible-variants-by-group', selectedGroup?.id],
     queryFn: async () => {
-      const results = await base44.entities.FlexibleVariant.filter(
-        { group_id: selectedGroup.id },
-        '-created_date',
-        500
-      );
-      console.log('Fetched Order Variants for group', selectedGroup.id, selectedGroup.name, ':', results);
-      return results;
+      const res = await base44.functions.invoke('getVariantsByGroup', { group_id: selectedGroup.id });
+      return res.data?.variants || [];
     },
     enabled: !!selectedGroup?.id,
   });
