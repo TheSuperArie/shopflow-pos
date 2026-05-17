@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Users,
   DollarSign,
+  GitBranch,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
   { path: '/AdminEmployees', label: 'ניהול עובדים', icon: Users },
   { path: '/AdminCashReport', label: 'דוח קופה יומי', icon: DollarSign },
+  { path: '/AdminNetwork', label: 'רשת סניפים', icon: GitBranch },
   { path: '/AdminSettings', label: 'הגדרות', icon: Settings },
 ];
 
