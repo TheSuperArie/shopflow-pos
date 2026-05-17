@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2 } from 'lucide-react';
-import { format, startOfMonth } from 'date-fns';
+import { format, startOfMonth, subDays } from 'date-fns';
 import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
 
 /**
@@ -31,7 +31,7 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['branch-dashboard-sales', branchId],
-    queryFn: () => base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 500),
+    queryFn: () => base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 2000),
     enabled: !!branchId,
     staleTime: 0,
     refetchOnMount: true,
@@ -78,22 +78,29 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   const defaultDimension = appSettings[0]?.dashboard_default_dimension || '__auto__';
   const lowStockThreshold = appSettings[0]?.low_stock_threshold ?? 5;
 
-  // Date filter
+  // Convert a UTC ISO timestamp to local Israel date string (YYYY-MM-DD)
+  const toLocalDate = (isoString) => {
+    if (!isoString) return null;
+    const safe = isoString.endsWith('Z') ? isoString : `${isoString}Z`;
+    return new Date(safe).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); // en-CA gives YYYY-MM-DD
+  };
+
+  // Date filter — compare in Israel local time to avoid UTC midnight cutoff issues
   const filteredSales = sales.filter(s => {
-    const d = s.created_date?.split('T')[0];
-    return d >= dateFrom && d <= dateTo;
+    const d = toLocalDate(s.created_date);
+    return d && d >= dateFrom && d <= dateTo;
   });
 
   const filteredExpenses = expenses.filter(e => e.date >= dateFrom && e.date <= dateTo);
 
-  // Summary stats
-  const totalSales = filteredSales.reduce((s, sale) => s + (sale.total || 0), 0);
-  const totalCost = filteredSales.reduce((s, sale) => s + (sale.total_cost || 0), 0);
-  const totalExpenses = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+  // Summary stats — null-safe
+  const totalSales = filteredSales.reduce((s, sale) => s + (Number(sale.total) || 0), 0);
+  const totalCost = filteredSales.reduce((s, sale) => s + (Number(sale.total_cost) || 0), 0);
+  const totalExpenses = filteredExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const grossProfit = totalSales - totalCost;
   const netProfit = includeExpenses ? grossProfit - totalExpenses : grossProfit;
-  const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (sale.total || 0), 0);
-  const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (sale.total || 0), 0);
+  const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
+  const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
 
   const lowStockVariants = variants.filter(v => (v.stock || 0) < lowStockThreshold).map(v => {
     const group = groups.find(g => g.id === v.group_id);
