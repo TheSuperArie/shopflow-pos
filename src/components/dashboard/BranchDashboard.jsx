@@ -14,10 +14,20 @@ import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
  *   branchId     – ID of the branch to scope sales/stock to
  *   tenantEmail  – owner email used to scope products, categories, dimensions, settings
  */
+const SESSION_KEY_FROM = 'dashboard_date_from';
+const SESSION_KEY_TO = 'dashboard_date_to';
+
+function readSession(key, fallback) {
+  try { return sessionStorage.getItem(key) || fallback; } catch { return fallback; }
+}
+
 export default function BranchDashboard({ branchId, tenantEmail }) {
-  const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [dateFrom, setDateFrom] = useState(() => readSession(SESSION_KEY_FROM, format(startOfMonth(new Date()), 'yyyy-MM-dd')));
+  const [dateTo, setDateTo] = useState(() => readSession(SESSION_KEY_TO, format(new Date(), 'yyyy-MM-dd')));
   const [includeExpenses, setIncludeExpenses] = useState(true);
+
+  const handleDateFrom = (val) => { setDateFrom(val); try { sessionStorage.setItem(SESSION_KEY_FROM, val); } catch {} };
+  const handleDateTo = (val) => { setDateTo(val); try { sessionStorage.setItem(SESSION_KEY_TO, val); } catch {} };
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['branch-dashboard-sales', branchId],
@@ -101,9 +111,9 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-gray-800">לוח בקרה</h2>
         <div className="flex items-center gap-2">
-          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40" />
+          <Input type="date" value={dateFrom} onChange={e => handleDateFrom(e.target.value)} className="w-40" />
           <span className="text-gray-400">עד</span>
-          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40" />
+          <Input type="date" value={dateTo} onChange={e => handleDateTo(e.target.value)} className="w-40" />
         </div>
       </div>
 
