@@ -46,15 +46,13 @@ export default function AdminSales() {
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories', user?.email],
-    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order', 500) : [],
-    enabled: !!user,
+    queryKey: ['categories-all'],
+    queryFn: () => base44.entities.Category.list('sort_order', 500),
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }, 'name', 2000) : [],
-    enabled: !!user,
+    queryKey: ['product-groups-all'],
+    queryFn: () => base44.entities.ProductGroup.list('name', 2000),
   });
 
   const { data: expenses = [] } = useQuery({
@@ -92,9 +90,8 @@ export default function AdminSales() {
   ].filter(d => d.value > 0);
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants', user?.email],
-    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }, 'id', 5000) : [],
-    enabled: !!user,
+    queryKey: ['product-variants-all'],
+    queryFn: () => base44.entities.ProductVariant.list('id', 5000),
   });
 
   // Shared hierarchical category analytics
