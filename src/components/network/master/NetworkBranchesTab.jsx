@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import BranchForm from '../BranchForm';
 import BranchCommandCenter from './BranchCommandCenter';
 
-export default function NetworkBranchesTab({ tenantEmail }) {
+export default function NetworkBranchesTab({ tenantEmail, networkName }) {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const queryClient = useQueryClient();
@@ -20,14 +20,22 @@ export default function NetworkBranchesTab({ tenantEmail }) {
   });
 
   const createBranch = useMutation({
-    mutationFn: (data) => base44.entities.Branch.create({ ...data, tenant_email: tenantEmail, is_active: true }),
+    // Send invitation: status=PENDING, not yet active
+    mutationFn: (data) => base44.entities.Branch.create({
+      ...data,
+      tenant_email: tenantEmail,
+      is_active: false,
+      status: 'PENDING',
+      network_name: networkName || 'הרשת',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', tenantEmail] });
       setShowForm(false);
     },
   });
 
-  if (selectedBranch) {
+  // Only allow drilling into ACTIVE branches
+  if (selectedBranch && selectedBranch.status !== 'PENDING') {
     return (
       <BranchCommandCenter
         branch={selectedBranch}
@@ -87,13 +95,23 @@ export default function NetworkBranchesTab({ tenantEmail }) {
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
                   <MapPin className="w-5 h-5 text-amber-500" />
                 </div>
-                <Badge variant={branch.is_active ? 'default' : 'secondary'} className="text-xs">
-                  {branch.is_active ? (
-                    <><CheckCircle2 className="w-3 h-3 mr-1" />פעיל</>
-                  ) : (
-                    <><XCircle className="w-3 h-3 mr-1" />לא פעיל</>
-                  )}
-                </Badge>
+                {branch.status === 'PENDING' ? (
+                  <Badge className="text-xs bg-amber-100 text-amber-700 border border-amber-300">
+                    <Clock className="w-3 h-3 mr-1" />ממתין לאישור
+                  </Badge>
+                ) : branch.status === 'REJECTED' ? (
+                  <Badge variant="destructive" className="text-xs">
+                    <XCircle className="w-3 h-3 mr-1" />נדחה
+                  </Badge>
+                ) : (
+                  <Badge variant={branch.is_active ? 'default' : 'secondary'} className="text-xs">
+                    {branch.is_active ? (
+                      <><CheckCircle2 className="w-3 h-3 mr-1" />פעיל</>
+                    ) : (
+                      <><XCircle className="w-3 h-3 mr-1" />לא פעיל</>
+                    )}
+                  </Badge>
+                )}
               </div>
               <p className="font-bold text-gray-900 text-lg mb-1 group-hover:text-amber-600 transition-colors">
                 {branch.name}
@@ -102,7 +120,9 @@ export default function NetworkBranchesTab({ tenantEmail }) {
                 <Mail className="w-3 h-3" />
                 <span className="truncate">{branch.station_email}</span>
               </div>
-              <p className="text-xs text-amber-500 mt-3 font-medium">לחץ לפתיחת מרכז הבקרה ←</p>
+              <p className="text-xs text-amber-500 mt-3 font-medium">
+                {branch.status === 'PENDING' ? 'ממתין לאישור הסניף' : branch.status === 'REJECTED' ? 'ההזמנה נדחתה' : 'לחץ לפתיחת מרכז הבקרה ←'}
+              </p>
             </button>
           ))}
         </div>

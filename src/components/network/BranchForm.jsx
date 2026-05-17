@@ -16,7 +16,8 @@ export default function BranchForm({ onSubmit, onCancel, isLoading }) {
   return (
     <Card className="border-amber-200 bg-amber-50">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">יצירת סניף חדש</CardTitle>
+        <CardTitle className="text-base">שליחת הזמנה לסניף חדש</CardTitle>
+        <p className="text-xs text-gray-500 mt-1">הסניף יקבל הזמנה ויצטרך לאשר אותה לפני שיחובר לרשת.</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -45,7 +46,7 @@ export default function BranchForm({ onSubmit, onCancel, isLoading }) {
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onCancel}>ביטול</Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'יוצר...' : 'צור סניף'}
+              {isLoading ? 'שולח...' : 'שלח הזמנה'}
             </Button>
           </div>
         </form>
