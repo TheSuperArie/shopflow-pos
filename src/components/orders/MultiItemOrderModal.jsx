@@ -18,15 +18,15 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
   const queryClient = useQueryClient();
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups', tenantEmail],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: tenantEmail }),
-    enabled: open && !!tenantEmail,
+    queryKey: ['product-groups-all'],
+    queryFn: () => base44.entities.ProductGroup.list(),
+    enabled: open,
   });
 
   const { data: allVariants = [] } = useQuery({
-    queryKey: ['flexible-variants-all', tenantEmail],
-    queryFn: () => base44.entities.FlexibleVariant.filter({ created_by: tenantEmail }),
-    enabled: open && !!tenantEmail,
+    queryKey: ['flexible-variants-all'],
+    queryFn: () => base44.entities.FlexibleVariant.list(),
+    enabled: open,
   });
 
   const groupMap = Object.fromEntries(groups.map(g => [g.id, g]));
