@@ -7,13 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Lock, Save, BarChart2, LogOut, Crown } from 'lucide-react';
+import { Loader2, Lock, Save, BarChart2, LogOut } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
 
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
-  const [networkPassword, setNetworkPassword] = useState('');
   const [storeName, setStoreName] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const [defaultDimension, setDefaultDimension] = useState('');
@@ -39,7 +38,6 @@ export default function AdminSettings() {
   useEffect(() => {
     if (settings[0]) {
       setPassword(settings[0].admin_password || '12345678');
-      setNetworkPassword(settings[0].network_admin_password || '');
       setStoreName(settings[0].store_name || 'החנות שלי');
       setLowStockThreshold(settings[0].low_stock_threshold || 5);
       setDefaultDimension(settings[0].dashboard_default_dimension || '');
@@ -90,18 +88,6 @@ export default function AdminSettings() {
           </div>
           <div>
             <Label className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-500" /> קוד מאסטר לבעל הרשת
-            </Label>
-            <Input
-              type="text"
-              value={networkPassword}
-              onChange={e => setNetworkPassword(e.target.value)}
-              placeholder="השאר ריק אם אין רשת סניפים"
-            />
-            <p className="text-xs text-gray-400 mt-1">קוד זה מעניק גישה מלאה לניהול הרשת מכל סניף</p>
-          </div>
-          <div>
-            <Label className="flex items-center gap-2">
               <BarChart2 className="w-4 h-4" /> ממד ברירת מחדל בלוח הבקרה
             </Label>
             <Select value={defaultDimension || '__auto__'} onValueChange={v => setDefaultDimension(v === '__auto__' ? '' : v)}>
@@ -130,7 +116,6 @@ export default function AdminSettings() {
           <Button
             onClick={() => mutation.mutate({
               admin_password: password,
-              network_admin_password: networkPassword || null,
               store_name: storeName,
               low_stock_threshold: lowStockThreshold,
               dashboard_default_dimension: defaultDimension || null,

@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Menu } from 'lucide-react';
 import NetworkMasterSidebar from '@/components/network/master/NetworkMasterSidebar';
 import NetworkBranchesTab from '@/components/network/master/NetworkBranchesTab';
 import NetworkAnalyticsTab from '@/components/network/master/NetworkAnalyticsTab';
+import NetworkSettingsTab from '@/components/network/master/NetworkSettingsTab';
 
 export default function NetworkMasterDashboard() {
   const [activeTab, setActiveTab] = useState('branches');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [bootstrapped, setBootstrapped] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Guard: only NETWORK_MASTER may enter
   useEffect(() => {
@@ -27,6 +30,32 @@ export default function NetworkMasterDashboard() {
   });
 
   const tenantEmail = currentUser?.email;
+
+  const { data: branches = [], isSuccess: branchesLoaded } = useQuery({
+    queryKey: ['branches', tenantEmail],
+    queryFn: () => base44.entities.Branch.filter({ tenant_email: tenantEmail }),
+    enabled: !!tenantEmail,
+  });
+
+  const createBranch = useMutation({
+    mutationFn: (data) => base44.entities.Branch.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches', tenantEmail] });
+      setBootstrapped(true);
+    },
+  });
+
+  // Auto-bootstrap: if tenant has no branches, create "סניף ראשי"
+  useEffect(() => {
+    if (branchesLoaded && branches.length === 0 && tenantEmail && !bootstrapped && !createBranch.isPending) {
+      createBranch.mutate({
+        tenant_email: tenantEmail,
+        name: 'סניף ראשי',
+        station_email: tenantEmail,
+        is_active: true,
+      });
+    }
+  }, [branchesLoaded, branches.length, tenantEmail, bootstrapped]);
 
   return (
     <div dir="rtl" className="flex min-h-screen bg-gray-50">
@@ -49,12 +78,9 @@ export default function NetworkMasterDashboard() {
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           {tenantEmail && (
             <>
-              {activeTab === 'branches' && (
-                <NetworkBranchesTab tenantEmail={tenantEmail} />
-              )}
-              {activeTab === 'analytics' && (
-                <NetworkAnalyticsTab tenantEmail={tenantEmail} />
-              )}
+              {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} />}
+              {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
+              {activeTab === 'settings' && <NetworkSettingsTab tenantEmail={tenantEmail} />}
             </>
           )}
         </main>
