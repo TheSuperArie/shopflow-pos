@@ -7,6 +7,7 @@ import NetworkMasterSidebar from '@/components/network/master/NetworkMasterSideb
 import NetworkBranchesTab from '@/components/network/master/NetworkBranchesTab';
 import NetworkAnalyticsTab from '@/components/network/master/NetworkAnalyticsTab';
 import NetworkSettingsTab from '@/components/network/master/NetworkSettingsTab';
+import NetworkSuppliersTab from '@/components/network/master/NetworkSuppliersTab';
 
 export default function NetworkMasterDashboard() {
   const [activeTab, setActiveTab] = useState('branches');
@@ -80,6 +81,7 @@ export default function NetworkMasterDashboard() {
             <>
               {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
+              {activeTab === 'suppliers' && <NetworkSuppliersTab tenantEmail={tenantEmail} />}
               {activeTab === 'settings' && <NetworkSettingsTab tenantEmail={tenantEmail} />}
             </>
           )}
