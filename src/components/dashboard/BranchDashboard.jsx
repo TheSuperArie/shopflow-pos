@@ -21,9 +21,11 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['branch-dashboard-sales', branchId],
-    queryFn: () => base44.entities.Sale.filter({ branch_id: branchId }, '-created_date'),
+    queryFn: () => base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 500),
     enabled: !!branchId,
     staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({

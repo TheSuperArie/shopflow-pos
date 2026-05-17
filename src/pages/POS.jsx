@@ -40,6 +40,16 @@ export default function POS() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
+  // Resolve the branch for this device so every sale gets stamped with branch_id
+  const { data: branches = [] } = useQuery({
+    queryKey: ['pos-branches', user?.email],
+    queryFn: () => base44.entities.Branch.filter({ tenant_email: user.email }),
+    enabled: !!user?.email,
+    staleTime: 60000,
+  });
+  // Primary branch: first active branch (or first branch as fallback)
+  const activeBranch = branches.find(b => b.is_active) || branches[0] || null;
+
   useInventorySync();
   const { syncToServer, syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
 
@@ -174,6 +184,8 @@ export default function POS() {
         seller_email: user?.email,
         seller_name: user?.full_name,
         created_date: new Date().toISOString(),
+        // Always stamp branch_id — fall back to activeBranch if available
+        branch_id: activeBranch?.id || null,
       };
 
       const saveOffline = async () => {
@@ -210,6 +222,7 @@ export default function POS() {
       const wentOffline = sale?._savedOffline;
       if (!wentOffline && !isEffectivelyOffline) {
         queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+        queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales'] });
       }
       setLastSale(sale);
       setCartItems([]);
