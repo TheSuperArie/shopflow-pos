@@ -47,25 +47,25 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
 
   const { data: groups = [] } = useQuery({
     queryKey: ['product-groups', tenantEmail],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: tenantEmail }),
+    queryFn: () => base44.entities.ProductGroup.filter({ created_by: tenantEmail }, 'name', 2000),
     enabled: !!tenantEmail,
   });
 
   const { data: variants = [] } = useQuery({
     queryKey: ['product-variants', tenantEmail],
-    queryFn: () => base44.entities.ProductVariant.filter({ created_by: tenantEmail }),
+    queryFn: () => base44.entities.ProductVariant.filter({ created_by: tenantEmail }, 'id', 5000),
     enabled: !!tenantEmail,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', tenantEmail],
-    queryFn: () => base44.entities.Category.filter({ created_by: tenantEmail }),
+    queryFn: () => base44.entities.Category.filter({ created_by: tenantEmail }, 'sort_order', 500),
     enabled: !!tenantEmail,
   });
 
   const { data: dimensions = [] } = useQuery({
     queryKey: ['insights-dimensions', tenantEmail],
-    queryFn: () => base44.entities.VariantDimension.filter({ created_by: tenantEmail }),
+    queryFn: () => base44.entities.VariantDimension.filter({ created_by: tenantEmail }, 'name', 500),
     enabled: !!tenantEmail,
   });
 

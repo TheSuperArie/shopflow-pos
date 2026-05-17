@@ -47,13 +47,13 @@ export default function AdminSales() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', user?.email],
-    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }) : [],
+    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order', 500) : [],
     enabled: !!user,
   });
 
   const { data: groups = [] } = useQuery({
     queryKey: ['product-groups', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }, 'name', 2000) : [],
     enabled: !!user,
   });
 
@@ -93,7 +93,7 @@ export default function AdminSales() {
 
   const { data: variants = [] } = useQuery({
     queryKey: ['product-variants', user?.email],
-    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
+    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }, 'id', 5000) : [],
     enabled: !!user,
   });
 
