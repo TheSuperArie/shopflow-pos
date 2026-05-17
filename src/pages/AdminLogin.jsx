@@ -22,18 +22,19 @@ export default function AdminLogin() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const s = settings[0];
-    const branchPassword = s?.admin_password || '12345678';
-    const networkPassword = s?.network_admin_password;
+    // Fallback hardcoded values for testing — replace via AppSettings in DB
+    const branchPassword = s?.admin_password || '1234';
+    const networkPassword = s?.network_admin_password || '8888';
 
-    // Tier 1: Master Network Code
-    if (networkPassword && password === networkPassword) {
+    // Tier 1: Master Network Code → Network Dashboard
+    if (password === networkPassword) {
       sessionStorage.setItem('admin_auth', 'true');
       sessionStorage.setItem('admin_role', 'NETWORK_MASTER');
-      navigate('/AdminDashboard');
+      navigate('/AdminNetwork');
       return;
     }
 
-    // Tier 2: Local Branch Admin Code
+    // Tier 2: Local Branch Code → Local Dashboard
     if (password === branchPassword) {
       sessionStorage.setItem('admin_auth', 'true');
       sessionStorage.setItem('admin_role', 'BRANCH_MANAGER');
