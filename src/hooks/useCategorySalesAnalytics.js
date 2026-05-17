@@ -138,11 +138,10 @@ export function useCategorySalesAnalytics({ sales = [], categories = [], groups 
           }
         }
 
-        // Unmapped: bucket individually by product name (not one giant slice)
+        // Unmapped: collapse all into a single clean "ללא קטגוריה" bucket
         if (!parentCatId) {
-          const label = item.product_name?.split(' - ')[0]?.trim() || 'אחר';
-          parentCatId   = `__other__${label}`;
-          parentCatName = label;
+          parentCatId   = '__uncategorized__';
+          parentCatName = 'ללא קטגוריה';
         }
 
         if (!parentMap[parentCatId]) {
