@@ -1,0 +1,32 @@
+{
+  "name": "TicketChat",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05db\u05e8\u05d8\u05d9\u05e1 \u05d4\u05d4\u05d6\u05de\u05e0\u05d4"
+    },
+    "sender_role": {
+      "type": "string",
+      "enum": [
+        "BRANCH",
+        "HQ"
+      ],
+      "description": "\u05de\u05d9 \u05e9\u05dc\u05d7: BRANCH = \u05d4\u05e1\u05e0\u05d9\u05e3, HQ = \u05d4\u05de\u05d8\u05d4"
+    },
+    "message_text": {
+      "type": "string",
+      "description": "\u05ea\u05d5\u05db\u05df \u05d4\u05d4\u05d5\u05d3\u05e2\u05d4"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05d4\u05d0\u05dd \u05e0\u05e7\u05e8\u05d0 \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d4\u05e6\u05d3 \u05d4\u05e9\u05e0\u05d9"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "sender_role",
+    "message_text"
+  ]
+}
