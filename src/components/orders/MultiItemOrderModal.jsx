@@ -19,14 +19,15 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
 
   const { data: groups = [] } = useQuery({
     queryKey: ['product-groups-all'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryFn: () => base44.entities.ProductGroup.list('name', 500),
     enabled: open,
   });
 
-  const { data: allVariants = [] } = useQuery({
-    queryKey: ['flexible-variants-all'],
-    queryFn: () => base44.entities.FlexibleVariant.list(),
-    enabled: open,
+  // Fetch variants only for the selected group, on-demand
+  const { data: groupVariants = [], isFetching: loadingVariants } = useQuery({
+    queryKey: ['flexible-variants-by-group', selectedGroup?.id],
+    queryFn: () => base44.entities.FlexibleVariant.filter({ group_id: selectedGroup.id }, 'id', 500),
+    enabled: !!selectedGroup?.id,
   });
 
   const groupMap = Object.fromEntries(groups.map(g => [g.id, g]));
@@ -44,11 +45,6 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
         g.name?.toLowerCase().includes(searchLower) ||
         g.barcode?.toLowerCase().includes(searchLower)
       )
-    : [];
-
-  // Variants for selected group
-  const groupVariants = selectedGroup
-    ? allVariants.filter(v => v.group_id === selectedGroup.id)
     : [];
 
   // Cart item quantity update
@@ -166,7 +162,9 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
                 <p className="font-semibold text-gray-800">{selectedGroup.name} — בחר וריאציות</p>
                 <button onClick={() => { setSelectedGroup(null); setSearch(''); }} className="text-xs text-gray-400 hover:text-red-500">✕ סגור</button>
               </div>
-              {groupVariants.length === 0 ? (
+              {loadingVariants ? (
+                <p className="text-sm text-gray-400">טוען וריאציות...</p>
+              ) : groupVariants.length === 0 ? (
                 <p className="text-sm text-gray-400">אין וריאציות</p>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
