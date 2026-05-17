@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock, Loader2, Crown, ShieldCheck } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminLogin() {
@@ -21,13 +21,27 @@ export default function AdminLogin() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const adminPassword = settings[0]?.admin_password || '12345678';
-    if (password === adminPassword) {
+    const s = settings[0];
+    const branchPassword = s?.admin_password || '12345678';
+    const networkPassword = s?.network_admin_password;
+
+    // Tier 1: Master Network Code
+    if (networkPassword && password === networkPassword) {
       sessionStorage.setItem('admin_auth', 'true');
+      sessionStorage.setItem('admin_role', 'NETWORK_MASTER');
       navigate('/AdminDashboard');
-    } else {
-      setError('סיסמה שגויה');
+      return;
     }
+
+    // Tier 2: Local Branch Admin Code
+    if (password === branchPassword) {
+      sessionStorage.setItem('admin_auth', 'true');
+      sessionStorage.setItem('admin_role', 'BRANCH_MANAGER');
+      navigate('/AdminDashboard');
+      return;
+    }
+
+    setError('סיסמה שגויה');
   };
 
   if (isLoading) {
@@ -37,6 +51,8 @@ export default function AdminLogin() {
       </div>
     );
   }
+
+  const hasNetwork = !!settings[0]?.network_admin_password;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4" dir="rtl">
@@ -48,15 +64,30 @@ export default function AdminLogin() {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-white text-center mb-2">ניהול החנות</h1>
-          <p className="text-gray-400 text-center mb-8">הזן סיסמת מנהל לכניסה</p>
+          <p className="text-gray-400 text-center mb-8">הזן קוד גישה לכניסה</p>
+
+          {/* Role indicators */}
+          {hasNetwork && (
+            <div className="flex gap-2 mb-6">
+              <div className="flex-1 rounded-xl bg-white/5 border border-white/10 p-2 text-center">
+                <ShieldCheck className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+                <p className="text-xs text-gray-400">מנהל סניף</p>
+              </div>
+              <div className="flex-1 rounded-xl bg-amber-500/10 border border-amber-500/30 p-2 text-center">
+                <Crown className="w-4 h-4 text-amber-400 mx-auto mb-1" />
+                <p className="text-xs text-amber-300">בעל הרשת</p>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               type="password"
-              placeholder="סיסמת מנהל"
+              placeholder="קוד גישה"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(''); }}
               className="h-12 bg-white/10 border-white/20 text-white placeholder:text-gray-500 rounded-xl text-center text-lg"
+              autoFocus
             />
             {error && <p className="text-red-400 text-center text-sm">{error}</p>}
             <Button

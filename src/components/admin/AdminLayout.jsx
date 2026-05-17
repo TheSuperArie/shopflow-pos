@@ -13,9 +13,11 @@ export default function AdminLayout() {
     }
   }, [navigate]);
 
+  const adminRole = sessionStorage.getItem('admin_role') || 'BRANCH_MANAGER';
+
   return (
     <div dir="rtl" className="flex min-h-screen bg-gray-50">
-      <AdminSidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      <AdminSidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} adminRole={adminRole} />
       <div className="flex-1 flex flex-col min-w-0">
         <header className="lg:hidden bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-xl bg-gray-100">
