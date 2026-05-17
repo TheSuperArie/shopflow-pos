@@ -50,16 +50,37 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
     if (currentLevel === 0) {
       // P1: group by top-level category
       const map = {};
+      const UNCATEGORIZED_ID = '__uncategorized__';
       for (const sale of sales) {
         for (const item of (sale.items || [])) {
           const resolved = resolveGroups(item, groupById, variantById, groups);
           const revenue = (item.sell_price || 0) * (item.quantity || 0);
           const qty = item.quantity || 0;
+
+          if (resolved.length === 0) {
+            // Item couldn't be matched to any group at all
+            if (!map[UNCATEGORIZED_ID]) map[UNCATEGORIZED_ID] = { id: UNCATEGORIZED_ID, name: 'ללא קטגוריה', revenue: 0, quantity: 0 };
+            map[UNCATEGORIZED_ID].revenue += revenue;
+            map[UNCATEGORIZED_ID].quantity += qty;
+            continue;
+          }
+
           for (const { group, weight } of resolved) {
             const cat = categoryById[group.category_id];
-            if (!cat) continue;
+            if (!cat) {
+              // Group exists but has no category assigned
+              if (!map[UNCATEGORIZED_ID]) map[UNCATEGORIZED_ID] = { id: UNCATEGORIZED_ID, name: 'ללא קטגוריה', revenue: 0, quantity: 0 };
+              map[UNCATEGORIZED_ID].revenue += revenue * weight;
+              map[UNCATEGORIZED_ID].quantity += qty * weight;
+              continue;
+            }
             const rootCat = cat.parent_id ? categoryById[cat.parent_id] : cat;
-            if (!rootCat) continue;
+            if (!rootCat) {
+              if (!map[UNCATEGORIZED_ID]) map[UNCATEGORIZED_ID] = { id: UNCATEGORIZED_ID, name: 'ללא קטגוריה', revenue: 0, quantity: 0 };
+              map[UNCATEGORIZED_ID].revenue += revenue * weight;
+              map[UNCATEGORIZED_ID].quantity += qty * weight;
+              continue;
+            }
             if (!map[rootCat.id]) map[rootCat.id] = { id: rootCat.id, name: rootCat.name, revenue: 0, quantity: 0 };
             map[rootCat.id].revenue += revenue * weight;
             map[rootCat.id].quantity += qty * weight;
