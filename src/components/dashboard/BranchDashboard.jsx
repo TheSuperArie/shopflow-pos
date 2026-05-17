@@ -60,23 +60,27 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups-all'],
-    queryFn: () => base44.entities.ProductGroup.list('name', 2000),
+    queryKey: ['product-groups-all', tenantEmail],
+    queryFn: () => base44.entities.ProductGroup.filter({ created_by: tenantEmail }, 'name', 2000),
+    enabled: !!tenantEmail,
   });
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants-all'],
-    queryFn: () => base44.entities.ProductVariant.list('id', 5000),
+    queryKey: ['product-variants-all', tenantEmail],
+    queryFn: () => base44.entities.ProductVariant.filter({ created_by: tenantEmail }, 'id', 5000),
+    enabled: !!tenantEmail,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories-all'],
-    queryFn: () => base44.entities.Category.list('sort_order', 500),
+    queryKey: ['categories-all', tenantEmail],
+    queryFn: () => base44.entities.Category.filter({ created_by: tenantEmail }, 'sort_order', 500),
+    enabled: !!tenantEmail,
   });
 
   const { data: dimensions = [] } = useQuery({
-    queryKey: ['insights-dimensions-all'],
-    queryFn: () => base44.entities.VariantDimension.list('name', 500),
+    queryKey: ['insights-dimensions-all', tenantEmail],
+    queryFn: () => base44.entities.VariantDimension.filter({ created_by: tenantEmail }, 'name', 500),
+    enabled: !!tenantEmail,
   });
 
   const { data: appSettings = [] } = useQuery({

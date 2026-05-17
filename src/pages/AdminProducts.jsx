@@ -353,15 +353,12 @@ function PullParentVariantsButton({ subCategory, categories, queryClient, toast,
 function DeleteCategoryButton({ categoryId, queryClient, toast }) {
   const deleteMut = useMutation({
     mutationFn: async () => {
-      // Delete all groups and their variants in this category
-      const allGroups = await base44.entities.ProductGroup.list();
-      const catGroups = allGroups.filter(g => g.category_id === categoryId);
-      const allVariants = await base44.entities.ProductVariant.list();
-      await Promise.all(
-        catGroups.flatMap(g =>
-          allVariants.filter(v => v.group_id === g.id).map(v => base44.entities.ProductVariant.delete(v.id))
-        )
+      // Delete only this category's groups and their variants (scoped by category_id, not a global list)
+      const catGroups = await base44.entities.ProductGroup.filter({ category_id: categoryId });
+      const variantDeletions = await Promise.all(
+        catGroups.map(g => base44.entities.ProductVariant.filter({ group_id: g.id }))
       );
+      await Promise.all(variantDeletions.flat().map(v => base44.entities.ProductVariant.delete(v.id)));
       await Promise.all(catGroups.map(g => base44.entities.ProductGroup.delete(g.id)));
       await base44.entities.Category.delete(categoryId);
     },
@@ -391,8 +388,7 @@ function DeleteGroupButton({ groupId, queryClient, toast }) {
   const deleteMut = useMutation({
     mutationFn: async () => {
       await base44.entities.ProductGroup.delete(groupId);
-      const variants = await base44.entities.ProductVariant.list();
-      const toDelete = variants.filter(v => v.group_id === groupId);
+      const toDelete = await base44.entities.ProductVariant.filter({ group_id: groupId });
       await Promise.all(toDelete.map(v => base44.entities.ProductVariant.delete(v.id)));
     },
     onSuccess: () => {
