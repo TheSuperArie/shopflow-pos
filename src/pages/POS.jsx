@@ -174,8 +174,18 @@ export default function POS() {
       const totalCost = cartItems.reduce((s, i) => s + (i.cost_price || 0) * i.quantity, 0);
       const total = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
+      // Map cart items to clean sale items — explicitly carry relational IDs
+      const saleItems = cartItems.map(item => ({
+        variant_id: item.variant_id || null,
+        group_id: item.group_id || null,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        sell_price: item.sell_price,
+        cost_price: item.cost_price || 0,
+      }));
+
       const saleData = {
-        items: cartItems,
+        items: saleItems,
         total,
         total_cost: totalCost,
         payment_method: paymentMethod,
@@ -190,7 +200,7 @@ export default function POS() {
 
       const saveOffline = async () => {
         await offlineManager.addPendingSale(saleData);
-        const updatedVariants = await offlineManager.deductLocalStock(cartItems);
+        const updatedVariants = await offlineManager.deductLocalStock(saleItems);
         queryClient.setQueryData(['product-variants', isOfflineMode, user?.email], updatedVariants);
         return { ...saleData, id: 'offline_' + Date.now(), _savedOffline: true };
       };
@@ -202,7 +212,7 @@ export default function POS() {
       // Online path — auto-fallback to offline on any network failure
       try {
         const sale = await base44.entities.Sale.create(saleData);
-        for (const item of cartItems) {
+        for (const item of saleItems) {
           if (!item.variant_id) continue;
           const variant = allVariants.find(v => v.id === item.variant_id);
           if (variant) {
@@ -238,6 +248,18 @@ export default function POS() {
   });
 
   const addToCart = (variant, group) => {
+    // Guard: variant must have an id and group must have an id
+    if (!variant?.id) {
+      console.error('[POS] addToCart: variant missing id', { variant, group });
+      toast({ title: '⛔ שגיאה', description: 'לא ניתן להוסיף פריט ללא מזהה', duration: 2000 });
+      return;
+    }
+    if (!group?.id) {
+      console.error('[POS] addToCart: group missing id', { variant, group });
+      toast({ title: '⛔ שגיאה', description: 'לא ניתן להוסיף פריט ללא מזהה מוצר', duration: 2000 });
+      return;
+    }
+
     const liveVariant = allVariants.find(v => v.id === variant.id);
     if ((liveVariant?.stock || 0) <= 0) {
       toast({ title: '⛔ אין מלאי', description: 'הפריט אזל מהמלאי', duration: 2000 });
@@ -257,8 +279,8 @@ export default function POS() {
         return prev.map((item, i) => i === existingIdx ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, {
-        variant_id: variant.id,
-        group_id: group.id,
+        variant_id: variant.id,        // FK to FlexibleVariant / ProductVariant
+        group_id: group.id,            // FK to ProductGroup
         product_name: dimText ? `${group.name} - ${dimText}` : group.name,
         quantity: 1,
         sell_price: sellPrice,
@@ -396,11 +418,7 @@ export default function POS() {
                   אין קטגוריות להצגה — עבור לניהול מוצרים כדי להוסיף קטגוריות
                 </div>
               )}
-              {user && categories.length > 0 && categories.filter(c => !c.parent_id).length === 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-yellow-700 text-sm text-center">
-                  DEBUG: נמצאו {categories.length} קטגוריות אך כולן עם parent_id — אין קטגוריות ראשיות
-                </div>
-              )}
+
             </>
           ) : selectedCategory && subCategories.length > 0 && !selectedSubCategory ? (
             <>
