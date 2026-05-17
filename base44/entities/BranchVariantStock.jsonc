@@ -1,0 +1,29 @@
+{
+  "name": "BranchVariantStock",
+  "type": "object",
+  "properties": {
+    "branch_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)"
+    },
+    "variant_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d5\u05e8\u05d9\u05d0\u05e0\u05d8 (FK to FlexibleVariant). \u05d4\u05de\u05dc\u05d0\u05d9 \u05d4\u05d2\u05dc\u05d5\u05d1\u05dc\u05d9 \u05e0\u05e9\u05d0\u05e8 \u05d1-FlexibleVariant.stock"
+    },
+    "stock": {
+      "type": "number",
+      "default": 0,
+      "description": "\u05db\u05de\u05d5\u05ea \u05de\u05dc\u05d0\u05d9 \u05e9\u05dc \u05d5\u05e8\u05d9\u05d0\u05e0\u05d8 \u05d6\u05d4 \u05d1\u05e1\u05e0\u05d9\u05e3 \u05d4\u05e1\u05e4\u05e6\u05d9\u05e4\u05d9"
+    },
+    "tenant_email": {
+      "type": "string",
+      "description": "\u05d4\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05e9\u05dc \u05d4\u05d8\u05e0\u05d0\u05e0\u05d8 \u2014 \u05dc\u05e1\u05d9\u05e0\u05d5\u05df \u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05d1\u05e6\u05d3 \u05d4\u05e7\u05dc\u05d9\u05d9\u05e0\u05d8 \u05dc\u05dc\u05d0 JOIN"
+    }
+  },
+  "required": [
+    "branch_id",
+    "variant_id",
+    "stock",
+    "tenant_email"
+  ]
+}
