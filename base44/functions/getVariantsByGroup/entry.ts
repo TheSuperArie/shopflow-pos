@@ -15,10 +15,12 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'group_id is required' }, { status: 400 });
   }
 
-  const [variants, groups] = await Promise.all([
+  const [flexVariants, productVariants] = await Promise.all([
     base44.asServiceRole.entities.FlexibleVariant.filter({ group_id }, '-created_date', 500),
-    group_id ? base44.asServiceRole.entities.ProductGroup.list('name', 500) : Promise.resolve([]),
+    base44.asServiceRole.entities.ProductVariant.filter({ group_id }, '-created_date', 500),
   ]);
 
-  return Response.json({ variants, groups });
+  const variants = [...flexVariants, ...productVariants];
+
+  return Response.json({ variants });
 });
