@@ -26,7 +26,15 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
   // Fetch variants only for the selected group, on-demand
   const { data: groupVariants = [], isFetching: loadingVariants } = useQuery({
     queryKey: ['flexible-variants-by-group', selectedGroup?.id],
-    queryFn: () => base44.entities.FlexibleVariant.filter({ group_id: selectedGroup.id }, 'id', 500),
+    queryFn: async () => {
+      const results = await base44.entities.FlexibleVariant.filter(
+        { group_id: selectedGroup.id },
+        '-created_date',
+        500
+      );
+      console.log('Fetched Order Variants for group', selectedGroup.id, selectedGroup.name, ':', results);
+      return results;
+    },
     enabled: !!selectedGroup?.id,
   });
 
