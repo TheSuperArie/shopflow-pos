@@ -10,6 +10,14 @@
           "product_id": {
             "type": "string"
           },
+          "variant_id": {
+            "type": "string",
+            "description": "FK to ProductVariant"
+          },
+          "group_id": {
+            "type": "string",
+            "description": "FK to ProductGroup"
+          },
           "product_name": {
             "type": "string"
           },

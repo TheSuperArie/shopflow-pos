@@ -232,7 +232,7 @@ export default function POS() {
       const wentOffline = sale?._savedOffline;
       if (!wentOffline && !isEffectivelyOffline) {
         queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-        queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales'] });
+        queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales', activeBranch?.id] });
       }
       setLastSale(sale);
       setCartItems([]);
