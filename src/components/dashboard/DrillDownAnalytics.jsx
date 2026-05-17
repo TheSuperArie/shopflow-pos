@@ -45,36 +45,6 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
 
   const effectiveDimension = selectedDimension === '__auto__' ? (availableDimensions[0] || null) : selectedDimension;
 
-  // ── Debug: collect uncategorized items at P1 ─────────────────────
-  const debugUncategorized = useMemo(() => {
-    if (currentLevel !== 0) return [];
-    const failed = [];
-    for (const sale of sales) {
-      for (const item of (sale.items || [])) {
-        const resolved = resolveGroups(item, groupById, variantById, groups);
-        if (resolved.length === 0) {
-          failed.push({ reason: 'no_group_match', item, saleId: sale.id });
-          console.warn('[Debug] No group match for item:', JSON.stringify(item));
-          continue;
-        }
-        for (const { group, weight } of resolved) {
-          const cat = categoryById[group.category_id];
-          if (!cat) {
-            failed.push({ reason: 'group_has_no_category', item, group: { id: group.id, name: group.name, category_id: group.category_id }, saleId: sale.id });
-            console.warn('[Debug] Group found but no category:', { item: JSON.stringify(item), group: JSON.stringify(group), availableCategoryIds: Object.keys(categoryById).slice(0, 10) });
-          } else {
-            const rootCat = cat.parent_id ? categoryById[cat.parent_id] : cat;
-            if (!rootCat) {
-              failed.push({ reason: 'parent_category_missing', item, group: { id: group.id, name: group.name }, cat: { id: cat.id, name: cat.name, parent_id: cat.parent_id }, saleId: sale.id });
-              console.warn('[Debug] Parent category missing:', { cat: JSON.stringify(cat), availableIds: Object.keys(categoryById).slice(0, 10) });
-            }
-          }
-        }
-      }
-    }
-    return failed;
-  }, [sales, currentLevel, groups, groupById, variantById, categoryById]);
-
   // ── Build chart data based on current level ──────────────────────
   const chartData = useMemo(() => {
     if (currentLevel === 0) {
@@ -337,28 +307,6 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
           </Card>
         </div>
       )}
-    {/* ── DEBUG PANEL (remove after diagnosis) ── */}
-    {currentLevel === 0 && debugUncategorized.length > 0 && (
-      <div className="border border-red-300 bg-red-50 rounded-xl p-4 text-xs space-y-2" dir="ltr">
-        <p className="font-bold text-red-700 text-sm">🔍 DEBUG: {debugUncategorized.length} item(s) fell into ללא קטגוריה</p>
-        <p className="text-gray-500">Groups loaded: {groups.length} | Variants loaded: {variants.length} | Categories loaded: {categories.length}</p>
-        <p className="text-gray-500">Group IDs sample: {groups.slice(0,3).map(g=>`${g.id}(cat:${g.category_id})`).join(', ')}</p>
-        <p className="text-gray-500">Category IDs sample: {categories.slice(0,3).map(c=>`${c.id}(${c.name})`).join(', ')}</p>
-        <div className="space-y-1 max-h-64 overflow-y-auto">
-          {debugUncategorized.slice(0, 20).map((entry, i) => (
-            <div key={i} className="bg-white border border-red-200 rounded p-2 font-mono text-xs">
-              <span className="font-bold text-red-600">[{entry.reason}]</span>
-              {' '}name=<span className="text-blue-700">"{entry.item.product_name}"</span>
-              {' '}variant_id=<span className="text-purple-700">{entry.item.variant_id ?? 'null'}</span>
-              {' '}group_id=<span className="text-green-700">{entry.item.group_id ?? 'null'}</span>
-              {' '}product_id=<span className="text-orange-700">{entry.item.product_id ?? 'null'}</span>
-              {entry.group && <span className="text-gray-500"> → group.cat_id=<span className="text-red-700">{entry.group.category_id ?? 'null'}</span></span>}
-              {entry.cat && <span className="text-gray-500"> → cat.parent_id=<span className="text-red-700">{entry.cat.parent_id ?? 'null'}</span></span>}
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
     </div>
   );
 }
