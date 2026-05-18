@@ -30,7 +30,15 @@ export default function AdminCategoryInsights() {
     const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
     setSelectedDimension(globalPin || '__auto__');
     setDrillPath([]);
+    setLevel0GroupBy('subcat');
   }, [categoryId]);
+
+  // When no sub-cats exist but dimensions do — auto-switch to dimension view
+  useEffect(() => {
+    if (subCategories.length === 0 && availableDimensionNames.length > 0 && !drillBucket) {
+      setLevel0GroupBy('dimension');
+    }
+  }, [subCategories.length, availableDimensionNames.length]);
 
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [], isLoading: loadingCategories, isFetching: fetchingCategories } = useQuery({
