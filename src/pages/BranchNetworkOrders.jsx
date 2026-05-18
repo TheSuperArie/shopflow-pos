@@ -78,12 +78,12 @@ export default function BranchNetworkOrders() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">הזמנות לרשת</h1>
-          <p className="text-sm text-gray-500 mt-1">שלח בקשות מלאי למרכז הרשת</p>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-gray-800 truncate">הזמנות לרשת</h1>
+          <p className="text-xs text-gray-500 mt-0.5">שלח בקשות מלאי למרכז הרשת</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Notification Bell */}
           <button
             onClick={handleBellClick}
