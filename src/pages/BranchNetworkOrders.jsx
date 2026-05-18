@@ -144,7 +144,7 @@ export default function BranchNetworkOrders() {
           open={showForm}
           onClose={() => setShowForm(false)}
           branch={myBranch}
-          tenantEmail={user?.email}
+          tenantEmail={myBranch.tenant_email}
         />
       )}
 
