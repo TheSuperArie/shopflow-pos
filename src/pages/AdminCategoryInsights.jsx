@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,9 +18,9 @@ export default function AdminCategoryInsights() {
   const user = useCurrentUser();
 
   const [drillPath, setDrillPath] = useState([]);
-  const urlParams = new URLSearchParams(window.location.search);
-  const [dateFrom, setDateFrom] = useState(urlParams.get('from') || format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [dateTo, setDateTo] = useState(urlParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
+  const [searchParams] = useSearchParams();
+  const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [dateTo, setDateTo] = useState(() => searchParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
 
   // ── Data fetching ────────────────────────────────────────────────
