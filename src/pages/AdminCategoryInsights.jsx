@@ -253,6 +253,30 @@ export default function AdminCategoryInsights() {
     });
   }, [resolvedItems, drillBucket, selectedDimension, availableDimensionNames]);
 
+  // ── Dimension names available within current drill bucket ────────
+  // Defined BEFORE chartData so it can be used inside chartData useMemo
+  const bucketDimensionNames = useMemo(() => {
+    if (!drillBucket) return availableDimensionNames;
+    const namesSet = new Set();
+    for (const item of filteredItems) {
+      if (item.resolvedVariant?.dimensions) {
+        for (const key of Object.keys(item.resolvedVariant.dimensions)) {
+          namesSet.add(key.trim());
+        }
+      }
+    }
+    if (namesSet.size === 0) {
+      const groupIds = new Set(filteredItems.map(i => i.resolvedGroup?.id).filter(Boolean));
+      for (const v of variants) {
+        if (groupIds.has(v.group_id) && v.dimensions) {
+          for (const key of Object.keys(v.dimensions)) namesSet.add(key.trim());
+        }
+      }
+    }
+    if (namesSet.size === 0) return availableDimensionNames;
+    return [...namesSet];
+  }, [drillBucket, filteredItems, variants, availableDimensionNames]);
+
   // ── Step 2: Build chart data from filteredItems (dynamic — selectedDimension dep) ──
   const chartData = useMemo(() => {
     // Don't bucket until categories are fully settled — prevents wrong "no sub-cats" branch
@@ -363,17 +387,43 @@ export default function AdminCategoryInsights() {
       }
     }
 
+    // If no dimension key at all — fallback: group by variant dimensions keys found on items,
+    // or if truly no dimensions exist, group by product_name
+    if (!dimKey) {
+      // Try to find any dimension key present on the items themselves
+      const anyDimKey = bucketDimensionNames[0] || null;
+      const map = {};
+      for (const item of filteredItems) {
+        let label = null;
+        if (anyDimKey && item.resolvedVariant?.dimensions?.[anyDimKey] != null) {
+          label = String(item.resolvedVariant.dimensions[anyDimKey]).trim();
+        }
+        if (!label) {
+          // Build label from all dimension values on this variant
+          const dims = item.resolvedVariant?.dimensions;
+          if (dims && Object.keys(dims).length > 0) {
+            label = Object.values(dims).map(v => String(v)).join(' / ');
+          }
+        }
+        if (!label) label = item.product_name || 'כללי';
+        if (!map[label]) map[label] = { id: label, name: label, revenue: 0, quantity: 0 };
+        map[label].revenue += (item.sell_price || 0) * (item.quantity || 0);
+        map[label].quantity += item.quantity || 0;
+      }
+      return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+    }
+
     const map = {};
     for (const item of filteredItems) {
       let dimVal = null;
 
       // Priority 1: Direct variant dimension lookup via resolvedVariant
-      if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
+      if (item.resolvedVariant?.dimensions?.[dimKey] != null) {
         dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
       }
 
       // Priority 2: variant_id lookup in full variants list
-      if (!dimVal && dimKey) {
+      if (!dimVal) {
         const varId = item.variant_id ?? item.variantId;
         if (varId && variantDimMap[String(varId)]) {
           dimVal = variantDimMap[String(varId)];
@@ -385,8 +435,7 @@ export default function AdminCategoryInsights() {
         const segments = item.product_name.split(/[\s\-\/,()]+/).map(s => s.trim()).filter(Boolean);
         for (const seg of segments) {
           if (allKnownDimValues.has(seg.toLowerCase())) {
-            // find original-case value
-            const found = [...variantDimMap].find(([, v]) => v.toLowerCase() === seg.toLowerCase());
+            const found = Object.entries(variantDimMap).find(([, v]) => v.toLowerCase() === seg.toLowerCase());
             dimVal = found ? found[1] : seg;
             break;
           }
@@ -439,36 +488,7 @@ export default function AdminCategoryInsights() {
     }
   }, [drillBucket?.bucketId]);
 
-  // Dimension names available only within the current drill bucket's variants
-  const bucketDimensionNames = useMemo(() => {
-    if (!drillBucket) return availableDimensionNames;
-    const namesSet = new Set();
-    // P1: from resolved variants on items
-    for (const item of filteredItems) {
-      if (item.resolvedVariant?.dimensions) {
-        for (const key of Object.keys(item.resolvedVariant.dimensions)) {
-          namesSet.add(key.trim());
-        }
-      }
-    }
-    // P2: fallback — look up all variants for the groups in filteredItems
-    if (namesSet.size === 0) {
-      const groupIds = new Set(filteredItems.map(i => i.resolvedGroup?.id).filter(Boolean));
-      for (const v of variants) {
-        if (groupIds.has(v.group_id) && v.dimensions) {
-          for (const key of Object.keys(v.dimensions)) namesSet.add(key.trim());
-        }
-      }
-    }
-    // P3: fallback — use category-level dimension definitions
-    if (namesSet.size === 0) return availableDimensionNames;
-    return [...namesSet];
-  }, [drillBucket, filteredItems, variants, availableDimensionNames]);
-
   const dimLabel = selectedDimension === '__auto__' ? (bucketDimensionNames[0] || 'ממד') : selectedDimension;
-  // Check if items actually carry sub-cat info
-  const itemsWithSubCat = resolvedItems.filter(item => item.subCatId);
-  const hasSubCatData = itemsWithSubCat.length > 0;
   // Level 0: if has sub-cats WITH data → "תת-קטגוריות", else → dimension name
   const level0Label = hasSubCats ? 'תת-קטגוריות' : 'מוצרים';
   const level0DisplayLabel = (!drillBucket && level0GroupBy === 'dimension') ? (availableDimensionNames[0] || 'ממד') : level0Label;
