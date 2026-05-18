@@ -316,10 +316,14 @@ export default function AdminCategoryInsights() {
 
     // Build a map of variant_id → dimension value for quick lookup
     const variantDimMap = {};
+    // Also build a map of all known dim values across ALL variants (for product_name parsing)
+    const allKnownDimValues = new Set();
     if (dimKey) {
       for (const v of variants) {
         if (v.dimensions?.[dimKey] != null) {
-          variantDimMap[String(v.id)] = String(v.dimensions[dimKey]).trim();
+          const val = String(v.dimensions[dimKey]).trim();
+          variantDimMap[String(v.id)] = val;
+          allKnownDimValues.add(val.toLowerCase());
         }
       }
     }
@@ -341,9 +345,22 @@ export default function AdminCategoryInsights() {
         }
       }
 
-      // Priority 3: Parse product_name segments against known values
+      // Priority 3: Parse product_name against ALL known dim values across all variants
+      if (!dimVal && item.product_name && allKnownDimValues.size > 0) {
+        const segments = item.product_name.split(/[\s\-\/,()]+/).map(s => s.trim()).filter(Boolean);
+        for (const seg of segments) {
+          if (allKnownDimValues.has(seg.toLowerCase())) {
+            // find original-case value
+            const found = [...variantDimMap].find(([, v]) => v.toLowerCase() === seg.toLowerCase());
+            dimVal = found ? found[1] : seg;
+            break;
+          }
+        }
+      }
+
+      // Priority 4: targetValuesL1 from dimension definitions
       if (!dimVal && item.product_name) {
-        const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim()).filter(Boolean);
+        const segments = item.product_name.split(/[\s\-\/,()]+/).map(s => s.trim()).filter(Boolean);
         for (const seg of segments) {
           if (targetValuesL1.some(v => v.toLowerCase() === seg.toLowerCase())) {
             dimVal = seg;
