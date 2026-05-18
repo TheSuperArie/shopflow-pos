@@ -19,6 +19,7 @@ const STATUS_CONFIG = {
 export default function BranchNetworkOrders() {
   const [showForm, setShowForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [selectedTicketTab, setSelectedTicketTab] = useState('items');
   const user = useCurrentUser();
   const queryClient = useQueryClient();
 
@@ -160,7 +161,7 @@ export default function BranchNetworkOrders() {
                     return (
                       <button
                         key={ticket.id}
-                        onClick={() => setSelectedTicket(ticket)}
+                        onClick={() => { setSelectedTicket(ticket); setSelectedTicketTab('items'); }}
                         className="w-full text-right flex items-center justify-between px-4 py-3 hover:bg-amber-50 transition-colors"
                       >
                         <div className="flex items-center gap-3">
@@ -214,7 +215,7 @@ export default function BranchNetworkOrders() {
                   return (
                     <button
                       key={ticket.id}
-                      onClick={() => { setSelectedTicket(ticket); }}
+                      onClick={() => { setSelectedTicket(ticket); setSelectedTicketTab('chat'); }}
                       className="w-full text-right flex items-center justify-between px-4 py-4 hover:bg-amber-50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -263,6 +264,7 @@ export default function BranchNetworkOrders() {
           onClose={() => setSelectedTicket(null)}
           viewerRole="BRANCH"
           tenantEmail={user?.email}
+          initialTab={selectedTicketTab}
         />
       )}
     </div>

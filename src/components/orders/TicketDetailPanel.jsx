@@ -15,8 +15,8 @@ const STATUS_CONFIG = {
 };
 
 // viewerRole: 'BRANCH' | 'HQ'
-export default function TicketDetailPanel({ ticket, onClose, viewerRole, tenantEmail }) {
-  const [tab, setTab] = useState('items');
+export default function TicketDetailPanel({ ticket, onClose, viewerRole, tenantEmail, initialTab = 'items' }) {
+  const [tab, setTab] = useState(initialTab);
   const queryClient = useQueryClient();
   const { toast } = { toast: () => {} }; // lightweight
 
