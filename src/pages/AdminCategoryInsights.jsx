@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, ArrowRight, ChevronRight } from 'lucide-react';
+import { Loader2, ArrowRight, ChevronRight, Pin, PinOff } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -372,7 +372,46 @@ export default function AdminCategoryInsights() {
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   const hasSubCats = subCategories.length > 0;
-  const dimLabel = selectedDimension === '__auto__' ? (availableDimensionNames[0] || 'ממד') : selectedDimension;
+  // Pinned dimension per product-bucket (stored as insights_pin_<categoryId>_<bucketId>)
+  const pinnedDimKey = drillBucket ? `insights_pin_${categoryId}_${drillBucket.bucketId}` : null;
+  const pinnedDim = pinnedDimKey ? (localStorage.getItem(pinnedDimKey) || null) : null;
+
+  const handlePinDimension = () => {
+    if (!pinnedDimKey) return;
+    const current = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
+    if (pinnedDim === current) {
+      localStorage.removeItem(pinnedDimKey);
+    } else {
+      localStorage.setItem(pinnedDimKey, current);
+    }
+    // Force re-render by updating selectedDimension to same value
+    setSelectedDimension(v => v);
+  };
+
+  // When drilling into a bucket, apply pinned dimension if exists
+  useEffect(() => {
+    if (drillBucket && pinnedDimKey) {
+      const pinned = localStorage.getItem(pinnedDimKey);
+      if (pinned) setSelectedDimension(pinned);
+    }
+  }, [drillBucket?.bucketId]);
+
+  // Dimension names available only within the current drill bucket's variants
+  const bucketDimensionNames = useMemo(() => {
+    if (!drillBucket) return availableDimensionNames;
+    const { bucketId } = drillBucket;
+    const namesSet = new Set();
+    for (const item of filteredItems) {
+      if (item.resolvedVariant?.dimensions) {
+        for (const key of Object.keys(item.resolvedVariant.dimensions)) {
+          namesSet.add(key.trim());
+        }
+      }
+    }
+    return [...namesSet];
+  }, [drillBucket, filteredItems, availableDimensionNames]);
+
+  const dimLabel = selectedDimension === '__auto__' ? (bucketDimensionNames[0] || 'ממד') : selectedDimension;
   // Check if items actually carry sub-cat info
   const itemsWithSubCat = resolvedItems.filter(item => item.subCatId);
   const hasSubCatData = itemsWithSubCat.length > 0;
@@ -409,21 +448,32 @@ export default function AdminCategoryInsights() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Dimension selector — shown only when drilled into a product (Level 1) */}
-          {availableDimensionNames.length > 0 && !!drillBucket && (
-            <Select
-              value={selectedDimension}
-              onValueChange={(v) => { setSelectedDimension(v); localStorage.setItem(`insights_dim_${categoryId}`, v); }}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="קבץ לפי..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__auto__">אוטומטי</SelectItem>
-                {availableDimensionNames.map(name => (
-                  <SelectItem key={name} value={name}>{name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {bucketDimensionNames.length > 0 && !!drillBucket && (
+            <div className="flex items-center gap-1">
+              <Select
+                value={selectedDimension}
+                onValueChange={(v) => { setSelectedDimension(v); localStorage.setItem(`insights_dim_${categoryId}`, v); }}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="קבץ לפי..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__auto__">אוטומטי</SelectItem>
+                  {bucketDimensionNames.map(name => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="icon"
+                title={pinnedDim ? 'הסר נעץ' : 'נעץ ממד זה כברירת מחדל'}
+                onClick={handlePinDimension}
+                className={pinnedDim === (selectedDimension === '__auto__' ? bucketDimensionNames[0] : selectedDimension) ? 'text-amber-500' : 'text-gray-400'}
+              >
+                <Pin className="w-4 h-4" />
+              </Button>
+            </div>
           )}
           <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); handleBack(); }} className="w-40" />
           <span className="text-gray-400">עד</span>
