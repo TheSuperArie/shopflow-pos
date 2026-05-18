@@ -21,6 +21,7 @@ export default function AdminCategoryInsights() {
   const [searchParams] = useSearchParams();
   const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(() => searchParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
+  const branchId = searchParams.get('branchId') || null;
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
 
   // ── Data fetching ────────────────────────────────────────────────
@@ -44,8 +45,17 @@ export default function AdminCategoryInsights() {
   }, [categories, loadingCategories, fetchingCategories]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['insights-sales', user?.email],
-    queryFn: () => base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 10000),
+    queryKey: ['insights-sales', user?.email, branchId],
+    queryFn: async () => {
+      if (branchId) {
+        const [branchSales, nullBranchSales] = await Promise.all([
+          base44.entities.Sale.filter({ created_by: user.email, branch_id: branchId }, '-created_date', 10000),
+          base44.entities.Sale.filter({ created_by: user.email, branch_id: null }, '-created_date', 2000),
+        ]);
+        return [...branchSales, ...nullBranchSales];
+      }
+      return base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 10000);
+    },
     enabled: !!user,
     staleTime: 0,
   });

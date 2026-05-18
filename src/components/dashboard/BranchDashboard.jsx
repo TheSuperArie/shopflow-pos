@@ -185,6 +185,7 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
             tenantEmail={tenantEmail}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            branchId={branchId}
           />
         </>
       )}
