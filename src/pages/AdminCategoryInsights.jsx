@@ -387,6 +387,7 @@ export default function AdminCategoryInsights() {
 
   const handleBack = () => {
     setDrillPath([]);
+    setSelectedDimension('__auto__');
   };
 
   // ── Render ───────────────────────────────────────────────────────
