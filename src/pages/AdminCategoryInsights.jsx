@@ -260,21 +260,16 @@ export default function AdminCategoryInsights() {
         const itemsWithSubCat = filteredItems.filter(item => item.subCatId);
         const itemsWithoutSubCat = filteredItems.filter(item => !item.subCatId);
 
-        // If most items lack sub-category info (legacy sales), fall through to dimension grouping
-        if (itemsWithSubCat.length === 0) {
-          // Fall through to dimension grouping below
-        } else {
-          // Group by sub-category ID
-          const map = {};
-          for (const item of filteredItems) {
-            const key = item.subCatId || '__direct__';
-            const label = item.subCatName || 'כללי';
-            if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
-            map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
-            map[key].quantity += item.quantity || 0;
-          }
-          return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+        // Always group by sub-category (or product name for legacy items without subCatId)
+        const map = {};
+        for (const item of filteredItems) {
+          const key = item.subCatId || `__group__${item.resolvedGroup?.id || 'other'}`;
+          const label = item.subCatName || item.resolvedGroup?.name || 'כללי';
+          if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
+          map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
+          map[key].quantity += item.quantity || 0;
         }
+        return Object.values(map).sort((a, b) => b.revenue - a.revenue);
       }
       {
         // No sub-cats (or all ambiguous): group by selected dimension
