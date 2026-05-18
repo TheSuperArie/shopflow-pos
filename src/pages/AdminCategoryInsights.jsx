@@ -146,9 +146,15 @@ export default function AdminCategoryInsights() {
 
 
   // ── Date-filtered sales ──────────────────────────────────────────
+  const toLocalDate = (isoString) => {
+    if (!isoString) return null;
+    const safe = isoString.endsWith('Z') ? isoString : `${isoString}Z`;
+    return new Date(safe).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+  };
+
   const dateSales = useMemo(() => sales.filter(s => {
-    const d = s.created_date?.split('T')[0];
-    return d >= dateFrom && d <= dateTo;
+    const d = toLocalDate(s.created_date);
+    return d && d >= dateFrom && d <= dateTo;
   }), [sales, dateFrom, dateTo]);
 
   // ── Resolve all items belonging to this category tree ───────────
