@@ -18,8 +18,9 @@ export default function AdminCategoryInsights() {
   const user = useCurrentUser();
 
   const [drillPath, setDrillPath] = useState([]);
-  const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const urlParams = new URLSearchParams(window.location.search);
+  const [dateFrom, setDateFrom] = useState(urlParams.get('from') || format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [dateTo, setDateTo] = useState(urlParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
 
   // ── Data fetching ────────────────────────────────────────────────
@@ -44,7 +45,7 @@ export default function AdminCategoryInsights() {
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['insights-sales', user?.email],
-    queryFn: () => base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 2000),
+    queryFn: () => base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 10000),
     enabled: !!user,
     staleTime: 0,
   });

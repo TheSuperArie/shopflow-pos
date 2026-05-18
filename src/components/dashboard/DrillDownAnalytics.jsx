@@ -14,7 +14,7 @@ import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
  *   2 = P3 (product groups under selected P2)
  *   3+ = P4, P5... (variant dimensions)
  */
-export default function DrillDownAnalytics({ sales, categories, groups, variants, dimensions, defaultDimension, tenantEmail }) {
+export default function DrillDownAnalytics({ sales, categories, groups, variants, dimensions, defaultDimension, tenantEmail, dateFrom, dateTo }) {
   const navigate = useNavigate();
   const [drillPath, setDrillPath] = useState([]); // [{level, id, name}]
   const [selectedDimension, setSelectedDimension] = useState(defaultDimension || '__auto__');
@@ -329,7 +329,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                     {/* Link to full insights page for P1 categories */}
                     {currentLevel === 0 && !row.id.startsWith('__') && (
                       <button
-                        onClick={() => navigate(`/admin/reports/category/${row.id}`)}
+                        onClick={() => navigate(`/admin/reports/category/${row.id}?from=${dateFrom || ''}&to=${dateTo || ''}`)}
                         className="mr-2 p-1.5 rounded-lg hover:bg-amber-100 transition-colors"
                         title="ניתוח מפורט"
                       >
