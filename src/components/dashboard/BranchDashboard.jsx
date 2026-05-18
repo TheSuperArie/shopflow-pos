@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2 } from 'lucide-react';
 import { format, startOfMonth, subDays } from 'date-fns';
 import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
+import HourlySalesChart from '@/components/dashboard/HourlySalesChart';
 
 /**
  * BranchDashboard – reusable dashboard scoped to a specific branch + tenant.
@@ -173,6 +174,9 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
               <span className="font-bold text-blue-700">₪{creditSales.toFixed(0)}</span>
             </div>
           </div>
+
+          {/* Hourly Sales Chart */}
+          <HourlySalesChart sales={sales} />
 
           {/* Drill-Down Analytics */}
           <DrillDownAnalytics
