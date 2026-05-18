@@ -35,13 +35,15 @@ export default function BranchNetworkOrders() {
     enabled: !!myBranch?.id,
   });
 
-  // Unread chat messages per ticket (from HQ)
+  // Unread chat messages per ticket (from HQ) — filtered by this branch's ticket IDs
   const { data: allChats = [] } = useQuery({
-    queryKey: ['ticket-chats-branch', myBranch?.id],
+    queryKey: ['ticket-chats-branch', myBranch?.id, tickets.map(t => t.id).join(',')],
     queryFn: async () => {
       const ticketIds = tickets.map(t => t.id);
       if (ticketIds.length === 0) return [];
-      return base44.entities.TicketChat.filter({ sender_role: 'HQ', is_read: false });
+      const chats = await base44.entities.TicketChat.filter({ sender_role: 'HQ', is_read: false });
+      // Filter only chats belonging to this branch's tickets
+      return chats.filter(c => ticketIds.includes(c.ticket_id));
     },
     enabled: tickets.length > 0,
   });
