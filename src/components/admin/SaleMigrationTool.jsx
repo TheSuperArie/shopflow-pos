@@ -190,14 +190,6 @@ export default function SaleMigrationTool({ tenantEmail }) {
     await queryClient.invalidateQueries({ queryKey: ['migration-sales', tenantEmail] });
   };
 
-  if (loadingSales || loadingGroups) {
-    return (
-      <div className="flex justify-center py-10">
-        <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-      </div>
-    );
-  }
-
   const [showDebug, setShowDebug] = useState(false);
   const debugItems = useMemo(() => {
     const map = {};
@@ -214,6 +206,14 @@ export default function SaleMigrationTool({ tenantEmail }) {
   }, [allSales]);
 
   const remaining = unassignedNames.filter(n => !doneNames.has(n.baseName));
+
+  if (loadingSales || loadingGroups) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+      </div>
+    );
+  }
 
   if (unassignedNames.length === 0 || remaining.length === 0) {
     return (

@@ -104,6 +104,22 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
 
+    if (currentLevel === 1 && drillPath[0].id === '__uncategorized__') {
+      // P2 for uncategorized: list all unresolved product names
+      const map = {};
+      for (const sale of sales) {
+        for (const item of (sale.items || [])) {
+          const resolved = resolveGroups(item, groupById, variantById, uniqueGroups);
+          if (resolved.length > 0) continue;
+          const name = item.product_name?.trim() || '(ללא שם)';
+          if (!map[name]) map[name] = { id: `__unc_${name}`, name, revenue: 0, quantity: 0 };
+          map[name].revenue += (item.sell_price || 0) * (item.quantity || 0);
+          map[name].quantity += item.quantity || 0;
+        }
+      }
+      return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+    }
+
     if (currentLevel === 1) {
       // P2: sub-categories of selected P1
       const p1Id = drillPath[0].id;
@@ -195,8 +211,8 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
   const handleDrillDown = (row) => {
-    // Can always drill into P1, P2, P3. P4+ or uncategorized bucket has no further drill.
-    if (currentLevel < 3 && !row.id.startsWith('__')) {
+    // Allow drill into regular nodes (P1→P2→P3) AND into the uncategorized bucket at P0
+    if (currentLevel < 3 && (!row.id.startsWith('__') || row.id === '__uncategorized__')) {
       setDrillPath(prev => [...prev, { level: currentLevel, id: row.id, name: row.name }]);
     }
   };
@@ -205,7 +221,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
     setDrillPath(prev => prev.slice(0, idx));
   };
 
-  const canDrillRow = (row) => currentLevel < 3 && !row.id.startsWith('__');
+  const canDrillRow = (row) => currentLevel < 3 && (!row.id.startsWith('__') || row.id === '__uncategorized__');
   const canDrill = currentLevel < 3;
 
   const levelLabel = ['קטגוריות', 'תת-קטגוריות', 'תיקיות מוצרים', effectiveDimension || 'ממד'][Math.min(currentLevel, 3)];
