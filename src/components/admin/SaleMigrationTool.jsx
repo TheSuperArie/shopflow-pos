@@ -67,7 +67,7 @@ export default function SaleMigrationTool({ tenantEmail }) {
     return null;
   };
 
-  const allAssigned = unassignedNames.length > 0 && unassignedNames.every(n => !!getEffectiveGroupId(n.baseName));
+  const anyAssigned = unassignedNames.some(n => !!getEffectiveGroupId(n.baseName));
 
   const handleRun = async () => {
     setRunning(true);
@@ -191,13 +191,13 @@ export default function SaleMigrationTool({ tenantEmail }) {
 
         <Button
           onClick={handleRun}
-          disabled={running || !allAssigned}
+          disabled={running || !anyAssigned}
           className="w-full bg-amber-500 hover:bg-amber-600 text-white"
         >
           {running ? <><Loader2 className="w-4 h-4 animate-spin ml-2" />מעדכן מכירות...</> : 'החל שיוך על כל המכירות'}
         </Button>
-        {!allAssigned && (
-          <p className="text-xs text-center text-gray-400">יש לשייך את כל השמות לפני ההפעלה</p>
+        {!anyAssigned && (
+          <p className="text-xs text-center text-gray-400">יש לשייך לפחות מוצר אחד לפני ההפעלה</p>
         )}
       </CardContent>
     </Card>
