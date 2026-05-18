@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Plus, Package, Clock, CheckCircle, XCircle, Truck, MessageSquare } from 'lucide-react';
+import { Plus, Package, Clock, CheckCircle, XCircle, Truck, MessageSquare, Bell } from 'lucide-react';
 import { format } from 'date-fns';
 import MultiItemOrderModal from '@/components/orders/MultiItemOrderModal';
 import TicketDetailPanel from '@/components/orders/TicketDetailPanel';
@@ -19,7 +19,10 @@ const STATUS_CONFIG = {
 export default function BranchNetworkOrders() {
   const [showForm, setShowForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [bellOpen, setBellOpen] = useState(false);
+  const bellRef = useRef(null);
   const user = useCurrentUser();
+  const queryClient = useQueryClient();
 
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', user?.email],
@@ -49,6 +52,22 @@ export default function BranchNetworkOrders() {
   allChats.forEach(c => {
     unreadByTicket[c.ticket_id] = (unreadByTicket[c.ticket_id] || 0) + 1;
   });
+  const totalUnread = allChats.length;
+
+  // Real-time subscription
+  useEffect(() => {
+    const unsub = base44.entities.TicketChat.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['ticket-chats-branch', myBranch?.id] });
+    });
+    return unsub;
+  }, [myBranch?.id, queryClient]);
+
+  // Close bell on outside click
+  useEffect(() => {
+    const handler = (e) => { if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -57,9 +76,56 @@ export default function BranchNetworkOrders() {
           <h1 className="text-2xl font-bold text-gray-800">הזמנות לרשת</h1>
           <p className="text-sm text-gray-500 mt-1">שלח בקשות מלאי למרכז הרשת</p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> הזמנה חדשה
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Notification Bell */}
+          <div className="relative" ref={bellRef}>
+            <button
+              onClick={() => setBellOpen(o => !o)}
+              className="relative p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              <Bell className="w-5 h-5 text-gray-600" />
+              {totalUnread > 0 && (
+                <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                  {totalUnread}
+                </span>
+              )}
+            </button>
+            {bellOpen && (
+              <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden" dir="rtl">
+                <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+                  <span className="font-semibold text-gray-800 text-sm">הודעות ממטה הרשת</span>
+                  <span className="text-xs text-gray-500">{totalUnread} חדשות</span>
+                </div>
+                {totalUnread === 0 ? (
+                  <div className="px-4 py-8 text-center text-gray-400 text-sm">אין הודעות חדשות</div>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto divide-y">
+                    {tickets.filter(t => unreadByTicket[t.id] > 0).map(ticket => (
+                      <button
+                        key={ticket.id}
+                        onClick={() => { setBellOpen(false); setSelectedTicket(ticket); }}
+                        className="w-full text-right px-4 py-3 hover:bg-amber-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                            <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">הודעה חדשה בהזמנה #{ticket.id.slice(-6)}</p>
+                            <p className="text-xs text-gray-400">{unreadByTicket[ticket.id]} הודעות חדשות</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <Button onClick={() => setShowForm(true)} className="gap-2">
+            <Plus className="w-4 h-4" /> הזמנה חדשה
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

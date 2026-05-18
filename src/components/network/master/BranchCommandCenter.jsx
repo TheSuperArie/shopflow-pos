@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { ArrowRight, MapPin, User } from 'lucide-react';
+import { ArrowRight, MapPin, User, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import CatalogVisibility from '../CatalogVisibility';
 import BranchInventory from '../BranchInventory';
 import BranchDashboard from '@/components/dashboard/BranchDashboard';
+import TicketChatPanel from '@/components/orders/TicketChatPanel';
 
 export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
   const { toast } = useToast();
@@ -34,6 +35,21 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
   });
 
   const handleSave = () => updateMutation.mutate(form);
+
+  // Find the latest ticket for this branch to attach chat to
+  const { data: tickets = [] } = useQuery({
+    queryKey: ['order-tickets-branch', branch.id],
+    queryFn: () => base44.entities.OrderTicket.filter({ branch_id: branch.id }, '-created_date', 1),
+  });
+  const latestTicket = tickets[0] || null;
+
+  // Unread messages from branch
+  const { data: unreadMsgs = [] } = useQuery({
+    queryKey: ['chat-unread-hq', branch.id],
+    queryFn: () => base44.entities.TicketChat.filter({ sender_role: 'BRANCH', is_read: false }),
+    refetchInterval: 15000,
+  });
+  const unreadCount = latestTicket ? unreadMsgs.filter(m => m.ticket_id === latestTicket?.id).length : 0;
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -64,11 +80,19 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
       </div>
 
       <Tabs defaultValue="dashboard" dir="rtl">
-        <TabsList className="grid grid-cols-4 w-full max-w-xl">
+        <TabsList className="grid grid-cols-5 w-full max-w-2xl">
           <TabsTrigger value="dashboard">לוח בקרה</TabsTrigger>
           <TabsTrigger value="details">פרטי סניף</TabsTrigger>
           <TabsTrigger value="catalog">נראות קטלוג</TabsTrigger>
           <TabsTrigger value="inventory">מלאי</TabsTrigger>
+          <TabsTrigger value="chat" className="relative">
+            צ'אט
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                {unreadCount}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* ── DASHBOARD TAB ── */}
@@ -157,6 +181,32 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
         {/* ── INVENTORY TAB ── */}
         <TabsContent value="inventory" className="mt-4">
           <BranchInventory branch={branch} tenantEmail={tenantEmail} />
+        </TabsContent>
+
+        {/* ── CHAT TAB ── */}
+        <TabsContent value="chat" className="mt-4">
+          {latestTicket ? (
+            <Card className="overflow-hidden" style={{ height: '500px' }}>
+              <CardHeader className="py-3 px-4 border-b">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-amber-500" />
+                  צ'אט עם {branch.name}
+                  <span className="text-xs text-gray-400 font-normal">• הזמנה #{latestTicket.id.slice(-6)}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 h-full flex flex-col" style={{ height: 'calc(500px - 56px)' }}>
+                <TicketChatPanel ticketId={latestTicket.id} senderRole="HQ" />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-gray-400">
+                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p>אין הזמנות לסניף זה עדיין</p>
+                <p className="text-sm mt-1">הצ'אט זמין ברגע שהסניף שולח הזמנה ראשונה</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

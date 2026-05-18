@@ -48,7 +48,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
   const totalCount = pendingOrders.length + unreadAlerts.length;
 
   const markAlertRead = async (alert) => {
-    await base44.entities.NetworkAlert.update(alert.id, { is_read: true });
+    await base44.entities.NetworkAlert.delete(alert.id);
     queryClient.invalidateQueries({ queryKey: ['network-alerts', tenantEmail] });
     setOpen(false);
     if (alert.navigate_to === 'branches' && onNavigateToBranches) onNavigateToBranches();
