@@ -3,9 +3,44 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, CheckCircle, XCircle, Package, MessageSquare, ClipboardList } from 'lucide-react';
+import { X, CheckCircle, XCircle, Package, MessageSquare, ClipboardList, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 import TicketChatPanel from './TicketChatPanel';
+
+async function exportTicketToCSV(ticket, lineItems) {
+  // Fetch branch info
+  const branches = await base44.entities.Branch.filter({ id: ticket.branch_id });
+  const branch = branches[0] || {};
+
+  const rows = [
+    [`הזמנה לסניף: ${ticket.branch_name || ''}`],
+    [`כתובת: ${branch.address || ''}`],
+    [`מנהל סניף: ${branch.manager_name || ''}`],
+    [`טלפון: ${branch.manager_phone || ''}`],
+    [`תאריך: ${ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yyyy HH:mm') : ''}`],
+    [],
+    ['מק"ט', 'שם פריט', 'כמות מבוקשת'],
+    ...lineItems.map(item => [item.sku || '', item.variant_label || '', item.requested_qty]),
+  ];
+
+  const bom = '\uFEFF';
+  const csv = bom + rows.map(row =>
+    row.map(cell => {
+      const val = String(cell ?? '');
+      return val.includes(',') || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
+    }).join(',')
+  ).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `הזמנה_${ticket.branch_name || ticket.id}_${format(new Date(), 'dd-MM-yyyy')}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 const STATUS_CONFIG = {
   pending:   { label: 'ממתין',  color: 'bg-yellow-100 text-yellow-800' },
@@ -17,6 +52,7 @@ const STATUS_CONFIG = {
 // viewerRole: 'BRANCH' | 'HQ'
 export default function TicketDetailPanel({ ticket, onClose, viewerRole, tenantEmail, initialTab = 'items' }) {
   const [tab, setTab] = useState(initialTab);
+  const [exporting, setExporting] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = { toast: () => {} }; // lightweight
 
@@ -86,6 +122,12 @@ export default function TicketDetailPanel({ ticket, onClose, viewerRole, tenantE
     },
   });
 
+  const handleExport = async () => {
+    setExporting(true);
+    await exportTicketToCSV(ticket, lineItems);
+    setExporting(false);
+  };
+
   if (!ticket) return null;
   const cfg = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending;
   const pendingItems = lineItems.filter(i => i.status === 'pending');
@@ -106,9 +148,23 @@ export default function TicketDetailPanel({ ticket, onClose, viewerRole, tenantE
             </div>
             <span className={`mr-2 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {viewerRole === 'HQ' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                disabled={exporting || lineItems.length === 0}
+                className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50 text-xs h-8"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                {exporting ? 'מייצא...' : 'ייצא לאקסל'}
+              </Button>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
