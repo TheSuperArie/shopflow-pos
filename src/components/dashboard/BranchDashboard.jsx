@@ -109,14 +109,6 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
   const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
 
-  const lowStockVariants = variants.filter(v => (v.stock || 0) < lowStockThreshold).map(v => {
-    const group = groups.find(g => g.id === v.group_id);
-    const dimText = v.dimensions && Object.keys(v.dimensions).length > 0
-      ? Object.entries(v.dimensions).map(([k, val]) => `${k}: ${val}`).join(', ')
-      : 'רגיל';
-    return { id: v.id, name: group ? `${group.name} - ${dimText}` : dimText, stock: v.stock || 0 };
-  });
-
   const isLoading = loadingSales || loadingExpenses;
 
   return (
@@ -164,50 +156,22 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Payment breakdown */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold text-gray-600">פילוח תשלומים</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-5 h-5 text-green-600" />
-                    <span className="font-medium">מזומן</span>
-                  </div>
-                  <span className="font-bold text-green-700">₪{cashSales.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">אשראי</span>
-                  </div>
-                  <span className="font-bold text-blue-700">₪{creditSales.toFixed(0)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Low stock */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold text-gray-600">מלאי נמוך</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {lowStockVariants.length === 0 ? (
-                  <p className="text-gray-400 text-center py-4">כל המוצרים במלאי תקין</p>
-                ) : (
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {lowStockVariants.map(v => (
-                      <div key={v.id} className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
-                        <span className="text-sm font-medium">{v.name}</span>
-                        <span className="text-sm font-bold text-red-600">מלאי: {v.stock}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Payment breakdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+              <div className="flex items-center gap-2">
+                <Banknote className="w-5 h-5 text-green-600" />
+                <span className="font-medium">מזומן</span>
+              </div>
+              <span className="font-bold text-green-700">₪{cashSales.toFixed(0)}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-blue-600" />
+                <span className="font-medium">אשראי</span>
+              </div>
+              <span className="font-bold text-blue-700">₪{creditSales.toFixed(0)}</span>
+            </div>
           </div>
 
           {/* Drill-Down Analytics */}
