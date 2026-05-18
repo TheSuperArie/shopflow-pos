@@ -32,21 +32,14 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['branch-dashboard-sales', branchId],
     queryFn: async () => {
-      // Fetch sales for this branch. Also fetch null-branch_id sales (single-store mode fallback).
+      // Fetch sales for this branch (scoped to tenant). Also fetch null-branch_id sales (single-store mode fallback).
       const [branchSales, nullBranchSales] = await Promise.all([
-        base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 2000),
-        base44.entities.Sale.filter({ branch_id: null }, '-created_date', 2000),
+        base44.entities.Sale.filter({ branch_id: branchId, created_by: tenantEmail }, '-created_date', 2000),
+        base44.entities.Sale.filter({ branch_id: null, created_by: tenantEmail }, '-created_date', 2000),
       ]);
-      const merged = [...branchSales, ...nullBranchSales];
-      // Debug: log ALL items from most recent sale to inspect saved fields
-      const recentSale = merged[0];
-      if (recentSale) {
-        console.log('Dashboard most recent sale:', JSON.stringify(recentSale, null, 2));
-        (recentSale.items || []).forEach((item, i) => console.log(`Dashboard sale item[${i}]:`, JSON.stringify(item)));
-      }
-      return merged;
+      return [...branchSales, ...nullBranchSales];
     },
-    enabled: !!branchId,
+    enabled: !!branchId && !!tenantEmail,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
