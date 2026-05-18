@@ -83,7 +83,7 @@ export default function BranchNetworkOrders() {
           <h1 className="text-2xl font-bold text-gray-800">הזמנות לרשת</h1>
           <p className="text-sm text-gray-500 mt-1">שלח בקשות מלאי למרכז הרשת</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {/* Notification Bell */}
           <button
             onClick={handleBellClick}
@@ -96,8 +96,8 @@ export default function BranchNetworkOrders() {
               </span>
             )}
           </button>
-          <Button variant="outline" onClick={() => setShowGeneralChat(true)} className="gap-2">
-            <MessagesSquare className="w-4 h-4" /> צ'אט
+          <Button variant="outline" onClick={() => setShowGeneralChat(true)} className="gap-2 bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100">
+            <MessagesSquare className="w-4 h-4" /> צ'אט עם מטה
           </Button>
           <Button onClick={() => setShowForm(true)} className="gap-2">
             <Plus className="w-4 h-4" /> הזמנה חדשה
