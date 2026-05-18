@@ -46,10 +46,18 @@ export default function SaleMigrationTool({ tenantEmail }) {
     return Object.values(map).sort((a, b) => b.count - a.count);
   }, [allSales]);
 
-  // For each base name, find candidate groups (name match, trimmed)
+  // For each base name, find candidate groups:
+  // 1. Exact match (priority)
+  // 2. Partial match — group name is contained within the base name (e.g. "גופיות" inside "גופיות Twins")
   const candidatesFor = (baseName) => {
-    const lower = baseName.toLowerCase();
-    return groups.filter(g => g.name.trim().toLowerCase() === lower || g.name.trim() === baseName);
+    const lower = baseName.toLowerCase().trim();
+    const exact = groups.filter(g => g.name.trim().toLowerCase() === lower);
+    if (exact.length > 0) return exact;
+    // Partial: group name appears as a word/prefix inside baseName
+    return groups.filter(g => {
+      const gName = g.name.trim().toLowerCase();
+      return lower.startsWith(gName) || lower.includes(gName);
+    });
   };
 
   const getEffectiveGroupId = (baseName) => {
