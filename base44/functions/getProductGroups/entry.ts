@@ -8,7 +8,12 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const groups = await base44.asServiceRole.entities.ProductGroup.list('name', 500);
+  const body = await req.json().catch(() => ({}));
+  const tenantEmail = body.tenant_email || null;
+
+  const groups = tenantEmail
+    ? await base44.asServiceRole.entities.ProductGroup.filter({ created_by: tenantEmail }, 'name', 500)
+    : await base44.asServiceRole.entities.ProductGroup.list('name', 500);
 
   return Response.json({ groups });
 });

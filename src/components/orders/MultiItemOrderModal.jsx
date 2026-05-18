@@ -18,12 +18,12 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
   const queryClient = useQueryClient();
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups-all'],
+    queryKey: ['product-groups-all', tenantEmail],
     queryFn: async () => {
-      const res = await base44.functions.invoke('getProductGroups', {});
+      const res = await base44.functions.invoke('getProductGroups', { tenant_email: tenantEmail });
       return res.data?.groups || [];
     },
-    enabled: open,
+    enabled: open && !!tenantEmail,
   });
 
   // Fetch variants via backend function (service role) to bypass owner scoping
