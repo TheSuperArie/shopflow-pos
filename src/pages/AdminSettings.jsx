@@ -42,6 +42,12 @@ export default function AdminSettings() {
     enabled: !!user,
   });
 
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ['all-categories-settings', user?.email],
+    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }) : [],
+    enabled: !!user,
+  });
+
   const dimensionNames = [...new Set(dimensions.filter(d => d.is_active !== false).map(d => d.name))];
 
   useEffect(() => {
@@ -176,6 +182,7 @@ export default function AdminSettings() {
       <VirtualFolderManager
         folders={virtualFolders}
         allGroups={allGroups}
+        allCategories={allCategories}
         onChange={setVirtualFolders}
       />
 

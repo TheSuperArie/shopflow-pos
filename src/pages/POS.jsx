@@ -490,6 +490,7 @@ export default function POS() {
                   : groups}
                 variants={allVariants}
                 virtualFolders={virtualFolders}
+                currentCategoryId={selectedSubCategory && selectedSubCategory !== '__direct__' ? selectedSubCategory : selectedCategory}
                 onSelect={handleGroupSelect}
               />
             </>

@@ -2,27 +2,42 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FolderPlus, Trash2, X, FolderOpen } from 'lucide-react';
 
 /**
  * VirtualFolderManager — ניהול תיקיות וירטואליות בקופה
- * folders: [{id, name, group_ids[]}]
+ * folders: [{id, name, category_id?, group_ids[]}]
  * allGroups: כל קבוצות המוצר
+ * allCategories: כל הקטגוריות
  * onChange(folders): callback כשמשתנה
  */
-export default function VirtualFolderManager({ folders = [], allGroups = [], onChange }) {
+export default function VirtualFolderManager({ folders = [], allGroups = [], allCategories = [], onChange }) {
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderCategoryId, setNewFolderCategoryId] = useState('');
 
   const addFolder = () => {
     const name = newFolderName.trim();
     if (!name) return;
-    const newFolder = { id: Date.now().toString(), name, group_ids: [] };
+    const newFolder = {
+      id: Date.now().toString(),
+      name,
+      category_id: newFolderCategoryId || null,
+      group_ids: [],
+    };
     onChange([...folders, newFolder]);
     setNewFolderName('');
+    setNewFolderCategoryId('');
   };
 
   const removeFolder = (folderId) => {
     onChange(folders.filter(f => f.id !== folderId));
+  };
+
+  const updateFolderCategory = (folderId, categoryId) => {
+    onChange(folders.map(f =>
+      f.id === folderId ? { ...f, category_id: categoryId || null } : f
+    ));
   };
 
   const toggleGroup = (folderId, groupId) => {
@@ -38,6 +53,19 @@ export default function VirtualFolderManager({ folders = [], allGroups = [], onC
     }));
   };
 
+  // Filter available groups: if folder has a category, show only groups in that category
+  const getAvailableGroups = (folder) => {
+    const base = folder.category_id
+      ? allGroups.filter(g => g.category_id === folder.category_id)
+      : allGroups;
+    return base.filter(g => !folder.group_ids.includes(g.id));
+  };
+
+  const getCategoryName = (categoryId) => {
+    const cat = allCategories.find(c => c.id === categoryId);
+    return cat ? cat.name : null;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -45,18 +73,29 @@ export default function VirtualFolderManager({ folders = [], allGroups = [], onC
           <FolderOpen className="w-5 h-5 text-amber-500" />
           תיקיות וירטואליות בקופה
         </CardTitle>
-        <p className="text-xs text-gray-400">קיבוץ ויזואלי של מוצרים לנוחות הקופאי — ללא שינוי במסד הנתונים</p>
+        <p className="text-xs text-gray-400">קיבוץ ויזואלי של מוצרים לנוחות הקופאי — ניתן לשייך לקטגוריה ספציפית</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Add new folder */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Input
             placeholder="שם תיקייה חדשה (למשל: אמריקאית)"
             value={newFolderName}
             onChange={e => setNewFolderName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addFolder()}
-            className="flex-1"
+            className="flex-1 min-w-40"
           />
+          <Select value={newFolderCategoryId || '__all__'} onValueChange={v => setNewFolderCategoryId(v === '__all__' ? '' : v)}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="כל הקטגוריות" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">כל הקטגוריות</SelectItem>
+              {allCategories.map(cat => (
+                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button onClick={addFolder} className="bg-amber-500 hover:bg-amber-600 gap-2 shrink-0">
             <FolderPlus className="w-4 h-4" />
             הוסף
@@ -69,15 +108,39 @@ export default function VirtualFolderManager({ folders = [], allGroups = [], onC
 
         {folders.map(folder => (
           <div key={folder.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-amber-500">📁</span>
                 <span className="font-semibold text-gray-800">{folder.name}</span>
                 <span className="text-xs text-gray-400">({folder.group_ids.length} מוצרים)</span>
+                {folder.category_id && (
+                  <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5">
+                    📂 {getCategoryName(folder.category_id) || 'קטגוריה'}
+                  </span>
+                )}
               </div>
-              <button onClick={() => removeFolder(folder.id)} className="text-red-400 hover:text-red-600 p-1">
+              <button onClick={() => removeFolder(folder.id)} className="text-red-400 hover:text-red-600 p-1 shrink-0">
                 <Trash2 className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Category assignment */}
+            <div>
+              <p className="text-xs text-gray-500 font-medium mb-1">קטגוריה בקופה (אופציונלי):</p>
+              <Select
+                value={folder.category_id || '__all__'}
+                onValueChange={v => updateFolderCategory(folder.id, v === '__all__' ? '' : v)}
+              >
+                <SelectTrigger className="h-8 text-xs w-52">
+                  <SelectValue placeholder="כל הקטגוריות" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">ללא שיוך — מוצג בכל קטגוריה</SelectItem>
+                  {allCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Selected groups */}
@@ -100,19 +163,20 @@ export default function VirtualFolderManager({ folders = [], allGroups = [], onC
 
             {/* Available groups to add */}
             <div className="space-y-1">
-              <p className="text-xs text-gray-500 font-medium">הוסף מוצרים לתיקייה:</p>
+              <p className="text-xs text-gray-500 font-medium">הוסף מוצרים לתיקייה{folder.category_id ? ` (מסונן לפי קטגוריה)` : ''}:</p>
               <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                {allGroups
-                  .filter(g => !folder.group_ids.includes(g.id))
-                  .map(g => (
-                    <button
-                      key={g.id}
-                      onClick={() => toggleGroup(folder.id, g.id)}
-                      className="text-xs bg-gray-100 hover:bg-blue-50 hover:border-blue-300 border border-gray-200 rounded-full px-3 py-1 text-gray-700 transition-colors"
-                    >
-                      + {g.name}
-                    </button>
-                  ))}
+                {getAvailableGroups(folder).map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => toggleGroup(folder.id, g.id)}
+                    className="text-xs bg-gray-100 hover:bg-blue-50 hover:border-blue-300 border border-gray-200 rounded-full px-3 py-1 text-gray-700 transition-colors"
+                  >
+                    + {g.name}
+                  </button>
+                ))}
+                {getAvailableGroups(folder).length === 0 && (
+                  <p className="text-xs text-gray-400">אין מוצרים זמינים להוספה</p>
+                )}
               </div>
             </div>
           </div>

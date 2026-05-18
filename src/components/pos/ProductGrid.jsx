@@ -5,10 +5,11 @@ import VirtualFolderPickerModal from './VirtualFolderPickerModal';
 /**
  * groups: קבוצות מוצר להצגה
  * variants: כל הווריאנטים
- * virtualFolders: [{id, name, group_ids[]}] — תיקיות וירטואליות לקיבוץ
+ * virtualFolders: [{id, name, category_id?, group_ids[]}] — תיקיות וירטואליות לקיבוץ
+ * currentCategoryId: הקטגוריה הנוכחית שמוצגת
  * onSelect(group): callback כשבוחרים מוצר
  */
-export default function ProductGrid({ groups, variants, virtualFolders = [], onSelect }) {
+export default function ProductGrid({ groups, variants, virtualFolders = [], currentCategoryId, onSelect }) {
   const [openFolder, setOpenFolder] = useState(null);
 
   if (!groups.length) {
@@ -23,10 +24,12 @@ export default function ProductGrid({ groups, variants, virtualFolders = [], onS
   // Build set of group IDs that are "inside" a virtual folder
   const groupIdsInFolders = new Set(virtualFolders.flatMap(f => f.group_ids));
 
-  // Virtual folders that have at least one group in this category's groups
-  const relevantFolders = virtualFolders.filter(f =>
-    f.group_ids.some(gid => groups.find(g => g.id === gid))
-  );
+  // Virtual folders: show only those matching the current category (or without category assignment)
+  const relevantFolders = virtualFolders.filter(f => {
+    const categoryMatch = !f.category_id || f.category_id === currentCategoryId;
+    const hasGroupsHere = f.group_ids.some(gid => groups.find(g => g.id === gid));
+    return categoryMatch && hasGroupsHere;
+  });
 
   // Groups NOT in any virtual folder — shown directly
   const standaloneGroups = groups.filter(g => !groupIdsInFolders.has(g.id));
