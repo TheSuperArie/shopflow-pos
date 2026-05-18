@@ -84,9 +84,8 @@ export default function AdminCategoryInsights() {
   });
 
   const { data: flexibleVariants = [] } = useQuery({
-    queryKey: ['insights-flexible-variants', user?.email],
-    queryFn: () => base44.entities.FlexibleVariant.filter({ created_by: user.email }),
-    enabled: !!user,
+    queryKey: ['insights-flexible-variants'],
+    queryFn: () => base44.entities.FlexibleVariant.list('-created_date', 5000),
     staleTime: 0,
   });
 
