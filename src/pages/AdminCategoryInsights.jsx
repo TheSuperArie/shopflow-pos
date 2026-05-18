@@ -158,77 +158,60 @@ export default function AdminCategoryInsights() {
   }), [sales, dateFrom, dateTo]);
 
   // ── Resolve all items belonging to this category tree ───────────
-  // Each item gets: resolvedGroup, resolvedVariant, subCatId (if applicable)
+  // STRICT RULE: only items whose group_id is verified to belong to treeCategoryIds are included.
+  // Items without a verifiable group_id are discarded — no name-based guessing across categories.
   const resolvedItems = useMemo(() => {
-    // Wait for categories to load before resolving — otherwise subCatById is empty
     if (loadingCategories || fetchingCategories || settledCategories.length === 0) return [];
     const items = [];
     for (const sale of dateSales) {
       for (const item of (sale.items || [])) {
-        const baseName = item.product_name?.split(' - ')[0]?.trim();
-        if (!baseName) continue;
+        let group = null;
 
-        // Priority 1: group_id directly on item (new sales — most accurate)
-        let group = (item.group_id && groupById[item.group_id] && treeCategoryIds.has(groupById[item.group_id].category_id))
-          ? groupById[item.group_id]
-          : null;
+        // P1: group_id directly on item — most reliable
+        if (item.group_id && groupById[item.group_id]) {
+          const g = groupById[item.group_id];
+          if (treeCategoryIds.has(g.category_id)) group = g;
+          else continue; // group belongs to a different category — skip
+        }
 
-        // Priority 2: variant_id → group (only if the variant's group belongs to this category tree)
+        // P2: variant_id → group (only if group belongs to this tree)
         if (!group) {
-          const rawVarId2 = item.variant_id ?? item.variantId;
-          if (rawVarId2) {
-            const resolvedVariant = variantById[String(rawVarId2)] || null;
-            if (resolvedVariant) {
-              const varGroup = groupById[resolvedVariant.group_id];
-              if (varGroup && treeCategoryIds.has(varGroup.category_id)) {
-                group = varGroup;
-              } else {
-                // variant exists but belongs to a DIFFERENT category — skip this item entirely
-                continue;
-              }
+          const varId = item.variant_id ?? item.variantId;
+          if (varId) {
+            const v = variantById[String(varId)];
+            if (v) {
+              const g = groupById[v.group_id];
+              if (g && treeCategoryIds.has(g.category_id)) group = g;
+              else continue; // variant belongs to a different category — skip
             }
           }
         }
 
-        // Priority 3: product_id as group id (older sales)
-        if (!group) {
+        // P3: product_id as group_id fallback (legacy)
+        if (!group && item.product_id && groupById[item.product_id]) {
           const g = groupById[item.product_id];
-          if (g && treeCategoryIds.has(g.category_id)) group = g;
+          if (treeCategoryIds.has(g.category_id)) group = g;
+          else continue;
         }
 
-        // Priority 4: name match — ONLY within this category tree
-        let isAmbiguous = false;
-        if (!group) {
-          const candidates = groups.filter(g => g.name.trim() === baseName && treeCategoryIds.has(g.category_id));
-          if (candidates.length === 1) {
-            group = candidates[0];
-          } else if (candidates.length > 1) {
-            // Can't determine which sub-cat — take first for revenue but mark ambiguous
-            group = candidates[0];
-            isAmbiguous = true;
-          }
-        }
-
+        // No verified group found — discard item entirely (cannot safely assign to this category)
         if (!group) continue;
 
         const catId = group.category_id;
-        if (!categoryById[catId]) continue;
+        const varId = item.variant_id ?? item.variantId;
+        const resolvedVariant = varId ? (variantById[String(varId)] || null) : null;
 
-        const rawVarId3 = item.variant_id ?? item.variantId;
-        const resolvedVariant = rawVarId3 ? (variantById[String(rawVarId3)] || null) : null;
-
-        // If ambiguous sub-cat, don't assign subCatId so we fall back to dimension grouping
         items.push({
           ...item,
           resolvedGroup: group,
           resolvedVariant,
-          subCatId: (!isAmbiguous && subCatById[catId]) ? catId : null,
-          subCatName: (!isAmbiguous && subCatById[catId]) ? categoryById[catId].name : null,
+          subCatId: subCatById[catId] ? catId : null,
+          subCatName: subCatById[catId] ? categoryById[catId].name : null,
         });
       }
     }
     return items;
-  }, [dateSales, groups, groupById, categoryById, treeCategoryIds, subCatById, variantById, loadingCategories, settledCategories]);
+  }, [dateSales, groupById, categoryById, treeCategoryIds, subCatById, variantById, loadingCategories, settledCategories]);
 
   // ── Drill state ──────────────────────────────────────────────────
   // drillBucket stores { bucketId (subCatId or '__direct__'), bucketName }
