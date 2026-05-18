@@ -7,27 +7,54 @@ import { X, CheckCircle, XCircle, Package, MessageSquare, ClipboardList, FileSpr
 import { format } from 'date-fns';
 import TicketChatPanel from './TicketChatPanel';
 
-async function exportTicketToCSV(ticket, lineItems) {
-  // Fetch branch info
-  const branches = await base44.entities.Branch.filter({ id: ticket.branch_id });
-  const branch = branches[0] || {};
+// variant_label format: "שם מוצר — ווריאציה" (e.g. "גופיות — S")
+function parseVariantLabel(label = '') {
+  const sep = label.indexOf(' — ');
+  if (sep !== -1) {
+    return { productName: label.slice(0, sep).trim(), variantValue: label.slice(sep + 3).trim() };
+  }
+  // fallback: whole string as product name
+  return { productName: label.trim(), variantValue: '' };
+}
 
-  const rows = [
-    [`הזמנה לסניף: ${ticket.branch_name || ''}`],
-    [`כתובת: ${branch.address || ''}`],
-    [`מנהל סניף: ${branch.manager_name || ''}`],
-    [`טלפון: ${branch.manager_phone || ''}`],
-    [`תאריך: ${ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yyyy HH:mm') : ''}`],
+async function exportTicketToCSV(ticket, lineItems) {
+  // Fetch branch info and variant SKUs in parallel
+  const variantIds = [...new Set(lineItems.map(i => i.variant_id).filter(Boolean))];
+  const [branches, variants] = await Promise.all([
+    base44.entities.Branch.filter({ id: ticket.branch_id }),
+    variantIds.length > 0
+      ? Promise.all(variantIds.map(id => base44.entities.FlexibleVariant.filter({ id }))).then(res => res.flat())
+      : Promise.resolve([]),
+  ]);
+  const branch = branches[0] || {};
+  const variantMap = Object.fromEntries(variants.map(v => [v.id, v]));
+
+  const headerRows = [
+    ['סניף:', ticket.branch_name || ''],
+    ['כתובת:', branch.address || ''],
+    ['מנהל:', branch.manager_name || ''],
+    ['טלפון:', branch.manager_phone || ''],
+    ['תאריך:', ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yyyy HH:mm') : ''],
     [],
-    ['מק"ט', 'שם פריט', 'כמות מבוקשת'],
-    ...lineItems.map(item => [item.sku || '', item.variant_label || '', item.requested_qty]),
+    ['מק"ט', 'שם מוצר', 'ווריאציה', 'כמות מבוקשת'],
   ];
 
+  const dataRows = lineItems.map(item => {
+    const variant = variantMap[item.variant_id];
+    const sku = variant?.sku || item.sku || '';
+    const { productName, variantValue } = parseVariantLabel(item.variant_label);
+    return [sku, productName, variantValue, item.requested_qty];
+  });
+
+  const allRows = [...headerRows, ...dataRows];
+
   const bom = '\uFEFF';
-  const csv = bom + rows.map(row =>
+  const csv = bom + allRows.map(row =>
     row.map(cell => {
       const val = String(cell ?? '');
-      return val.includes(',') || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
+      return val.includes(',') || val.includes('"') || val.includes('\n')
+        ? `"${val.replace(/"/g, '""')}"`
+        : val;
     }).join(',')
   ).join('\n');
 
