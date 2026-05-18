@@ -11,7 +11,7 @@ import { base44 } from '@/api/base44Client';
 import CatalogVisibility from '../CatalogVisibility';
 import BranchInventory from '../BranchInventory';
 import BranchDashboard from '@/components/dashboard/BranchDashboard';
-import TicketChatPanel from '@/components/orders/TicketChatPanel';
+import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 
 export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
   const { toast } = useToast();
@@ -36,20 +36,15 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
 
   const handleSave = () => updateMutation.mutate(form);
 
-  // Find the latest ticket for this branch to attach chat to
-  const { data: tickets = [] } = useQuery({
-    queryKey: ['order-tickets-branch', branch.id],
-    queryFn: () => base44.entities.OrderTicket.filter({ branch_id: branch.id }, '-created_date', 1),
-  });
-  const latestTicket = tickets[0] || null;
+  const [showGeneralChat, setShowGeneralChat] = useState(false);
 
-  // Unread messages from branch
+  // Unread general messages from branch
   const { data: unreadMsgs = [] } = useQuery({
-    queryKey: ['chat-unread-hq', branch.id],
-    queryFn: () => base44.entities.TicketChat.filter({ sender_role: 'BRANCH', is_read: false }),
+    queryKey: ['general-chat-unread', branch.id],
+    queryFn: () => base44.entities.BranchGeneralChat.filter({ branch_id: branch.id, sender_role: 'BRANCH', is_read: false }),
     refetchInterval: 15000,
   });
-  const unreadCount = latestTicket ? unreadMsgs.filter(m => m.ticket_id === latestTicket?.id).length : 0;
+  const unreadCount = unreadMsgs.length;
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -185,28 +180,18 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
 
         {/* ── CHAT TAB ── */}
         <TabsContent value="chat" className="mt-4">
-          {latestTicket ? (
-            <Card className="overflow-hidden" style={{ height: '500px' }}>
-              <CardHeader className="py-3 px-4 border-b">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-amber-500" />
-                  צ'אט עם {branch.name}
-                  <span className="text-xs text-gray-400 font-normal">• הזמנה #{latestTicket.id.slice(-6)}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 h-full flex flex-col" style={{ height: 'calc(500px - 56px)' }}>
-                <TicketChatPanel ticketId={latestTicket.id} senderRole="HQ" />
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center text-gray-400">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p>אין הזמנות לסניף זה עדיין</p>
-                <p className="text-sm mt-1">הצ'אט זמין ברגע שהסניף שולח הזמנה ראשונה</p>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="overflow-hidden" style={{ height: '520px' }}>
+            <CardContent className="p-0 h-full flex flex-col">
+              <GeneralChatDrawer
+                open={true}
+                onClose={() => {}}
+                branchId={branch.id}
+                tenantEmail={tenantEmail}
+                senderRole="HQ"
+                inline={true}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

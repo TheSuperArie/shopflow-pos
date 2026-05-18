@@ -4,10 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Plus, Package, Clock, CheckCircle, XCircle, Truck, MessageSquare, Bell } from 'lucide-react';
+import { Plus, Package, Clock, CheckCircle, XCircle, Truck, MessageSquare, Bell, MessagesSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import MultiItemOrderModal from '@/components/orders/MultiItemOrderModal';
 import TicketDetailPanel from '@/components/orders/TicketDetailPanel';
+import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 
 const STATUS_CONFIG = {
   pending:  { label: 'ממתין', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
@@ -22,6 +23,7 @@ export default function BranchNetworkOrders() {
   const [selectedTicketTab, setSelectedTicketTab] = useState('items');
   const user = useCurrentUser();
   const queryClient = useQueryClient();
+  const [showGeneralChat, setShowGeneralChat] = useState(false);
 
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', user?.email],
@@ -94,6 +96,9 @@ export default function BranchNetworkOrders() {
               </span>
             )}
           </button>
+          <Button variant="outline" onClick={() => setShowGeneralChat(true)} className="gap-2">
+            <MessagesSquare className="w-4 h-4" /> צ'אט
+          </Button>
           <Button onClick={() => setShowForm(true)} className="gap-2">
             <Plus className="w-4 h-4" /> הזמנה חדשה
           </Button>
@@ -255,6 +260,16 @@ export default function BranchNetworkOrders() {
           onClose={() => setShowForm(false)}
           branch={myBranch}
           tenantEmail={myBranch.tenant_email}
+        />
+      )}
+
+      {showGeneralChat && myBranch && (
+        <GeneralChatDrawer
+          open={showGeneralChat}
+          onClose={() => setShowGeneralChat(false)}
+          branchId={myBranch.id}
+          tenantEmail={myBranch.tenant_email}
+          senderRole="BRANCH"
         />
       )}
 
