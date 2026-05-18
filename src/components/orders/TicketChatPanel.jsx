@@ -30,6 +30,7 @@ export default function TicketChatPanel({ ticketId, senderRole }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ticket-chat', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-chats-branch'] });
     },
   });
 
