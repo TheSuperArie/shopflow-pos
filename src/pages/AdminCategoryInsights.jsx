@@ -260,11 +260,11 @@ export default function AdminCategoryInsights() {
         const itemsWithSubCat = filteredItems.filter(item => item.subCatId);
         const itemsWithoutSubCat = filteredItems.filter(item => !item.subCatId);
 
-        // Always group by sub-category (or product name for legacy items without subCatId)
+        // Group strictly by sub-category only — items without subCatId go to "כללי"
         const map = {};
         for (const item of filteredItems) {
-          const key = item.subCatId || `__group__${item.resolvedGroup?.id || 'other'}`;
-          const label = item.subCatName || item.resolvedGroup?.name || 'כללי';
+          const key = item.subCatId || '__direct__';
+          const label = item.subCatName || 'כללי';
           if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
           map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
           map[key].quantity += item.quantity || 0;
