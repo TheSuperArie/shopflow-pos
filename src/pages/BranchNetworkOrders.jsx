@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +19,6 @@ const STATUS_CONFIG = {
 export default function BranchNetworkOrders() {
   const [showForm, setShowForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [bellOpen, setBellOpen] = useState(false);
-  const bellRef = useRef(null);
   const user = useCurrentUser();
   const queryClient = useQueryClient();
 
@@ -62,12 +60,15 @@ export default function BranchNetworkOrders() {
     return unsub;
   }, [myBranch?.id, queryClient]);
 
-  // Close bell on outside click
-  useEffect(() => {
-    const handler = (e) => { if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'messages'
+
+  // Switch to messages tab if bell clicked
+  const handleBellClick = () => {
+    setActiveTab('messages');
+  };
+
+  const ticketsWithUnread = tickets.filter(t => unreadByTicket[t.id] > 0);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -78,132 +79,171 @@ export default function BranchNetworkOrders() {
         </div>
         <div className="flex items-center gap-2">
           {/* Notification Bell */}
-          <div className="relative" ref={bellRef}>
-            <button
-              onClick={() => setBellOpen(o => !o)}
-              className="relative p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
-            >
-              <Bell className="w-5 h-5 text-gray-600" />
-              {totalUnread > 0 && (
-                <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
-                  {totalUnread}
-                </span>
-              )}
-            </button>
-            {bellOpen && (
-              <div className="absolute left-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden" dir="rtl">
-                <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
-                  <span className="font-semibold text-gray-800 text-sm">הודעות ממטה הרשת</span>
-                  <span className="text-xs text-gray-500">{totalUnread} חדשות</span>
-                </div>
-                {totalUnread === 0 ? (
-                  <div className="px-4 py-8 text-center text-gray-400 text-sm">אין הודעות חדשות</div>
-                ) : (
-                  <div className="max-h-64 overflow-y-auto divide-y">
-                    {tickets.filter(t => unreadByTicket[t.id] > 0).map(ticket => (
-                      <button
-                        key={ticket.id}
-                        onClick={() => { setBellOpen(false); setSelectedTicket(ticket); }}
-                        className="w-full text-right px-4 py-3 hover:bg-amber-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                            <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-800">הודעה חדשה בהזמנה #{ticket.id.slice(-6)}</p>
-                            <p className="text-xs text-gray-400">{unreadByTicket[ticket.id]} הודעות חדשות</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+          <button
+            onClick={handleBellClick}
+            className="relative p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
+          >
+            <Bell className="w-5 h-5 text-gray-600" />
+            {totalUnread > 0 && (
+              <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                {totalUnread}
+              </span>
             )}
-          </div>
+          </button>
           <Button onClick={() => setShowForm(true)} className="gap-2">
             <Plus className="w-4 h-4" /> הזמנה חדשה
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-          const Icon = cfg.icon;
-          const count = tickets.filter(t => t.status === key).length;
-          return (
-            <Card key={key}>
-              <CardContent className="p-4 flex items-center gap-3">
-                <Icon className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-xs text-gray-500">{cfg.label}</p>
-                  <p className="text-xl font-bold">{count}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      {/* Tabs */}
+      <div className="flex border-b gap-1">
+        <button
+          onClick={() => setActiveTab('orders')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'orders' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          הזמנות
+        </button>
+        <button
+          onClick={() => setActiveTab('messages')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'messages' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          הודעות ממטה הרשת
+          {totalUnread > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{totalUnread}</span>
+          )}
+        </button>
       </div>
 
-      {/* Tickets Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">היסטוריית הזמנות</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="py-8 text-center text-gray-400">טוען...</div>
-          ) : tickets.length === 0 ? (
-            <div className="py-12 text-center text-gray-400">
-              <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>אין הזמנות עדיין</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {tickets.map(ticket => {
-                const cfg = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending;
-                const unread = unreadByTicket[ticket.id] || 0;
-                return (
-                  <button
-                    key={ticket.id}
-                    onClick={() => setSelectedTicket(ticket)}
-                    className="w-full text-right flex items-center justify-between px-4 py-3 hover:bg-amber-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-                        <Package className="w-4 h-4 text-amber-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">
-                          הזמנה #{ticket.id.slice(-6)}
-                          {unread > 0 && (
-                            <span className="mr-2 inline-flex items-center gap-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
-                              <MessageSquare className="w-2.5 h-2.5" />{unread}
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {ticket.total_items} פריטים
-                          {ticket.notes ? ` • ${ticket.notes}` : ''}
-                        </p>
-                      </div>
+      {activeTab === 'orders' && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+              const Icon = cfg.icon;
+              const count = tickets.filter(t => t.status === key).length;
+              return (
+                <Card key={key}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <Icon className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">{cfg.label}</p>
+                      <p className="text-xl font-bold">{count}</p>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
-                      <span className="text-xs text-gray-400">
-                        {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy') : ''}
-                      </span>
-                      <span className="text-gray-300">←</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Tickets Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">היסטוריית הזמנות</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="py-8 text-center text-gray-400">טוען...</div>
+              ) : tickets.length === 0 ? (
+                <div className="py-12 text-center text-gray-400">
+                  <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>אין הזמנות עדיין</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {tickets.map(ticket => {
+                    const cfg = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending;
+                    const unread = unreadByTicket[ticket.id] || 0;
+                    return (
+                      <button
+                        key={ticket.id}
+                        onClick={() => setSelectedTicket(ticket)}
+                        className="w-full text-right flex items-center justify-between px-4 py-3 hover:bg-amber-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                            <Package className="w-4 h-4 text-amber-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">
+                              הזמנה #{ticket.id.slice(-6)}
+                              {unread > 0 && (
+                                <span className="mr-2 inline-flex items-center gap-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">
+                                  <MessageSquare className="w-2.5 h-2.5" />{unread}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {ticket.total_items} פריטים
+                              {ticket.notes ? ` • ${ticket.notes}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+                          <span className="text-xs text-gray-400">
+                            {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy') : ''}
+                          </span>
+                          <span className="text-gray-300">←</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {activeTab === 'messages' && (
+        <Card>
+          <CardContent className="p-0">
+            {ticketsWithUnread.length === 0 ? (
+              <div className="py-12 text-center text-gray-400">
+                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p>אין הודעות חדשות ממטה הרשת</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {ticketsWithUnread.map(ticket => {
+                  const cfg = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending;
+                  return (
+                    <button
+                      key={ticket.id}
+                      onClick={() => { setSelectedTicket(ticket); }}
+                      className="w-full text-right flex items-center justify-between px-4 py-4 hover:bg-amber-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                          <MessageSquare className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">
+                            הזמנה #{ticket.id.slice(-6)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {unreadByTicket[ticket.id]} הודעות חדשות ממטה הרשת
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy') : ''}
+                            {ticket.notes ? ` • ${ticket.notes}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+                        <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">{unreadByTicket[ticket.id]}</span>
+                        <span className="text-gray-300">←</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {showForm && myBranch && (
         <MultiItemOrderModal
