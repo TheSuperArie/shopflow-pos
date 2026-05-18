@@ -408,8 +408,8 @@ export default function AdminCategoryInsights() {
           </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Dimension selector — shown only when drilling into a sub-cat, or when no sub-cats at level 0 */}
-          {availableDimensionNames.length > 0 && (!!drillBucket || (!loadingCategories && !fetchingCategories && (!hasSubCats || !hasSubCatData))) && (
+          {/* Dimension selector — shown only when drilled into a product (Level 1) */}
+          {availableDimensionNames.length > 0 && !!drillBucket && (
             <Select
               value={selectedDimension}
               onValueChange={(v) => { setSelectedDimension(v); localStorage.setItem(`insights_dim_${categoryId}`, v); }}
