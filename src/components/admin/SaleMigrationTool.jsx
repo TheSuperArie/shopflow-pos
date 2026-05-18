@@ -18,8 +18,9 @@ export default function SaleMigrationTool({ tenantEmail }) {
   const [results, setResults] = useState(null); // { updated, skipped }
 
   const { data: allSales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['migration-sales'],
-    queryFn: () => base44.entities.Sale.list('-created_date', 2000),
+    queryKey: ['migration-sales', tenantEmail],
+    queryFn: () => base44.entities.Sale.filter({ created_by: tenantEmail }, '-created_date', 2000),
+    enabled: !!tenantEmail,
     staleTime: 0,
   });
 
