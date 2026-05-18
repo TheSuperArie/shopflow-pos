@@ -218,6 +218,7 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
             variants={variants}
             dimensions={dimensions}
             defaultDimension={defaultDimension}
+            tenantEmail={tenantEmail}
           />
         </>
       )}

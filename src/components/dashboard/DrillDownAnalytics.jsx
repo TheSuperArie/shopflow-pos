@@ -14,7 +14,7 @@ import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
  *   2 = P3 (product groups under selected P2)
  *   3+ = P4, P5... (variant dimensions)
  */
-export default function DrillDownAnalytics({ sales, categories, groups, variants, dimensions, defaultDimension }) {
+export default function DrillDownAnalytics({ sales, categories, groups, variants, dimensions, defaultDimension, tenantEmail }) {
   const navigate = useNavigate();
   const [drillPath, setDrillPath] = useState([]); // [{level, id, name}]
   const [selectedDimension, setSelectedDimension] = useState(defaultDimension || '__auto__');
@@ -23,16 +23,22 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
   // Deduplicate by ID to prevent duplicate category entries causing double-counting
   const uniqueCategories = useMemo(() => {
     const seen = new Set();
-    return categories.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
-  }, [categories]);
+    return categories
+      .filter(c => !tenantEmail || c.created_by === tenantEmail)
+      .filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+  }, [categories, tenantEmail]);
   const uniqueGroups = useMemo(() => {
     const seen = new Set();
-    return groups.filter(g => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
-  }, [groups]);
+    return groups
+      .filter(g => !tenantEmail || g.created_by === tenantEmail)
+      .filter(g => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
+  }, [groups, tenantEmail]);
   const uniqueVariants = useMemo(() => {
     const seen = new Set();
-    return variants.filter(v => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
-  }, [variants]);
+    return variants
+      .filter(v => !tenantEmail || v.created_by === tenantEmail)
+      .filter(v => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
+  }, [variants, tenantEmail]);
 
   const categoryById = useMemo(() => Object.fromEntries(uniqueCategories.map(c => [c.id, c])), [uniqueCategories]);
   const groupById = useMemo(() => Object.fromEntries(uniqueGroups.map(g => [g.id, g])), [uniqueGroups]);
