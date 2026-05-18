@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 
 export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNavigateToBranches }) {
   const [open, setOpen] = useState(false);
+  const [dismissedOrders, setDismissedOrders] = useState(new Set());
   const ref = useRef(null);
   const queryClient = useQueryClient();
 
@@ -69,7 +70,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const pendingOrders = tickets.filter(t => t.status === 'pending');
+  const pendingOrders = tickets.filter(t => t.status === 'pending' && !dismissedOrders.has(t.id));
   const unreadAlerts = alerts;
   const totalCount = pendingOrders.length + unreadAlerts.length + unreadChatTickets.length;
 
@@ -162,7 +163,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
               {pendingOrders.slice(0, 6).map(ticket => (
                 <button
                   key={ticket.id}
-                  onClick={() => { setOpen(false); onNavigateToOrders?.(); }}
+                  onClick={() => { setDismissedOrders(prev => new Set([...prev, ticket.id])); setOpen(false); onNavigateToOrders?.(); }}
                   className="w-full text-right px-4 py-3 hover:bg-amber-50 transition-colors"
                 >
                   <div className="flex items-start gap-2">
