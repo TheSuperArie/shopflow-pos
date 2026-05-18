@@ -22,9 +22,12 @@ export default function AdminCategoryInsights() {
   const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(() => searchParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
   const branchId = searchParams.get('branchId') || null;
-  const [selectedDimension, setSelectedDimension] = useState(() => {
-    return localStorage.getItem(`insights_dim_${categoryId}`) || '__auto__';
-  });
+  const [selectedDimension, setSelectedDimension] = useState('__auto__');
+
+  useEffect(() => {
+    setSelectedDimension(localStorage.getItem(`insights_dim_${categoryId}`) || '__auto__');
+    setDrillPath([]);
+  }, [categoryId]);
 
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [], isLoading: loadingCategories, isFetching: fetchingCategories } = useQuery({
