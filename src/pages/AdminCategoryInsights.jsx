@@ -502,14 +502,14 @@ export default function AdminCategoryInsights() {
           </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Level 0 groupBy toggle — shown only at top level when there are sub-cats AND dimensions */}
-          {!drillBucket && hasSubCats && availableDimensionNames.length > 0 && (
+          {/* Level 0 groupBy toggle — shown at top level when there are dimensions */}
+          {!drillBucket && availableDimensionNames.length > 0 && (
             <div className="flex items-center gap-1 border rounded-lg overflow-hidden text-sm">
               <button
                 onClick={() => setLevel0GroupBy('subcat')}
                 className={`px-3 py-1.5 transition-colors ${level0GroupBy === 'subcat' ? 'bg-amber-500 text-white font-medium' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
-                תת-קטגוריות
+                {hasSubCats ? 'תת-קטגוריות' : 'מוצרים'}
               </button>
               <button
                 onClick={() => setLevel0GroupBy('dimension')}
