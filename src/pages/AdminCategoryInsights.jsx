@@ -188,11 +188,10 @@ export default function AdminCategoryInsights() {
           if (g && treeCategoryIds.has(g.category_id)) group = g;
         }
 
-        // Priority 4: name match
-        // If ambiguous (multiple groups with same name), mark as ambiguous — no subCatId
+        // Priority 4: name match — ONLY within this category tree
         let isAmbiguous = false;
         if (!group) {
-          const candidates = groups.filter(g => g.name === baseName && treeCategoryIds.has(g.category_id));
+          const candidates = groups.filter(g => g.name.trim() === baseName && treeCategoryIds.has(g.category_id));
           if (candidates.length === 1) {
             group = candidates[0];
           } else if (candidates.length > 1) {
@@ -332,11 +331,12 @@ export default function AdminCategoryInsights() {
     // ── LEVEL 1: filteredItems already contains ONLY the drilled bucket's items ──
     // Now slice them by selectedDimension — this is purely a display bucketing step
 
-    // Build a set of all known valid values for the selected dimension
+    // Build a set of known valid values ONLY from variants belonging to this category tree
     const knownValuesForDim = new Set();
     if (dimKey) {
       for (const v of variants) {
-        if (v.dimensions?.[dimKey] != null) {
+        const g = groupById[v.group_id];
+        if (g && treeCategoryIds.has(g.category_id) && v.dimensions?.[dimKey] != null) {
           knownValuesForDim.add(String(v.dimensions[dimKey]).trim());
         }
       }
