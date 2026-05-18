@@ -52,7 +52,14 @@ export default function SaleMigrationTool({ tenantEmail }) {
     return groups.filter(g => g.name.trim().toLowerCase() === lower || g.name.trim() === baseName);
   };
 
-  const allAssigned = unassignedNames.length > 0 && unassignedNames.every(n => assignments[n.baseName]);
+  const getEffectiveGroupId = (baseName) => {
+    if (assignments[baseName]) return assignments[baseName];
+    const candidates = candidatesFor(baseName);
+    if (candidates.length === 1) return candidates[0].id;
+    return null;
+  };
+
+  const allAssigned = unassignedNames.length > 0 && unassignedNames.every(n => !!getEffectiveGroupId(n.baseName));
 
   const handleRun = async () => {
     setRunning(true);
@@ -67,7 +74,7 @@ export default function SaleMigrationTool({ tenantEmail }) {
       const newItems = (sale.items || []).map(item => {
         if (item.group_id) return item; // already set
         const baseName = item.product_name?.split(' - ')[0]?.trim();
-        const assignedGroupId = assignments[baseName];
+        const assignedGroupId = getEffectiveGroupId(baseName);
         if (!assignedGroupId) { skipped++; return item; }
         changed = true;
         return { ...item, group_id: assignedGroupId };
@@ -112,30 +119,46 @@ export default function SaleMigrationTool({ tenantEmail }) {
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-3 text-xs font-semibold text-gray-400 uppercase">
+          <span className="flex-1">שם המוצר במכירה</span>
+          <span className="w-56 text-center">שייך ל-Group</span>
+        </div>
+
         {unassignedNames.map(({ baseName, count, sell_price }) => {
           const candidates = candidatesFor(baseName);
           const assigned = assignments[baseName];
+          // Auto-select if exactly one candidate
+          const autoSelected = candidates.length === 1 && !assignments[baseName];
+          if (autoSelected && !assignments[baseName]) {
+            // trigger auto-assign (side-effect in render — use effect instead via initial state trick)
+          }
           return (
             <div key={baseName} className="flex items-center gap-3 p-3 rounded-xl border bg-gray-50">
-              <div className="flex-1">
-                <p className="font-semibold text-sm">{baseName}</p>
-                <div className="flex gap-2 mt-0.5">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-gray-800 truncate" title={baseName}>📦 {baseName}</p>
+                <div className="flex gap-2 mt-1 flex-wrap">
                   <Badge variant="outline" className="text-xs">{Math.round(count)} יח׳</Badge>
                   {sell_price && <Badge variant="outline" className="text-xs">₪{sell_price}</Badge>}
                   {candidates.length > 1 && (
-                    <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-200">{candidates.length} התאמות</Badge>
+                    <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-200">⚠️ {candidates.length} groups עם אותו שם</Badge>
                   )}
                   {candidates.length === 0 && (
-                    <Badge className="text-xs bg-red-100 text-red-700 border-red-200">לא נמצא group תואם</Badge>
+                    <Badge className="text-xs bg-red-100 text-red-700 border-red-200">לא נמצא התאמה אוטומטית</Badge>
+                  )}
+                  {candidates.length === 1 && !assigned && (
+                    <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200">התאמה אוטומטית: {candidates[0].name.trim()}</Badge>
                   )}
                 </div>
               </div>
-              <Select value={assigned || ''} onValueChange={val => setAssignments(prev => ({ ...prev, [baseName]: val }))}>
-                <SelectTrigger className={`w-56 h-8 text-sm ${assigned ? 'border-green-400' : 'border-gray-300'}`}>
+              <Select
+                value={assigned || (candidates.length === 1 ? candidates[0].id : '')}
+                onValueChange={val => setAssignments(prev => ({ ...prev, [baseName]: val }))}
+              >
+                <SelectTrigger className={`w-56 h-9 text-sm ${(assigned || candidates.length === 1) ? 'border-green-400 bg-green-50' : 'border-gray-300'}`}>
                   <SelectValue placeholder="בחר group..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* Show exact candidates first, then all */}
                   {candidates.length > 0 ? (
                     candidates.map(g => (
                       <SelectItem key={g.id} value={g.id}>{g.name.trim()}</SelectItem>
