@@ -23,6 +23,7 @@ export default function AdminCategoryInsights() {
   const [dateTo, setDateTo] = useState(() => searchParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
   const branchId = searchParams.get('branchId') || null;
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
+  const [level0GroupBy, setLevel0GroupBy] = useState('subcat'); // 'subcat' | 'dimension'
 
   useEffect(() => {
     setSelectedDimension(localStorage.getItem(`insights_dim_${categoryId}`) || '__auto__');
@@ -261,11 +262,45 @@ export default function AdminCategoryInsights() {
 
     if (!drillBucket) {
       // ── LEVEL 0 ──────────────────────────────────────────────────
-      if (hasSubCatsLocal) {
-        // Check if items actually have sub-category info (i.e. have group_id/variant_id)
-        const itemsWithSubCat = filteredItems.filter(item => item.subCatId);
-        const itemsWithoutSubCat = filteredItems.filter(item => !item.subCatId);
 
+      // If user chose to group by dimension at level 0
+      if (level0GroupBy === 'dimension' && dimKey) {
+        const variantDimMapL0 = {};
+        for (const v of variants) {
+          if (v.dimensions?.[dimKey] != null) {
+            variantDimMapL0[String(v.id)] = String(v.dimensions[dimKey]).trim();
+          }
+        }
+        const allKnownDimValuesL0 = new Set(Object.values(variantDimMapL0).map(v => v.toLowerCase()));
+
+        const map = {};
+        for (const item of filteredItems) {
+          let dimVal = null;
+          if (item.resolvedVariant?.dimensions?.[dimKey] != null) {
+            dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
+          }
+          if (!dimVal) {
+            const varId = item.variant_id ?? item.variantId;
+            if (varId && variantDimMapL0[String(varId)]) dimVal = variantDimMapL0[String(varId)];
+          }
+          if (!dimVal && item.product_name && allKnownDimValuesL0.size > 0) {
+            const segments = item.product_name.split(/[\s\-\/,()]+/).map(s => s.trim()).filter(Boolean);
+            for (const seg of segments) {
+              if (allKnownDimValuesL0.has(seg.toLowerCase())) {
+                dimVal = seg;
+                break;
+              }
+            }
+          }
+          if (!dimVal) dimVal = 'ללא וריאציה';
+          if (!map[dimVal]) map[dimVal] = { id: `__dim__${dimVal}`, name: dimVal, revenue: 0, quantity: 0 };
+          map[dimVal].revenue += (item.sell_price || 0) * (item.quantity || 0);
+          map[dimVal].quantity += item.quantity || 0;
+        }
+        return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+      }
+
+      if (hasSubCatsLocal) {
         // Group strictly by sub-category only — items without subCatId go to "כללי"
         const map = {};
         for (const item of filteredItems) {
@@ -376,7 +411,7 @@ export default function AdminCategoryInsights() {
       map[dimVal].quantity += item.quantity || 0;
     }
     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, fetchingCategories, variants, settledCategories]);
+  }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, fetchingCategories, variants, settledCategories, level0GroupBy]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
   const hasSubCats = subCategories.length > 0;
@@ -436,9 +471,10 @@ export default function AdminCategoryInsights() {
   const hasSubCatData = itemsWithSubCat.length > 0;
   // Level 0: if has sub-cats WITH data → "תת-קטגוריות", else → dimension name
   const level0Label = hasSubCats ? 'תת-קטגוריות' : 'מוצרים';
-  const currentLabel = !drillBucket ? level0Label : dimLabel;
+  const level0DisplayLabel = (!drillBucket && level0GroupBy === 'dimension') ? (availableDimensionNames[0] || 'ממד') : level0Label;
+  const currentLabel = !drillBucket ? level0DisplayLabel : dimLabel;
   const topLevelLabel = level0Label;
-  const canDrill = !drillBucket;
+  const canDrill = !drillBucket && !(level0GroupBy === 'dimension');
 
   const handleDrillDown = (row) => {
     if (canDrill) {
@@ -466,6 +502,24 @@ export default function AdminCategoryInsights() {
           </h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Level 0 groupBy toggle — shown only at top level when there are sub-cats AND dimensions */}
+          {!drillBucket && hasSubCats && availableDimensionNames.length > 0 && (
+            <div className="flex items-center gap-1 border rounded-lg overflow-hidden text-sm">
+              <button
+                onClick={() => setLevel0GroupBy('subcat')}
+                className={`px-3 py-1.5 transition-colors ${level0GroupBy === 'subcat' ? 'bg-amber-500 text-white font-medium' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                תת-קטגוריות
+              </button>
+              <button
+                onClick={() => setLevel0GroupBy('dimension')}
+                className={`px-3 py-1.5 transition-colors ${level0GroupBy === 'dimension' ? 'bg-amber-500 text-white font-medium' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                {availableDimensionNames[0] || 'ממד'}
+              </button>
+            </div>
+          )}
+
           {/* Dimension selector — shown only when drilled into a product (Level 1) */}
           {bucketDimensionNames.length > 0 && !!drillBucket && (
             <div className="flex items-center gap-1">
