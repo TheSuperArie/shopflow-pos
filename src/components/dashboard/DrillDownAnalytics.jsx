@@ -195,8 +195,8 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
   const handleDrillDown = (row) => {
-    // Can always drill into P1, P2, P3. P4+ has no further drill.
-    if (currentLevel < 3) {
+    // Can always drill into P1, P2, P3. P4+ or uncategorized bucket has no further drill.
+    if (currentLevel < 3 && !row.id.startsWith('__')) {
       setDrillPath(prev => [...prev, { level: currentLevel, id: row.id, name: row.name }]);
     }
   };
@@ -205,6 +205,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
     setDrillPath(prev => prev.slice(0, idx));
   };
 
+  const canDrillRow = (row) => currentLevel < 3 && !row.id.startsWith('__');
   const canDrill = currentLevel < 3;
 
   const levelLabel = ['קטגוריות', 'תת-קטגוריות', 'תיקיות מוצרים', effectiveDimension || 'ממד'][Math.min(currentLevel, 3)];
@@ -267,7 +268,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                     dataKey="revenue"
                     labelLine={false}
                     label={({ name, percent }) => percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
-                    onClick={(entry) => canDrill && handleDrillDown(entry)}
+                    onClick={(entry) => canDrillRow(entry) && handleDrillDown(entry)}
                     style={{ cursor: canDrill ? 'pointer' : 'default' }}
                   >
                     {chartData.map((_, i) => (
@@ -291,9 +292,9 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                 {chartData.map((row, idx) => (
                   <div key={row.id} className="flex items-center justify-between">
                     <button
-                      onClick={() => canDrill && handleDrillDown(row)}
+                      onClick={() => canDrillRow(row) && handleDrillDown(row)}
                       className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border text-right transition-all ${
-                        canDrill ? 'hover:border-amber-400 hover:bg-amber-50 cursor-pointer border-gray-100' : 'cursor-default border-transparent'
+                        canDrillRow(row) ? 'hover:border-amber-400 hover:bg-amber-50 cursor-pointer border-gray-100' : 'cursor-default border-transparent'
                       }`}
                     >
                       <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length] }} />
@@ -337,7 +338,7 @@ export function resolveGroups(item, groupById, variantById, groups) {
   if (item.product_id && groupById[item.product_id]) return [{ group: groupById[item.product_id], weight: 1 }];
   const baseName = item.product_name?.split(' - ')[0]?.trim();
   if (baseName) {
-    const matches = groups.filter(g => g.name === baseName);
+    const matches = groups.filter(g => g.name.trim() === baseName);
     if (matches.length === 1) return [{ group: matches[0], weight: 1 }];
     if (matches.length > 1) {
       // Try to disambiguate by sell_price
@@ -346,6 +347,16 @@ export function resolveGroups(item, groupById, variantById, groups) {
         if (priceMatch) return [{ group: priceMatch, weight: 1 }];
       }
       return matches.map(g => ({ group: g, weight: 1 / matches.length }));
+    }
+    // Fallback: case-insensitive match
+    const iMatches = groups.filter(g => g.name.trim().toLowerCase() === baseName.toLowerCase());
+    if (iMatches.length === 1) return [{ group: iMatches[0], weight: 1 }];
+    if (iMatches.length > 1) {
+      if (item.sell_price != null) {
+        const priceMatch = iMatches.find(g => g.uniform_sell_price === item.sell_price);
+        if (priceMatch) return [{ group: priceMatch, weight: 1 }];
+      }
+      return iMatches.map(g => ({ group: g, weight: 1 / iMatches.length }));
     }
   }
   return [];
