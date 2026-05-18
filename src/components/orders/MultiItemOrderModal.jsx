@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -6,14 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { Search, Package, Plus, Trash2, ShoppingCart } from 'lucide-react';
+import { Search, Package, Plus, Trash2, ShoppingCart, Scan, X } from 'lucide-react';
 
 export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail }) {
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
-  // cart: [{ variant, qty }]
   const [cart, setCart] = useState([]);
   const [notes, setNotes] = useState('');
+  const [scanMode, setScanMode] = useState(false);
+  const [scanInput, setScanInput] = useState('');
+  const [scanFeedback, setScanFeedback] = useState(null); // { type: 'success'|'error', message }
+  const scanInputRef = useRef(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -37,6 +40,49 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
   });
 
   const groupMap = Object.fromEntries(groups.map(g => [g.id, g]));
+
+  // Auto-focus scan input when scan mode opens
+  useEffect(() => {
+    if (scanMode) setTimeout(() => scanInputRef.current?.focus(), 50);
+  }, [scanMode]);
+
+  const handleBarcodeScan = useCallback(async (barcode) => {
+    const code = barcode.trim();
+    if (!code) return;
+    setScanInput('');
+
+    // Find group by barcode
+    const group = groups.find(g => g.barcode && g.barcode.trim() === code);
+    if (!group) {
+      setScanFeedback({ type: 'error', message: `ברקוד ${code} לא נמצא` });
+      setTimeout(() => setScanFeedback(null), 2500);
+      scanInputRef.current?.focus();
+      return;
+    }
+
+    // Fetch variants for this group
+    let variants = [];
+    try {
+      const res = await base44.functions.invoke('getVariantsByGroup', { group_id: group.id });
+      variants = res.data?.variants || [];
+    } catch {}
+
+    if (variants.length === 1) {
+      // Single variant — add directly to cart
+      addToCart(variants[0]);
+      setScanFeedback({ type: 'success', message: `✓ ${group.name} נוסף לסל` });
+    } else if (variants.length > 1) {
+      // Multiple variants — open selector
+      setSelectedGroup(group);
+      setSearch(group.name);
+      setScanMode(false);
+      setScanFeedback(null);
+    } else {
+      setScanFeedback({ type: 'error', message: `${group.name} — אין וריאציות` });
+    }
+    setTimeout(() => setScanFeedback(null), 2500);
+    scanInputRef.current?.focus();
+  }, [groups]);
 
   const getVariantLabel = (v, grp) => {
     const g = grp || groupMap[v.group_id];
@@ -125,9 +171,50 @@ export default function MultiItemOrderModal({ open, onClose, branch, tenantEmail
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
+
+          {/* Scan Mode Banner */}
+          {scanMode && (
+            <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Scan className="w-5 h-5 text-amber-600 animate-pulse" />
+                  <span className="font-semibold text-amber-800 text-sm">מצב סריקה פעיל — כוון סורק לברקוד</span>
+                </div>
+                <button onClick={() => { setScanMode(false); setScanInput(''); setScanFeedback(null); }} className="text-gray-400 hover:text-red-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <input
+                ref={scanInputRef}
+                value={scanInput}
+                onChange={e => setScanInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { handleBarcodeScan(scanInput); } }}
+                className="w-full border rounded-lg px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="ממתין לסריקה..."
+                autoComplete="off"
+              />
+              {scanFeedback && (
+                <div className={`text-sm font-medium text-center px-3 py-1.5 rounded-lg ${scanFeedback.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {scanFeedback.message}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Search */}
           <div>
-            <Label className="mb-1 block">חיפוש מוצר (שם / ברקוד / SKU)</Label>
+            <div className="flex items-center justify-between mb-1">
+              <Label>חיפוש מוצר (שם / ברקוד / SKU)</Label>
+              {!scanMode && (
+                <button
+                  onClick={() => { setScanMode(true); setSelectedGroup(null); setSearch(''); }}
+                  className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium"
+                >
+                  <Scan className="w-3.5 h-3.5" />
+                  סרוק ברקוד
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Search className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
               <Input
