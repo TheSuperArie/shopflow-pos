@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, GitBranch, ShoppingBag } from 'lucide-react';
+import { Bell, GitBranch, ShoppingBag, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNavigateToBranches }) {
@@ -25,6 +25,29 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     refetchInterval: 30000,
   });
 
+  // Unread chat messages from branches (HQ side)
+  const { data: unreadChats = [] } = useQuery({
+    queryKey: ['ticket-chats-hq-bell', tenantEmail],
+    queryFn: () => base44.entities.TicketChat.filter({ sender_role: 'BRANCH', is_read: false }),
+    enabled: !!tenantEmail,
+    refetchInterval: 15000,
+  });
+
+  // Group unread chats by ticket_id, attach branch name via tickets
+  const ticketById = Object.fromEntries(tickets.map(t => [t.id, t]));
+  const chatsByTicket = {};
+  for (const chat of unreadChats) {
+    if (!chatsByTicket[chat.ticket_id]) chatsByTicket[chat.ticket_id] = [];
+    chatsByTicket[chat.ticket_id].push(chat);
+  }
+  const unreadChatTickets = Object.entries(chatsByTicket).map(([ticketId, chats]) => ({
+    ticketId,
+    count: chats.length,
+    chatIds: chats.map(c => c.id),
+    branchName: ticketById[ticketId]?.branch_name || 'סניף',
+    latestDate: chats[chats.length - 1]?.created_date,
+  }));
+
   // Real-time subscriptions
   useEffect(() => {
     const unsub1 = base44.entities.OrderTicket.subscribe(() => {
@@ -33,7 +56,10 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     const unsub2 = base44.entities.NetworkAlert.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['network-alerts', tenantEmail] });
     });
-    return () => { unsub1(); unsub2(); };
+    const unsub3 = base44.entities.TicketChat.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['ticket-chats-hq-bell', tenantEmail] });
+    });
+    return () => { unsub1(); unsub2(); unsub3(); };
   }, [tenantEmail, queryClient]);
 
   // Close on outside click
@@ -44,8 +70,8 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
   }, []);
 
   const pendingOrders = tickets.filter(t => t.status === 'pending');
-  const unreadAlerts = alerts; // already filtered to is_read=false
-  const totalCount = pendingOrders.length + unreadAlerts.length;
+  const unreadAlerts = alerts;
+  const totalCount = pendingOrders.length + unreadAlerts.length + unreadChatTickets.length;
 
   const markAlertRead = async (alert) => {
     await base44.entities.NetworkAlert.delete(alert.id);
@@ -53,6 +79,15 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     setOpen(false);
     if (alert.navigate_to === 'branches' && onNavigateToBranches) onNavigateToBranches();
     else if (onNavigateToOrders) onNavigateToOrders();
+  };
+
+  const handleChatClick = async ({ chatIds }) => {
+    // Mark all chats in this ticket as read
+    await Promise.all(chatIds.map(id => base44.entities.TicketChat.update(id, { is_read: true })));
+    queryClient.invalidateQueries({ queryKey: ['ticket-chats-hq-bell', tenantEmail] });
+    queryClient.invalidateQueries({ queryKey: ['ticket-chats-hq', tenantEmail] });
+    setOpen(false);
+    onNavigateToOrders?.();
   };
 
   return (
@@ -80,6 +115,27 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
             <div className="px-4 py-8 text-center text-gray-400 text-sm">אין התראות חדשות</div>
           ) : (
             <div className="max-h-80 overflow-y-auto divide-y">
+              {/* Unread chat messages from branches */}
+              {unreadChatTickets.map(ct => (
+                <button
+                  key={ct.ticketId}
+                  onClick={() => handleChatClick(ct)}
+                  className="w-full text-right px-4 py-3 hover:bg-blue-50 transition-colors"
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-800">{ct.branchName} — {ct.count} הודעות חדשות</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {ct.latestDate ? format(new Date(ct.latestDate), 'dd/MM/yy HH:mm') : ''}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+
               {/* System alerts first */}
               {unreadAlerts.map(alert => (
                 <button
