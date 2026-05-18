@@ -10,9 +10,10 @@ import NetworkSettingsTab from '@/components/network/master/NetworkSettingsTab';
 import NetworkSuppliersTab from '@/components/network/master/NetworkSuppliersTab';
 import NetworkOrdersTab from '@/components/network/master/NetworkOrdersTab';
 import NotificationBell from '@/components/network/master/NotificationBell';
+import NetworkAdminDashboard from '@/components/network/master/NetworkAdminDashboard';
 
 export default function NetworkMasterDashboard() {
-  const [activeTab, setActiveTab] = useState('branches');
+  const [activeTab, setActiveTab] = useState('overview');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
   const navigate = useNavigate();
@@ -93,6 +94,7 @@ export default function NetworkMasterDashboard() {
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           {tenantEmail && (
             <>
+              {activeTab === 'overview' && <NetworkAdminDashboard tenantEmail={tenantEmail} />}
               {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
               {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Crown, GitBranch, BarChart2, LogOut, X, ShoppingCart, Settings, Building2, ClipboardList } from 'lucide-react';
+import { Crown, GitBranch, BarChart2, LogOut, X, ShoppingCart, Settings, Building2, ClipboardList, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const NAV_ITEMS = [
+  { tab: 'overview',  label: 'דאשבורד מנהל',      icon: LayoutDashboard },
   { tab: 'branches',  label: 'רשימת סניפים',     icon: GitBranch },
   { tab: 'analytics', label: 'דוחות וגרפים',      icon: BarChart2 },
   { tab: 'orders',    label: 'הזמנות מהסניפים',   icon: ClipboardList },
