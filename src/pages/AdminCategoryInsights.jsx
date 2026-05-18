@@ -33,13 +33,6 @@ export default function AdminCategoryInsights() {
     setLevel0GroupBy('subcat');
   }, [categoryId]);
 
-  // When no sub-cats exist but dimensions do — auto-switch to dimension view
-  useEffect(() => {
-    if (subCategories.length === 0 && availableDimensionNames.length > 0 && !drillBucket) {
-      setLevel0GroupBy('dimension');
-    }
-  }, [subCategories.length, availableDimensionNames.length]);
-
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [], isLoading: loadingCategories, isFetching: fetchingCategories } = useQuery({
     queryKey: ['categories', user?.email],
@@ -231,6 +224,13 @@ export default function AdminCategoryInsights() {
     }
     return items;
   }, [dateSales, groupById, categoryById, treeCategoryIds, subCatById, variantById, loadingCategories, settledCategories]);
+
+  // When no sub-cats exist but dimensions do — auto-switch to dimension view at level 0
+  useEffect(() => {
+    if (subCategories.length === 0 && availableDimensionNames.length > 0) {
+      setLevel0GroupBy('dimension');
+    }
+  }, [subCategories.length, availableDimensionNames.length]);
 
   // ── Drill state ──────────────────────────────────────────────────
   // drillBucket stores { bucketId (subCatId or '__direct__'), bucketName }
