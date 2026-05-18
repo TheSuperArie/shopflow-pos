@@ -18,16 +18,13 @@ function parseVariantLabel(label = '') {
 }
 
 async function exportTicketToCSV(ticket, lineItems) {
-  // Fetch branch info and variant SKUs in parallel
-  const variantIds = [...new Set(lineItems.map(i => i.variant_id).filter(Boolean))];
-  const [branches, variants] = await Promise.all([
+  // Fetch branch info and all variants in parallel
+  const [branches, allVariants] = await Promise.all([
     base44.entities.Branch.filter({ id: ticket.branch_id }),
-    variantIds.length > 0
-      ? Promise.all(variantIds.map(id => base44.entities.FlexibleVariant.filter({ id }))).then(res => res.flat())
-      : Promise.resolve([]),
+    base44.entities.FlexibleVariant.list('id', 5000),
   ]);
   const branch = branches[0] || {};
-  const variantMap = Object.fromEntries(variants.map(v => [v.id, v]));
+  const variantMap = Object.fromEntries(allVariants.map(v => [String(v.id), v]));
 
   const headerRows = [
     ['סניף:', ticket.branch_name || ''],
@@ -40,7 +37,7 @@ async function exportTicketToCSV(ticket, lineItems) {
   ];
 
   const dataRows = lineItems.map(item => {
-    const variant = variantMap[item.variant_id];
+    const variant = variantMap[String(item.variant_id)];
     const sku = variant?.sku || item.sku || '';
     const { productName, variantValue } = parseVariantLabel(item.variant_label);
     return [sku, productName, variantValue, item.requested_qty];
