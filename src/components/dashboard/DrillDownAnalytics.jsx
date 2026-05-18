@@ -211,9 +211,8 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
 
   const handleDrillDown = (row) => {
-    // Allow drill into regular nodes (P1→P2→P3) AND into the uncategorized bucket at P0
-    if (currentLevel < 3 && (!row.id.startsWith('__') || row.id === '__uncategorized__')) {
-      setDrillPath(prev => [...prev, { level: currentLevel, id: row.id, name: row.name }]);
+    if (canDrillRow(row)) {
+      setDrillPath(prev => [...prev, { level: currentLevel, id: String(row.id), name: row.name }]);
     }
   };
 
@@ -221,7 +220,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
     setDrillPath(prev => prev.slice(0, idx));
   };
 
-  const canDrillRow = (row) => currentLevel < 3 && (!row.id.startsWith('__') || row.id === '__uncategorized__');
+  const canDrillRow = (row) => currentLevel < 3 && (!String(row.id).startsWith('__') || String(row.id) === '__uncategorized__');
   const canDrill = currentLevel < 3;
 
   const levelLabel = ['קטגוריות', 'תת-קטגוריות', 'תיקיות מוצרים', effectiveDimension || 'ממד'][Math.min(currentLevel, 3)];
