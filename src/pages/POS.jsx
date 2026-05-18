@@ -47,6 +47,14 @@ export default function POS() {
     enabled: !!user?.email,
     staleTime: 60000,
   });
+
+  const { data: appSettingsList = [] } = useQuery({
+    queryKey: ['app-settings', user?.email],
+    queryFn: () => base44.entities.AppSettings.filter({ created_by: user.email }),
+    enabled: !!user?.email,
+    staleTime: 60000,
+  });
+  const virtualFolders = appSettingsList[0]?.pos_virtual_folders || [];
   // Primary branch: first active branch (or first branch as fallback)
   const activeBranch = branches.find(b => b.is_active) || branches[0] || null;
 
@@ -481,6 +489,7 @@ export default function POS() {
                   ? allGroups.filter(g => g.category_id === selectedCategory)
                   : groups}
                 variants={allVariants}
+                virtualFolders={virtualFolders}
                 onSelect={handleGroupSelect}
               />
             </>

@@ -11,12 +11,14 @@ import { Loader2, Lock, Save, BarChart2, LogOut } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
 import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
+import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
 
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
   const [storeName, setStoreName] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const [defaultDimension, setDefaultDimension] = useState('');
+  const [virtualFolders, setVirtualFolders] = useState([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -34,6 +36,12 @@ export default function AdminSettings() {
     enabled: !!user,
   });
 
+  const { data: allGroups = [] } = useQuery({
+    queryKey: ['all-groups-settings', user?.email],
+    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
+    enabled: !!user,
+  });
+
   const dimensionNames = [...new Set(dimensions.filter(d => d.is_active !== false).map(d => d.name))];
 
   useEffect(() => {
@@ -42,6 +50,7 @@ export default function AdminSettings() {
       setStoreName(settings[0].store_name || 'החנות שלי');
       setLowStockThreshold(settings[0].low_stock_threshold || 5);
       setDefaultDimension(settings[0].dashboard_default_dimension || '');
+      setVirtualFolders(settings[0].pos_virtual_folders || []);
     }
   }, [settings]);
 
@@ -120,6 +129,7 @@ export default function AdminSettings() {
               store_name: storeName,
               low_stock_threshold: lowStockThreshold,
               dashboard_default_dimension: defaultDimension || null,
+              pos_virtual_folders: virtualFolders,
             })}
             className="bg-amber-500 hover:bg-amber-600 gap-2"
             disabled={!password}
@@ -162,6 +172,12 @@ export default function AdminSettings() {
           </Button>
         </CardContent>
       </Card>
+
+      <VirtualFolderManager
+        folders={virtualFolders}
+        allGroups={allGroups}
+        onChange={setVirtualFolders}
+      />
 
       <SaleMigrationTool tenantEmail={user?.email} />
       <DangerZone user={user} />
