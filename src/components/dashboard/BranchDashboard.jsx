@@ -59,11 +59,20 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
     enabled: !!tenantEmail,
   });
 
-  const { data: variants = [] } = useQuery({
+  const { data: productVariants = [] } = useQuery({
     queryKey: ['product-variants-all', tenantEmail],
     queryFn: () => base44.entities.ProductVariant.filter({ created_by: tenantEmail }, 'id', 5000),
     enabled: !!tenantEmail,
   });
+
+  const { data: flexibleVariants = [] } = useQuery({
+    queryKey: ['flexible-variants-all', tenantEmail],
+    queryFn: () => base44.entities.FlexibleVariant.filter({ created_by: tenantEmail }, 'id', 5000),
+    enabled: !!tenantEmail,
+  });
+
+  // Merge both variant types — FlexibleVariant takes precedence on same ID
+  const variants = [...productVariants, ...flexibleVariants];
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories-all', tenantEmail],

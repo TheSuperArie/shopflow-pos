@@ -75,12 +75,21 @@ export default function AdminCategoryInsights() {
     staleTime: 0,
   });
 
-  const { data: variants = [] } = useQuery({
+  const { data: productVariants = [] } = useQuery({
     queryKey: ['insights-variants', user?.email],
     queryFn: () => base44.entities.ProductVariant.filter({ created_by: user.email }),
     enabled: !!user,
     staleTime: 0,
   });
+
+  const { data: flexibleVariants = [] } = useQuery({
+    queryKey: ['insights-flexible-variants', user?.email],
+    queryFn: () => base44.entities.FlexibleVariant.filter({ created_by: user.email }),
+    enabled: !!user,
+    staleTime: 0,
+  });
+
+  const variants = [...productVariants, ...flexibleVariants];
 
   const { data: dimensions = [] } = useQuery({
     queryKey: ['insights-dimensions', user?.email],
