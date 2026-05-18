@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Lock, Save, BarChart2, LogOut } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
+import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
 
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
@@ -162,6 +163,7 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
 
+      <SaleMigrationTool tenantEmail={user?.email} />
       <DangerZone user={user} />
     </div>
   );
