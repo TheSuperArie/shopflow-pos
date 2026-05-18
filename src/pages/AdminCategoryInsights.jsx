@@ -389,8 +389,8 @@ export default function AdminCategoryInsights() {
       }
     }
 
-    // If no dimension key at all — group by product group name (most meaningful fallback)
-    if (!dimKey) {
+    // Helper: group by product group name
+    const groupByProductName = () => {
       const map = {};
       for (const item of filteredItems) {
         const key = item.resolvedGroup?.id || item.product_name || 'כללי';
@@ -400,7 +400,21 @@ export default function AdminCategoryInsights() {
         map[key].quantity += item.quantity || 0;
       }
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-    }
+    };
+
+    // If no dimension key at all — group by product group name
+    if (!dimKey) return groupByProductName();
+
+    // If the selected dimension doesn't exist on ANY variant in this bucket — fallback to product name grouping
+    // This handles categories like "belts" that have no variants with this dimension at all
+    const dimExistsInBucket = filteredItems.some(item => {
+      if (item.resolvedVariant?.dimensions?.[dimKey] != null) return true;
+      const varId = item.variant_id ?? item.variantId;
+      if (varId && variantDimMap[String(varId)]) return true;
+      return false;
+    });
+    const dimExistsInTargetValues = targetValuesL1.length > 0 || allKnownDimValues.size > 0;
+    if (!dimExistsInBucket && !dimExistsInTargetValues) return groupByProductName();
 
     const map = {};
     for (const item of filteredItems) {
