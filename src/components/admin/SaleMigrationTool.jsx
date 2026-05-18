@@ -30,17 +30,18 @@ export default function SaleMigrationTool({ tenantEmail }) {
     enabled: !!tenantEmail,
   });
 
-  // Find all unique base names from items WITHOUT group_id
+  // Find all unique FULL product names from items WITHOUT group_id
+  // key = full product_name, also store the baseName for auto-matching
   const unassignedNames = useMemo(() => {
-    const map = {}; // baseName -> { count, saleIds: Set, sell_price }
+    const map = {}; // fullName -> { fullName, baseName, count, sell_price }
     for (const sale of allSales) {
       for (const item of (sale.items || [])) {
-        if (item.group_id) continue; // already has group — skip
-        const baseName = item.product_name?.split(' - ')[0]?.trim();
-        if (!baseName) continue;
-        if (!map[baseName]) map[baseName] = { baseName, count: 0, saleIds: new Set(), sell_price: item.sell_price };
-        map[baseName].count += item.quantity || 1;
-        map[baseName].saleIds.add(sale.id);
+        if (item.group_id) continue;
+        const fullName = item.product_name?.trim();
+        if (!fullName) continue;
+        const baseName = fullName.split(' - ')[0]?.trim();
+        if (!map[fullName]) map[fullName] = { fullName, baseName, count: 0, sell_price: item.sell_price };
+        map[fullName].count += item.quantity || 1;
       }
     }
     return Object.values(map).sort((a, b) => b.count - a.count);
@@ -60,14 +61,14 @@ export default function SaleMigrationTool({ tenantEmail }) {
     });
   };
 
-  const getEffectiveGroupId = (baseName) => {
-    if (assignments[baseName]) return assignments[baseName];
+  const getEffectiveGroupId = (fullName, baseName) => {
+    if (assignments[fullName]) return assignments[fullName];
     const candidates = candidatesFor(baseName);
     if (candidates.length === 1) return candidates[0].id;
     return null;
   };
 
-  const anyAssigned = unassignedNames.some(n => !!getEffectiveGroupId(n.baseName));
+  const anyAssigned = unassignedNames.some(n => !!getEffectiveGroupId(n.fullName, n.baseName));
 
   const handleRun = async () => {
     setRunning(true);
@@ -81,8 +82,9 @@ export default function SaleMigrationTool({ tenantEmail }) {
       let changed = false;
       const newItems = (sale.items || []).map(item => {
         if (item.group_id) return item; // already set
-        const baseName = item.product_name?.split(' - ')[0]?.trim();
-        const assignedGroupId = getEffectiveGroupId(baseName);
+        const fullName = item.product_name?.trim();
+        const baseName = fullName?.split(' - ')[0]?.trim();
+        const assignedGroupId = getEffectiveGroupId(fullName, baseName);
         if (!assignedGroupId) { skipped++; return item; }
         changed = true;
         return { ...item, group_id: assignedGroupId };
@@ -133,49 +135,40 @@ export default function SaleMigrationTool({ tenantEmail }) {
           <span className="w-56 text-center">שייך ל-Group</span>
         </div>
 
-        {unassignedNames.map(({ baseName, count, sell_price }) => {
+        {unassignedNames.map(({ fullName, baseName, count, sell_price }) => {
           const candidates = candidatesFor(baseName);
-          const assigned = assignments[baseName];
-          // Auto-select if exactly one candidate
-          const autoSelected = candidates.length === 1 && !assignments[baseName];
-          if (autoSelected && !assignments[baseName]) {
-            // trigger auto-assign (side-effect in render — use effect instead via initial state trick)
-          }
+          const assigned = assignments[fullName];
+          const autoGroupId = candidates.length === 1 ? candidates[0].id : null;
+          const isGreen = !!assigned || !!autoGroupId;
           return (
-            <div key={baseName} className="flex items-center gap-3 p-3 rounded-xl border bg-gray-50">
+            <div key={fullName} className="flex items-center gap-3 p-3 rounded-xl border bg-gray-50">
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-gray-800 truncate" title={baseName}>📦 {baseName}</p>
+                <p className="font-bold text-sm text-gray-800 truncate" title={fullName}>📦 {fullName}</p>
                 <div className="flex gap-2 mt-1 flex-wrap">
                   <Badge variant="outline" className="text-xs">{Math.round(count)} יח׳</Badge>
                   {sell_price && <Badge variant="outline" className="text-xs">₪{sell_price}</Badge>}
                   {candidates.length > 1 && (
-                    <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-200">⚠️ {candidates.length} groups עם אותו שם</Badge>
+                    <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-200">⚠️ {candidates.length} התאמות</Badge>
                   )}
-                  {candidates.length === 0 && (
-                    <Badge className="text-xs bg-red-100 text-red-700 border-red-200">לא נמצא התאמה אוטומטית</Badge>
+                  {candidates.length === 0 && !assigned && (
+                    <Badge className="text-xs bg-red-100 text-red-700 border-red-200">לא נמצא אוטומטית</Badge>
                   )}
-                  {candidates.length === 1 && !assigned && (
-                    <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200">התאמה אוטומטית: {candidates[0].name.trim()}</Badge>
+                  {autoGroupId && !assigned && (
+                    <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200">אוטומטי: {candidates[0].name.trim()}</Badge>
                   )}
                 </div>
               </div>
               <Select
-                value={assigned || (candidates.length === 1 ? candidates[0].id : '')}
-                onValueChange={val => setAssignments(prev => ({ ...prev, [baseName]: val }))}
+                value={assigned || autoGroupId || ''}
+                onValueChange={val => setAssignments(prev => ({ ...prev, [fullName]: val }))}
               >
-                <SelectTrigger className={`w-56 h-9 text-sm ${(assigned || candidates.length === 1) ? 'border-green-400 bg-green-50' : 'border-gray-300'}`}>
+                <SelectTrigger className={`w-56 h-9 text-sm ${isGreen ? 'border-green-400 bg-green-50' : 'border-gray-300'}`}>
                   <SelectValue placeholder="בחר group..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {candidates.length > 0 ? (
-                    candidates.map(g => (
-                      <SelectItem key={g.id} value={g.id}>{g.name.trim()}</SelectItem>
-                    ))
-                  ) : (
-                    groups.map(g => (
-                      <SelectItem key={g.id} value={g.id}>{g.name.trim()}</SelectItem>
-                    ))
-                  )}
+                  {groups.map(g => (
+                    <SelectItem key={g.id} value={g.id}>{g.name.trim()}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
