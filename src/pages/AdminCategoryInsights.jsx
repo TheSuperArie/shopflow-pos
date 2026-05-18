@@ -22,7 +22,9 @@ export default function AdminCategoryInsights() {
   const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(() => searchParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
   const branchId = searchParams.get('branchId') || null;
-  const [selectedDimension, setSelectedDimension] = useState('__auto__');
+  const [selectedDimension, setSelectedDimension] = useState(() => {
+    return localStorage.getItem(`insights_dim_${categoryId}`) || '__auto__';
+  });
 
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [], isLoading: loadingCategories, isFetching: fetchingCategories } = useQuery({
@@ -124,14 +126,8 @@ export default function AdminCategoryInsights() {
 
   // All dimension names used by groups in our tree
   const availableDimensionNames = useMemo(() => {
+    // Only include dimension names that actually appear in variants belonging to this category tree
     const namesSet = new Set();
-    // From VariantDimension records belonging to our tree categories
-    for (const dim of dimensions) {
-      if (treeCategoryIds.has(dim.category_id) && dim.is_active !== false) {
-        namesSet.add(dim.name.trim());
-      }
-    }
-    // Also discover from actual variant data (only add if not already in set)
     for (const v of variants) {
       const g = groupById[v.group_id];
       if (g && treeCategoryIds.has(g.category_id)) {
@@ -141,7 +137,7 @@ export default function AdminCategoryInsights() {
       }
     }
     return [...namesSet];
-  }, [dimensions, variants, groupById, treeCategoryIds]);
+  }, [variants, groupById, treeCategoryIds]);
 
 
 
@@ -385,14 +381,12 @@ export default function AdminCategoryInsights() {
 
   const handleDrillDown = (row) => {
     if (canDrill) {
-      setSelectedDimension('__auto__');
       setDrillPath([{ bucketId: row.id, bucketName: row.name }]);
     }
   };
 
   const handleBack = () => {
     setDrillPath([]);
-    setSelectedDimension('__auto__');
   };
 
   // ── Render ───────────────────────────────────────────────────────
@@ -414,7 +408,7 @@ export default function AdminCategoryInsights() {
           {availableDimensionNames.length > 0 && (!!drillBucket || (!loadingCategories && !fetchingCategories && (!hasSubCats || !hasSubCatData))) && (
             <Select
               value={selectedDimension}
-              onValueChange={(v) => { setSelectedDimension(v); }}
+              onValueChange={(v) => { setSelectedDimension(v); localStorage.setItem(`insights_dim_${categoryId}`, v); }}
             >
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="קבץ לפי..." />
