@@ -79,6 +79,7 @@ function AssignmentRow({ baseName, count, sell_price, candidates, groups, onDone
 export default function SaleMigrationTool({ tenantEmail }) {
   const [rowStates, setRowStates] = useState({}); // baseName -> state
   const [doneNames, setDoneNames] = useState(new Set());
+  const [progress, setProgress] = useState({}); // baseName -> { current, total }
 
   const { data: allSales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['migration-sales', tenantEmail],
@@ -138,36 +139,49 @@ export default function SaleMigrationTool({ tenantEmail }) {
     const candidates = candidatesFor(baseName);
     const st = getState(baseName, candidates);
     updateState(baseName, { running: true });
-    let updated = 0;
 
-    for (const sale of allSales) {
-      let changed = false;
-      let newItems = [];
+    // Only process sales that actually contain this product name (unassigned)
+    const relevantSales = allSales.filter(sale =>
+      (sale.items || []).some(item => !item.group_id && item.product_name?.split(' - ')[0]?.trim() === baseName)
+    );
 
-      for (const item of (sale.items || [])) {
-        if (item.group_id) { newItems.push(item); continue; }
+    setProgress(prev => ({ ...prev, [baseName]: { current: 0, total: relevantSales.length } }));
+
+    let i = 0;
+    for (const sale of relevantSales) {
+      const newItems = (sale.items || []).map(item => {
+        if (item.group_id) return item;
         const itemBase = item.product_name?.split(' - ')[0]?.trim();
-        if (itemBase !== baseName) { newItems.push(item); continue; }
-        changed = true;
+        if (itemBase !== baseName) return item;
 
         if (st.mode === 'single') {
-          newItems.push({ ...item, group_id: st.group1 });
+          return { ...item, group_id: st.group1 };
         } else {
-          const qty = item.quantity || 1;
-          const ratio1 = st.pct / 100;
-          const ratio2 = 1 - ratio1;
-          newItems.push({ ...item, group_id: st.group1, quantity: Math.round(qty * ratio1 * 100) / 100 });
-          newItems.push({ ...item, group_id: st.group2, quantity: Math.round(qty * ratio2 * 100) / 100 });
+          // Return array marker — we'll flatten below
+          return { __split: true, item, group1: st.group1, group2: st.group2, pct: st.pct };
+        }
+      });
+
+      // Flatten split items
+      const flatItems = [];
+      for (const x of newItems) {
+        if (x.__split) {
+          const qty = x.item.quantity || 1;
+          const r1 = x.pct / 100;
+          flatItems.push({ ...x.item, group_id: x.group1, quantity: Math.round(qty * r1 * 100) / 100 });
+          flatItems.push({ ...x.item, group_id: x.group2, quantity: Math.round(qty * (1 - r1) * 100) / 100 });
+        } else {
+          flatItems.push(x);
         }
       }
 
-      if (changed) {
-        await base44.entities.Sale.update(sale.id, { ...sale, items: newItems });
-        updated++;
-      }
+      await base44.entities.Sale.update(sale.id, { ...sale, items: flatItems });
+      i++;
+      setProgress(prev => ({ ...prev, [baseName]: { current: i, total: relevantSales.length } }));
     }
 
     updateState(baseName, { running: false });
+    setProgress(prev => { const n = { ...prev }; delete n[baseName]; return n; });
     setDoneNames(prev => new Set([...prev, baseName]));
   };
 
@@ -207,6 +221,8 @@ export default function SaleMigrationTool({ tenantEmail }) {
           const isSplit = st.mode === 'split';
           const canRun = isSplit ? (!!st.group1 && !!st.group2 && st.group1 !== st.group2) : !!st.group1;
 
+          const prog = progress[baseName];
+
           return (
             <div key={baseName} className="p-3 rounded-xl border bg-gray-50 space-y-2">
               {/* Header */}
@@ -238,8 +254,8 @@ export default function SaleMigrationTool({ tenantEmail }) {
                       {groups.map(g => <SelectItem key={g.id} value={g.id}>{g.name.trim()}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Button size="sm" disabled={!canRun || st.running} onClick={() => handleRun(baseName)} className="bg-amber-500 hover:bg-amber-600 text-white shrink-0">
-                    {st.running ? <Loader2 className="w-4 h-4 animate-spin" /> : 'החל שיוך'}
+                  <Button size="sm" disabled={!canRun || st.running} onClick={() => handleRun(baseName)} className="bg-amber-500 hover:bg-amber-600 text-white shrink-0 min-w-[90px]">
+                    {st.running ? (prog ? `${prog.current}/${prog.total}` : <Loader2 className="w-4 h-4 animate-spin" />) : 'החל שיוך'}
                   </Button>
                 </div>
               )}
@@ -280,7 +296,7 @@ export default function SaleMigrationTool({ tenantEmail }) {
                   </div>
 
                   <Button size="sm" disabled={!canRun || st.running} onClick={() => handleRun(baseName)} className="w-full bg-purple-500 hover:bg-purple-600 text-white">
-                    {st.running ? <Loader2 className="w-4 h-4 animate-spin" /> : `החל פיצול ${st.pct}/${100 - st.pct}`}
+                    {st.running ? (prog ? `מעדכן ${prog.current}/${prog.total}...` : <Loader2 className="w-4 h-4 animate-spin" />) : `החל פיצול ${st.pct}/${100 - st.pct}`}
                   </Button>
                 </div>
               )}
