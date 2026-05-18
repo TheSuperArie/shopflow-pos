@@ -272,40 +272,12 @@ export default function AdminCategoryInsights() {
         return Object.values(map).sort((a, b) => b.revenue - a.revenue);
       }
       {
-        // No sub-cats (or all ambiguous): group by selected dimension
-        // Build known values for all dimensions from VariantDimension records
-        const allKnownValues = {};
-        for (const dim of dimensions) {
-          if (treeCategoryIds.has(dim.category_id) && dim.is_active !== false) {
-            allKnownValues[dim.name.trim()] = (dim.values || []).map(v => v.trim());
-          }
-        }
-
+        // No sub-cats: group by product group name (Level 0)
         const map = {};
         for (const item of filteredItems) {
-          let dimVal = null;
-
-          // Priority 1: direct variant dimension
-          if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
-            dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
-          }
-
-          // Priority 2: parse product_name segments against known dimension values
-          if (!dimVal && item.product_name) {
-            const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim()).filter(Boolean);
-            const targetValues = dimKey ? (allKnownValues[dimKey] || []) : Object.values(allKnownValues).flat();
-            for (const seg of segments) {
-              if (targetValues.some(v => v.toLowerCase() === seg.toLowerCase())) {
-                dimVal = seg;
-                break;
-              }
-            }
-          }
-
-          if (!dimVal) dimVal = item.resolvedGroup?.name || 'אחר';
-
-          const key = `__dim__${dimVal}`;
-          if (!map[key]) map[key] = { id: key, name: dimVal, revenue: 0, quantity: 0 };
+          const key = item.resolvedGroup?.id || 'other';
+          const label = item.resolvedGroup?.name || 'כללי';
+          if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
           map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
           map[key].quantity += item.quantity || 0;
         }
@@ -411,7 +383,7 @@ export default function AdminCategoryInsights() {
   const itemsWithSubCat = resolvedItems.filter(item => item.subCatId);
   const hasSubCatData = itemsWithSubCat.length > 0;
   // Level 0: if has sub-cats WITH data → "תת-קטגוריות", else → dimension name
-  const level0Label = (hasSubCats && hasSubCatData) ? 'תת-קטגוריות' : dimLabel;
+  const level0Label = hasSubCats ? 'תת-קטגוריות' : 'מוצרים';
   const currentLabel = !drillBucket ? level0Label : dimLabel;
   const topLevelLabel = level0Label;
   const canDrill = !drillBucket;
@@ -507,7 +479,7 @@ export default function AdminCategoryInsights() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                פילוח לפי: <span className="text-amber-600">{!drillBucket && hasSubCats ? 'תת-קטגוריות' : currentLabel}</span>
+                פילוח לפי: <span className="text-amber-600">{currentLabel}</span>
                 {drillBucket && (
                   <span className="text-sm text-gray-400 font-normal mr-2">({drillBucket.bucketName})</span>
                 )}
@@ -541,7 +513,7 @@ export default function AdminCategoryInsights() {
           {/* Breakdown List */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">פירוט — {!drillBucket && hasSubCats ? 'תת-קטגוריות' : currentLabel}</CardTitle>
+              <CardTitle className="text-base">פירוט — {currentLabel}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
