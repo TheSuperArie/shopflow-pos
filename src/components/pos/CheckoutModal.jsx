@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Banknote, CreditCard, Loader2, RotateCcw } from 'lucide-react';
+import { Banknote, CreditCard, Loader2, RotateCcw, Receipt } from 'lucide-react';
 
 const BANKNOTES = [200, 100, 50, 20];
 const COINS = [10, 5, 2, 1];
@@ -29,6 +29,7 @@ function CurrencyButton({ value, type, onClick }) {
 export default function CheckoutModal({ open, total, onConfirm, onClose, isProcessing }) {
   const [method, setMethod] = useState(null);
   const [received, setReceived] = useState(0);
+  const [printReceipt, setPrintReceipt] = useState(false);
 
   const change = received - (total || 0);
   const isShort = received > 0 && change < 0;
@@ -41,14 +42,16 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
   const handleConfirm = () => {
     if (!method) return;
     if (method === 'מזומן' && !hasEnough) return;
-    onConfirm(method, method === 'מזומן' ? { received, change: Math.max(0, change) } : null);
+    onConfirm(method, method === 'מזומן' ? { received, change: Math.max(0, change) } : null, printReceipt);
     setMethod(null);
     setReceived(0);
+    setPrintReceipt(false);
   };
 
   const handleClose = () => {
     setMethod(null);
     setReceived(0);
+    setPrintReceipt(false);
     onClose();
   };
 
@@ -63,6 +66,18 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
           <p className="text-gray-500">סכום לתשלום</p>
           <p className="text-4xl font-bold text-amber-600 mt-1">₪{total?.toFixed(2)}</p>
         </div>
+
+        {/* Receipt checkbox - always visible */}
+        <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer hover:bg-amber-50 hover:border-amber-300 transition-colors">
+          <input
+            type="checkbox"
+            checked={printReceipt}
+            onChange={e => setPrintReceipt(e.target.checked)}
+            className="w-4 h-4 accent-amber-500"
+          />
+          <Receipt className="w-4 h-4 text-gray-500" />
+          <span className="text-sm font-medium text-gray-700">הוצאת קבלה ללקוח</span>
+        </label>
 
         {/* Method selection */}
         {!method && (

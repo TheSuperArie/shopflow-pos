@@ -178,7 +178,7 @@ export default function POS() {
   };
 
   const saleMutation = useMutation({
-    mutationFn: async ({ paymentMethod, cashDetails }) => {
+    mutationFn: async ({ paymentMethod, cashDetails, printReceipt }) => {
       const totalCost = cartItems.reduce((s, i) => s + (i.cost_price || 0) * i.quantity, 0);
       const total = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
@@ -246,7 +246,7 @@ export default function POS() {
       setCartItems([]);
       setShowCheckout(false);
       setShowCart(false);
-      setShowReceipt(true);
+      if (saleMutation.variables?.printReceipt) setShowReceipt(true);
       if (wentOffline || isEffectivelyOffline) {
         toast({ title: '✅ המכירה נשמרה מקומית (אופליין)', description: 'תסונכרן כשיחזור החיבור', duration: 3000 });
       } else {
@@ -538,7 +538,7 @@ export default function POS() {
       <CheckoutModal
         open={showCheckout}
         total={cartTotal}
-        onConfirm={(method, cashDetails) => saleMutation.mutate({ paymentMethod: method, cashDetails })}
+        onConfirm={(method, cashDetails, printReceipt) => saleMutation.mutate({ paymentMethod: method, cashDetails, printReceipt })}
         onClose={() => setShowCheckout(false)}
         isProcessing={saleMutation.isPending}
       />
