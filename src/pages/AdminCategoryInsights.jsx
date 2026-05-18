@@ -314,16 +314,34 @@ export default function AdminCategoryInsights() {
     }
     const targetValuesL1 = dimKey ? (allKnownValuesL1[dimKey] || [...knownValuesForDim]) : Object.values(allKnownValuesL1).flat();
 
+    // Build a map of variant_id → dimension value for quick lookup
+    const variantDimMap = {};
+    if (dimKey) {
+      for (const v of variants) {
+        if (v.dimensions?.[dimKey] != null) {
+          variantDimMap[String(v.id)] = String(v.dimensions[dimKey]).trim();
+        }
+      }
+    }
+
     const map = {};
     for (const item of filteredItems) {
       let dimVal = null;
 
-      // Priority 1: Direct variant dimension lookup
+      // Priority 1: Direct variant dimension lookup via resolvedVariant
       if (dimKey && item.resolvedVariant?.dimensions?.[dimKey] != null) {
         dimVal = String(item.resolvedVariant.dimensions[dimKey]).trim();
       }
 
-      // Priority 2: Parse product_name segments against known values
+      // Priority 2: variant_id lookup in full variants list
+      if (!dimVal && dimKey) {
+        const varId = item.variant_id ?? item.variantId;
+        if (varId && variantDimMap[String(varId)]) {
+          dimVal = variantDimMap[String(varId)];
+        }
+      }
+
+      // Priority 3: Parse product_name segments against known values
       if (!dimVal && item.product_name) {
         const segments = item.product_name.split(/[\s\-\/]+/).map(s => s.trim()).filter(Boolean);
         for (const seg of segments) {
@@ -372,8 +390,8 @@ export default function AdminCategoryInsights() {
   // Dimension names available only within the current drill bucket's variants
   const bucketDimensionNames = useMemo(() => {
     if (!drillBucket) return availableDimensionNames;
-    const { bucketId } = drillBucket;
     const namesSet = new Set();
+    // P1: from resolved variants on items
     for (const item of filteredItems) {
       if (item.resolvedVariant?.dimensions) {
         for (const key of Object.keys(item.resolvedVariant.dimensions)) {
@@ -381,8 +399,19 @@ export default function AdminCategoryInsights() {
         }
       }
     }
+    // P2: fallback — look up all variants for the groups in filteredItems
+    if (namesSet.size === 0) {
+      const groupIds = new Set(filteredItems.map(i => i.resolvedGroup?.id).filter(Boolean));
+      for (const v of variants) {
+        if (groupIds.has(v.group_id) && v.dimensions) {
+          for (const key of Object.keys(v.dimensions)) namesSet.add(key.trim());
+        }
+      }
+    }
+    // P3: fallback — use category-level dimension definitions
+    if (namesSet.size === 0) return availableDimensionNames;
     return [...namesSet];
-  }, [drillBucket, filteredItems, availableDimensionNames]);
+  }, [drillBucket, filteredItems, variants, availableDimensionNames]);
 
   const dimLabel = selectedDimension === '__auto__' ? (bucketDimensionNames[0] || 'ממד') : selectedDimension;
   // Check if items actually carry sub-cat info
