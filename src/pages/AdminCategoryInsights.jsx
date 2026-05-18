@@ -128,15 +128,15 @@ export default function AdminCategoryInsights() {
     // From VariantDimension records belonging to our tree categories
     for (const dim of dimensions) {
       if (treeCategoryIds.has(dim.category_id) && dim.is_active !== false) {
-        namesSet.add(dim.name);
+        namesSet.add(dim.name.trim());
       }
     }
-    // Also discover from actual variant data
+    // Also discover from actual variant data (only add if not already in set)
     for (const v of variants) {
       const g = groupById[v.group_id];
       if (g && treeCategoryIds.has(g.category_id)) {
         for (const key of Object.keys(v.dimensions || {})) {
-          namesSet.add(key);
+          namesSet.add(key.trim());
         }
       }
     }
