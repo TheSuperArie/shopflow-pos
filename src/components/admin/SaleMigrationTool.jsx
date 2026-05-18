@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, Split } from 'lucide-react';
+import { Loader2, CheckCircle2, GitFork } from 'lucide-react';
 
 // Mode: 'single' or 'split'
 function AssignmentRow({ baseName, count, sell_price, candidates, groups, onDone }) {
@@ -221,7 +221,7 @@ export default function SaleMigrationTool({ tenantEmail }) {
                     className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${isSplit ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-purple-50 hover:text-purple-600'}`}
                     title="פיצול בין שתי קטגוריות"
                   >
-                    <Split className="w-3 h-3" />
+                    <GitFork className="w-3 h-3" />
                     פיצול
                   </button>
                 </div>
