@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -77,15 +77,17 @@ function AssignmentRow({ baseName, count, sell_price, candidates, groups, onDone
 }
 
 export default function SaleMigrationTool({ tenantEmail }) {
-  const [rowStates, setRowStates] = useState({}); // baseName -> state
+  const [rowStates, setRowStates] = useState({});
   const [doneNames, setDoneNames] = useState(new Set());
-  const [progress, setProgress] = useState({}); // baseName -> { current, total }
+  const [progress, setProgress] = useState({});
+  const queryClient = useQueryClient();
 
   const { data: allSales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['migration-sales', tenantEmail],
     queryFn: () => base44.entities.Sale.filter({ created_by: tenantEmail }, '-created_date', 10000),
     enabled: !!tenantEmail,
     staleTime: 0,
+    gcTime: 0,
   });
 
   const { data: groups = [], isLoading: loadingGroups } = useQuery({
@@ -98,7 +100,8 @@ export default function SaleMigrationTool({ tenantEmail }) {
     const map = {};
     for (const sale of allSales) {
       for (const item of (sale.items || [])) {
-        if (item.group_id) continue;
+        // treat empty string or null/undefined as unassigned
+        if (item.group_id && item.group_id !== '') continue;
         const baseName = item.product_name?.split(' - ')[0]?.trim();
         if (!baseName) continue;
         if (!map[baseName]) map[baseName] = { baseName, count: 0, sell_price: item.sell_price };
@@ -142,7 +145,7 @@ export default function SaleMigrationTool({ tenantEmail }) {
 
     // Only process sales that actually contain this product name (unassigned)
     const relevantSales = allSales.filter(sale =>
-      (sale.items || []).some(item => !item.group_id && item.product_name?.split(' - ')[0]?.trim() === baseName)
+      (sale.items || []).some(item => (!item.group_id || item.group_id === '') && item.product_name?.split(' - ')[0]?.trim() === baseName)
     );
 
     setProgress(prev => ({ ...prev, [baseName]: { current: 0, total: relevantSales.length } }));
@@ -150,7 +153,7 @@ export default function SaleMigrationTool({ tenantEmail }) {
     let i = 0;
     for (const sale of relevantSales) {
       const newItems = (sale.items || []).map(item => {
-        if (item.group_id) return item;
+        if (item.group_id && item.group_id !== '') return item;
         const itemBase = item.product_name?.split(' - ')[0]?.trim();
         if (itemBase !== baseName) return item;
 
@@ -183,6 +186,8 @@ export default function SaleMigrationTool({ tenantEmail }) {
     updateState(baseName, { running: false });
     setProgress(prev => { const n = { ...prev }; delete n[baseName]; return n; });
     setDoneNames(prev => new Set([...prev, baseName]));
+    // Refetch sales so the list reflects actual DB state
+    await queryClient.invalidateQueries({ queryKey: ['migration-sales', tenantEmail] });
   };
 
   if (loadingSales || loadingGroups) {
