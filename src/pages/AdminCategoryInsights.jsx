@@ -442,13 +442,23 @@ export default function AdminCategoryInsights() {
         }
       }
 
-      if (!dimVal) dimVal = 'ללא וריאציה';
+      if (!dimVal) dimVal = item.resolvedGroup?.name || item.product_name || 'ללא וריאציה';
 
       if (!map[dimVal]) map[dimVal] = { id: dimVal, name: dimVal, revenue: 0, quantity: 0 };
       map[dimVal].revenue += (item.sell_price || 0) * (item.quantity || 0);
       map[dimVal].quantity += item.quantity || 0;
     }
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+
+    // If everything fell into a single "no variant" bucket whose name is a group name,
+    // it means the dimension didn't match at all — fallback to group-based breakdown
+    const resultValues = Object.values(map);
+    const allFallback = resultValues.every(r => !allKnownDimValues.has(r.name.toLowerCase()) && !targetValuesL1.some(v => v.toLowerCase() === r.name.toLowerCase()));
+    if (allFallback && resultValues.some(r => r.name !== 'ללא וריאציה')) {
+      // Already grouped by product name / group name — just return as-is (it's meaningful)
+      return resultValues.sort((a, b) => b.revenue - a.revenue);
+    }
+
+    return resultValues.sort((a, b) => b.revenue - a.revenue);
   }, [filteredItems, drillBucket, subCategories, selectedDimension, availableDimensionNames, loadingCategories, fetchingCategories, variants, settledCategories, level0GroupBy]);
 
   const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
