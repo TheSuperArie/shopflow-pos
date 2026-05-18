@@ -184,6 +184,14 @@ export default function AdminSettings() {
         allGroups={allGroups}
         allCategories={allCategories}
         onChange={setVirtualFolders}
+        onSave={() => mutation.mutate({
+          admin_password: password,
+          store_name: storeName,
+          low_stock_threshold: lowStockThreshold,
+          dashboard_default_dimension: defaultDimension || null,
+          pos_virtual_folders: virtualFolders,
+        })}
+        isSaving={mutation.isPending}
       />
 
       <SaleMigrationTool tenantEmail={user?.email} />

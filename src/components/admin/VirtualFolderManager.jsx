@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FolderPlus, Trash2, X, FolderOpen } from 'lucide-react';
+import { FolderPlus, Trash2, X, FolderOpen, Save } from 'lucide-react';
 
 /**
  * VirtualFolderManager — ניהול תיקיות וירטואליות בקופה
@@ -12,7 +12,7 @@ import { FolderPlus, Trash2, X, FolderOpen } from 'lucide-react';
  * allCategories: כל הקטגוריות
  * onChange(folders): callback כשמשתנה
  */
-export default function VirtualFolderManager({ folders = [], allGroups = [], allCategories = [], onChange }) {
+export default function VirtualFolderManager({ folders = [], allGroups = [], allCategories = [], onChange, onSave, isSaving }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderCategoryId, setNewFolderCategoryId] = useState('');
 
@@ -73,7 +73,15 @@ export default function VirtualFolderManager({ folders = [], allGroups = [], all
           <FolderOpen className="w-5 h-5 text-amber-500" />
           תיקיות וירטואליות בקופה
         </CardTitle>
-        <p className="text-xs text-gray-400">קיבוץ ויזואלי של מוצרים לנוחות הקופאי — ניתן לשייך לקטגוריה ספציפית</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-400">קיבוץ ויזואלי של מוצרים לנוחות הקופאי — ניתן לשייך לקטגוריה ספציפית</p>
+          {onSave && (
+            <Button onClick={onSave} disabled={isSaving} className="bg-amber-500 hover:bg-amber-600 gap-2 h-8 text-xs">
+              {isSaving ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-3 h-3" />}
+              שמור
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Add new folder */}
