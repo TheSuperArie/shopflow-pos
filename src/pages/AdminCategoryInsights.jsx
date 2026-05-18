@@ -173,12 +173,20 @@ export default function AdminCategoryInsights() {
           ? groupById[item.group_id]
           : null;
 
-        // Priority 2: variant_id → group (accurate, avoids name collision)
+        // Priority 2: variant_id → group (only if the variant's group belongs to this category tree)
         if (!group) {
           const rawVarId2 = item.variant_id ?? item.variantId;
-          const resolvedVariant = rawVarId2 ? (variantById[String(rawVarId2)] || null) : null;
-          if (resolvedVariant && groupById[resolvedVariant.group_id] && treeCategoryIds.has(groupById[resolvedVariant.group_id].category_id)) {
-            group = groupById[resolvedVariant.group_id];
+          if (rawVarId2) {
+            const resolvedVariant = variantById[String(rawVarId2)] || null;
+            if (resolvedVariant) {
+              const varGroup = groupById[resolvedVariant.group_id];
+              if (varGroup && treeCategoryIds.has(varGroup.category_id)) {
+                group = varGroup;
+              } else {
+                // variant exists but belongs to a DIFFERENT category — skip this item entirely
+                continue;
+              }
+            }
           }
         }
 
