@@ -224,9 +224,15 @@ export default function AdminCategoryInsights() {
 
     const { bucketId } = drillBucket;
 
-    // Sub-category drill (has real sub-cats)
+    // Sub-category drill
     if (bucketId === '__direct__') return resolvedItems.filter(item => !item.subCatId);
-    if (!bucketId.startsWith('__dim__')) return resolvedItems.filter(item => item.subCatId === bucketId);
+    // Sub-category ID drill (real sub-cats)
+    if (!bucketId.startsWith('__dim__')) {
+      // First try to match as subCatId, then as resolvedGroup.id (no-sub-cats case)
+      const bySubCat = resolvedItems.filter(item => item.subCatId === bucketId);
+      if (bySubCat.length > 0) return bySubCat;
+      return resolvedItems.filter(item => item.resolvedGroup?.id === bucketId);
+    }
 
     // Dimension-value drill (no sub-cats at Level 0 — bucketId = "__dim__<value>")
     const dimValue = bucketId.slice('__dim__'.length);
