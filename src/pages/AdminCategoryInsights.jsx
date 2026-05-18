@@ -25,8 +25,10 @@ export default function AdminCategoryInsights() {
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
   const [level0GroupBy, setLevel0GroupBy] = useState('subcat'); // 'subcat' | 'dimension'
 
+  // On category change: restore pinned global dimension (if any), else __auto__
   useEffect(() => {
-    setSelectedDimension(localStorage.getItem(`insights_dim_${categoryId}`) || '__auto__');
+    const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
+    setSelectedDimension(globalPin || '__auto__');
     setDrillPath([]);
   }, [categoryId]);
 
@@ -387,28 +389,15 @@ export default function AdminCategoryInsights() {
       }
     }
 
-    // If no dimension key at all — fallback: group by variant dimensions keys found on items,
-    // or if truly no dimensions exist, group by product_name
+    // If no dimension key at all — group by product group name (most meaningful fallback)
     if (!dimKey) {
-      // Try to find any dimension key present on the items themselves
-      const anyDimKey = bucketDimensionNames[0] || null;
       const map = {};
       for (const item of filteredItems) {
-        let label = null;
-        if (anyDimKey && item.resolvedVariant?.dimensions?.[anyDimKey] != null) {
-          label = String(item.resolvedVariant.dimensions[anyDimKey]).trim();
-        }
-        if (!label) {
-          // Build label from all dimension values on this variant
-          const dims = item.resolvedVariant?.dimensions;
-          if (dims && Object.keys(dims).length > 0) {
-            label = Object.values(dims).map(v => String(v)).join(' / ');
-          }
-        }
-        if (!label) label = item.product_name || 'כללי';
-        if (!map[label]) map[label] = { id: label, name: label, revenue: 0, quantity: 0 };
-        map[label].revenue += (item.sell_price || 0) * (item.quantity || 0);
-        map[label].quantity += item.quantity || 0;
+        const key = item.resolvedGroup?.id || item.product_name || 'כללי';
+        const label = item.resolvedGroup?.name || item.product_name || 'כללי';
+        if (!map[key]) map[key] = { id: key, name: label, revenue: 0, quantity: 0 };
+        map[key].revenue += (item.sell_price || 0) * (item.quantity || 0);
+        map[key].quantity += item.quantity || 0;
       }
       return Object.values(map).sort((a, b) => b.revenue - a.revenue);
     }
@@ -466,25 +455,31 @@ export default function AdminCategoryInsights() {
   const hasSubCats = subCategories.length > 0;
   // Pinned dimension per product-bucket (stored as insights_pin_<categoryId>_<bucketId>)
   const pinnedDimKey = drillBucket ? `insights_pin_${categoryId}_${drillBucket.bucketId}` : null;
-  const pinnedDim = pinnedDimKey ? (localStorage.getItem(pinnedDimKey) || null) : null;
+  const globalPinKey = `insights_dim_pin_${categoryId}`;
+  const globalPinnedDim = localStorage.getItem(globalPinKey) || null;
+  const pinnedDim = pinnedDimKey ? (localStorage.getItem(pinnedDimKey) || globalPinnedDim) : globalPinnedDim;
 
   const handlePinDimension = () => {
-    if (!pinnedDimKey) return;
-    const current = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
+    const current = selectedDimension === '__auto__' ? (bucketDimensionNames[0] || null) : selectedDimension;
+    if (!current) return;
     if (pinnedDim === current) {
-      localStorage.removeItem(pinnedDimKey);
+      // Unpin both
+      if (pinnedDimKey) localStorage.removeItem(pinnedDimKey);
+      localStorage.removeItem(globalPinKey);
     } else {
-      localStorage.setItem(pinnedDimKey, current);
+      // Pin globally for this category (applies on every entry)
+      localStorage.setItem(globalPinKey, current);
+      if (pinnedDimKey) localStorage.setItem(pinnedDimKey, current);
     }
-    // Force re-render by updating selectedDimension to same value
-    setSelectedDimension(v => v);
+    setSelectedDimension(v => v); // force re-render to refresh pinnedDim
   };
 
-  // When drilling into a bucket, apply pinned dimension if exists
+  // When drilling into a bucket, apply pinned bucket-level dimension, else global pin, else __auto__
   useEffect(() => {
-    if (drillBucket && pinnedDimKey) {
-      const pinned = localStorage.getItem(pinnedDimKey);
-      if (pinned) setSelectedDimension(pinned);
+    if (drillBucket) {
+      const bucketPin = pinnedDimKey ? localStorage.getItem(pinnedDimKey) : null;
+      const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
+      setSelectedDimension(bucketPin || globalPin || '__auto__');
     }
   }, [drillBucket?.bucketId]);
 
@@ -504,7 +499,8 @@ export default function AdminCategoryInsights() {
 
   const handleBack = () => {
     setDrillPath([]);
-    setSelectedDimension('__auto__');
+    const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
+    setSelectedDimension(globalPin || '__auto__');
   };
 
   // ── Render ───────────────────────────────────────────────────────
@@ -540,29 +536,31 @@ export default function AdminCategoryInsights() {
             </div>
           )}
 
-          {/* Dimension selector — shown only when drilled into a product (Level 1) */}
-          {bucketDimensionNames.length > 0 && !!drillBucket && (
+          {/* Dimension selector + pin — shown at Level 1, or Level 0 with dimensions */}
+          {bucketDimensionNames.length > 0 && (!!drillBucket || availableDimensionNames.length > 0) && (
             <div className="flex items-center gap-1">
-              <Select
-                value={selectedDimension}
-                onValueChange={(v) => { setSelectedDimension(v); localStorage.setItem(`insights_dim_${categoryId}`, v); }}
-              >
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="קבץ לפי..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__auto__">אוטומטי</SelectItem>
-                  {bucketDimensionNames.map(name => (
-                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!!drillBucket && (
+                <Select
+                  value={selectedDimension}
+                  onValueChange={(v) => { setSelectedDimension(v); }}
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="קבץ לפי..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__auto__">אוטומטי</SelectItem>
+                    {bucketDimensionNames.map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
-                title={pinnedDim ? 'הסר נעץ' : 'נעץ ממד זה כברירת מחדל'}
+                title={pinnedDim ? `מוצמד: ${pinnedDim} — לחץ להסרה` : 'נעץ ממד ברירת מחדל לכל הכניסות'}
                 onClick={handlePinDimension}
-                className={pinnedDim === (selectedDimension === '__auto__' ? bucketDimensionNames[0] : selectedDimension) ? 'text-amber-500' : 'text-gray-400'}
+                className={pinnedDim ? 'text-amber-500' : 'text-gray-400'}
               >
                 <Pin className="w-4 h-4" />
               </Button>
