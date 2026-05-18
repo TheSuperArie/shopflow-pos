@@ -198,6 +198,21 @@ export default function SaleMigrationTool({ tenantEmail }) {
     );
   }
 
+  const [showDebug, setShowDebug] = useState(false);
+  const debugItems = useMemo(() => {
+    const map = {};
+    for (const sale of allSales) {
+      for (const item of (sale.items || [])) {
+        const gid = item.group_id;
+        if (gid && gid !== '') continue;
+        const key = JSON.stringify({ name: item.product_name, gid });
+        if (!map[key]) map[key] = { name: item.product_name, gid: String(gid), count: 0 };
+        map[key].count++;
+      }
+    }
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [allSales]);
+
   const remaining = unassignedNames.filter(n => !doneNames.has(n.baseName));
 
   if (unassignedNames.length === 0 || remaining.length === 0) {
@@ -218,6 +233,20 @@ export default function SaleMigrationTool({ tenantEmail }) {
         <p className="text-sm text-gray-500">
           נמצאו <strong>{remaining.length}</strong> שמות מוצר ייחודיים ללא קטגוריה.
         </p>
+        <button onClick={() => setShowDebug(v => !v)} className="text-xs text-blue-500 underline mt-1">
+          {showDebug ? 'הסתר אבחון' : `🔍 אבחון — ${debugItems.length} סוגי פריטים ללא group_id`}
+        </button>
+        {showDebug && (
+          <div className="mt-2 max-h-48 overflow-y-auto rounded border bg-gray-100 p-2 text-xs space-y-1">
+            {debugItems.map((d, i) => (
+              <div key={i} className="flex gap-2">
+                <span className="text-gray-400 w-6">{d.count}×</span>
+                <span className="font-mono">{d.name || '(ריק)'}</span>
+                <span className="text-red-400">group_id={d.gid || 'null/undefined'}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {remaining.map(({ baseName, count, sell_price }) => {
