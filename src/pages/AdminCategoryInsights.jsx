@@ -25,12 +25,13 @@ export default function AdminCategoryInsights() {
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
   const [level0GroupBy, setLevel0GroupBy] = useState('subcat'); // 'subcat' | 'dimension'
 
-  // On category change: restore pinned global dimension (if any), else __auto__
+  // On category change: restore pinned global dimension + groupBy (if any)
   useEffect(() => {
     const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
+    const savedGroupBy = localStorage.getItem(`insights_groupby_${categoryId}`);
     setSelectedDimension(globalPin || '__auto__');
+    setLevel0GroupBy(savedGroupBy || 'subcat');
     setDrillPath([]);
-    setLevel0GroupBy('subcat');
   }, [categoryId]);
 
   // ── Data fetching ────────────────────────────────────────────────
@@ -562,13 +563,13 @@ export default function AdminCategoryInsights() {
           {!drillBucket && availableDimensionNames.length > 0 && (
             <div className="flex items-center gap-1 border rounded-lg overflow-hidden text-sm">
               <button
-                onClick={() => setLevel0GroupBy('subcat')}
+                onClick={() => { setLevel0GroupBy('subcat'); localStorage.setItem(`insights_groupby_${categoryId}`, 'subcat'); }}
                 className={`px-3 py-1.5 transition-colors ${level0GroupBy === 'subcat' ? 'bg-amber-500 text-white font-medium' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
                 {hasSubCats ? 'תת-קטגוריות' : 'מוצרים'}
               </button>
               <button
-                onClick={() => setLevel0GroupBy('dimension')}
+                onClick={() => { setLevel0GroupBy('dimension'); localStorage.setItem(`insights_groupby_${categoryId}`, 'dimension'); }}
                 className={`px-3 py-1.5 transition-colors ${level0GroupBy === 'dimension' ? 'bg-amber-500 text-white font-medium' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
                 {availableDimensionNames[0] || 'ממד'}
