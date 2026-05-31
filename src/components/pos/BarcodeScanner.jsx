@@ -35,7 +35,6 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
       if (group) {
         setLastScanned(code);
         onVariantFound(variant, group);
-        toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
       }
       return;
     }
@@ -49,11 +48,9 @@ export default function BarcodeScanner({ variants, groups, onVariantFound, enabl
       if (groupVariants.length === 1) {
         setLastScanned(code);
         onVariantFound(groupVariants[0], group);
-        toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
       } else if (groupVariants.length > 1) {
         setLastScanned(code);
         onVariantFound(null, group);
-        toast({ title: `✅ נסרק: ${group.name}`, duration: 1500 });
       }
       return;
     }
