@@ -298,7 +298,6 @@ export default function POS() {
     });
 
     if (!scannerEnabled) {
-      toast({ title: '✅ נוסף לעגלה', description: dimText ? `${group.name} - ${dimText}` : group.name, duration: 1200 });
       setSelectedCategory(null);
     }
   };
