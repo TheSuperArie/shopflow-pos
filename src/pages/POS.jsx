@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ShoppingCart, RotateCcw, Users, Barcode } from 'lucide-react';
+import { Settings, ShoppingCart, RotateCcw, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import ProductGrid from '@/components/pos/ProductGrid';
@@ -12,13 +12,13 @@ import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import OnlineStatus from '@/components/pos/OnlineStatus';
 import OfflineSyncStatus from '@/components/pos/OfflineSyncStatus';
-import BarcodeScanner from '@/components/pos/BarcodeScanner';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useGlobalBarcodeScanner } from '@/hooks/useBarcodeScanner';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
@@ -33,8 +33,6 @@ export default function POS() {
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
-  const [scannerEnabled, setScannerEnabled] = useState(false);
-  const [scannerFocusSignal, setScannerFocusSignal] = useState(0);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -297,9 +295,7 @@ export default function POS() {
       }];
     });
 
-    if (!scannerEnabled) {
-      setSelectedCategory(null);
-    }
+    setSelectedCategory(null);
   };
 
   const handleGroupSelect = (group) => {
@@ -314,6 +310,16 @@ export default function POS() {
   };
 
   const handleVariantConfirm = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
+  const handleScannerGroupSelect = useCallback((group) => { setSelectedGroup(group); }, []);
+
+  // Global barcode listener — always active, silent add to cart
+  useGlobalBarcodeScanner({
+    variants: allVariants,
+    groups: allGroups,
+    onAddToCart: addToCart,
+    onGroupSelect: handleScannerGroupSelect,
+  });
+
   // Barcode scan: bypass modal entirely — add directly to cart (or open selector only if multi-variant needed)
   const handleBarcodeSelect = (variant, group) => {
     if (variant) {
@@ -338,13 +344,8 @@ export default function POS() {
 
   // ── Render ───────────────────────────────────────────────────────
   return (
-    <div dir="rtl" className="h-screen flex flex-col bg-gray-50" onClick={() => { if (scannerEnabled) setScannerFocusSignal(s => s + 1); }}>
+    <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
       <OfflineSyncStatus syncStatus={syncStatus} failedCount={failedCount} processedCount={processedCount} retryFailedSync={retryFailedSync} />
-      {scannerEnabled && (
-        <div className="bg-green-500 text-white text-center text-xs py-1 font-semibold">
-          🔍 מצב סריקת ברקוד פעיל — סרוק מוצר להוספה ישירה לעגלה
-        </div>
-      )}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
@@ -365,13 +366,6 @@ export default function POS() {
                 {cartItems.length}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => setScannerEnabled(s => !s)}
-            className={`p-2 rounded-xl transition-colors ${scannerEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-            title="מצב סריקת ברקוד"
-          >
-            <Barcode className="w-5 h-5" />
           </button>
           <Link to="/AdminLogin" className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
             <Settings className="w-5 h-5" />
@@ -518,14 +512,6 @@ export default function POS() {
         )}
       </div>
 
-      <BarcodeScanner
-        enabled={scannerEnabled}
-        variants={allVariants}
-        groups={allGroups}
-        onVariantFound={handleBarcodeSelect}
-        focusSignal={scannerFocusSignal}
-      />
-
       <DynamicVariantSelector
         open={!!selectedGroup}
         group={selectedGroup}
@@ -547,7 +533,7 @@ export default function POS() {
       <ReceiptModal
         open={showReceipt}
         sale={lastSale}
-        onClose={() => { setShowReceipt(false); setLastSale(null); setScannerFocusSignal(s => s + 1); }}
+        onClose={() => { setShowReceipt(false); setLastSale(null); }}
       />
 
       <ReturnFormModal open={showReturnForm} onClose={() => setShowReturnForm(false)} />
