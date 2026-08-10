@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Calendar, Package, TrendingUp, Calculator } from 'lucide-react';
+import { Loader2, Calendar, Package, TrendingUp, Calculator, CheckCheck, Eraser } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const PRESETS = [
@@ -57,6 +57,8 @@ export default function AdminOrderDistribution() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [totalToOrder, setTotalToOrder] = useState(1000);
+  // null = all groups selected; otherwise a Set of selected group ids
+  const [selectedGroupIds, setSelectedGroupIds] = useState(null);
 
   const { data: sales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['order-dist-sales', user?.email],
@@ -150,10 +152,21 @@ export default function AdminOrderDistribution() {
     return { groups: groupsArr, totalUnits, salesInRange: inRange.length };
   }, [sales, groups, variants, startDate, endDate]);
 
-  // Compute suggested distribution across ALL sold variants in range
+  // Apply the user's product selection (null = all)
+  const visibleGroups = useMemo(() => {
+    if (!selectedGroupIds || selectedGroupIds.size === 0) return stats.groups;
+    return stats.groups.filter(g => selectedGroupIds.has(g.group.id));
+  }, [stats.groups, selectedGroupIds]);
+
+  const visibleTotalUnits = useMemo(
+    () => visibleGroups.reduce((s, g) => s + g.groupTotalSold, 0),
+    [visibleGroups]
+  );
+
+  // Compute suggested distribution across the selected variants only
   const distribution = useMemo(() => {
     const allVariants = [];
-    for (const g of stats.groups) {
+    for (const g of visibleGroups) {
       for (const v of g.variants) {
         allVariants.push({
           key: v.variant.id,
@@ -175,7 +188,18 @@ export default function AdminOrderDistribution() {
     return Object.values(byGroup)
       .sort((a, b) => b.groupQty - a.groupQty)
       .map(g => ({ ...g, items: g.items.sort((a, b) => b.qty - a.qty) }));
-  }, [stats, totalToOrder]);
+  }, [visibleGroups, totalToOrder]);
+
+  const toggleGroup = (gid) => {
+    setSelectedGroupIds(prev => {
+      if (!prev) return new Set([gid]);
+      const next = new Set(prev);
+      if (next.has(gid)) next.delete(gid); else next.add(gid);
+      return next;
+    });
+  };
+  const selectAllGroups = () => setSelectedGroupIds(null);
+  const clearGroups = () => setSelectedGroupIds(new Set());
 
   const setPreset = (days) => {
     const end = new Date();
@@ -192,9 +216,56 @@ export default function AdminOrderDistribution() {
       <div>
         <h1 className="text-2xl font-bold text-gray-800">חלוקת הזמנה לפי סטטיסטיקה</h1>
         <p className="text-sm text-gray-500 mt-1">
-          בחר טווח תאריכים, הזן כמות כוללת להזמנה — והמערכת תחלק אותה לפי אחוזי המכירה בטווח שנבחר.
+          בחר מוצרים וטווח תאריכים, הזן כמות כוללת להזמנה — והמערכת תחלק אותה לפי אחוזי המכירה בטווח שנבחר.
         </p>
       </div>
+
+      {/* Product picker */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between text-base">
+            <span className="flex items-center gap-2"><Package className="w-4 h-4" /> בחירת מוצרים לניתוח</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={selectAllGroups}>
+                <CheckCheck className="w-3.5 h-3.5 ml-1" /> הכל
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearGroups}>
+                <Eraser className="w-3.5 h-3.5 ml-1" /> נקה
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.groups.length === 0 ? (
+            <p className="text-sm text-gray-500">אין מוצרים שנמכרו בטווח שנבחר.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {stats.groups.map(g => {
+                const selected = !selectedGroupIds || selectedGroupIds.has(g.group.id);
+                return (
+                  <button
+                    key={g.group.id}
+                    onClick={() => toggleGroup(g.group.id)}
+                    className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+                      selected
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-amber-300'
+                    }`}
+                  >
+                    {g.group.name}
+                    <span className={`text-xs mr-1.5 ${selected ? 'text-amber-100' : 'text-gray-400'}`}>
+                      ({g.groupTotalSold})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-xs text-gray-500 mt-3">
+            מוצרים שלא נמכרו בכלל בטווח אינם מופיעים כאן (אין להם נתוני מכירה לחלק לפיהם).
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Date range + presets */}
       <Card>
@@ -230,7 +301,7 @@ export default function AdminOrderDistribution() {
 
           {/* Summary cards */}
           {!salesLoading && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                 <p className="text-xs text-amber-700">יחידות נמכרו בטווח</p>
                 <p className="text-2xl font-bold text-amber-800">{stats.totalUnits}</p>
@@ -242,6 +313,10 @@ export default function AdminOrderDistribution() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <p className="text-xs text-green-700">מוצרים שנמכרו</p>
                 <p className="text-2xl font-bold text-green-800">{stats.groups.length}</p>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <p className="text-xs text-purple-700">מוצרים נבחרו לחלוקה</p>
+                <p className="text-2xl font-bold text-purple-800">{visibleGroups.length}</p>
               </div>
             </div>
           )}
@@ -286,6 +361,11 @@ export default function AdminOrderDistribution() {
               <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
               אין מכירות בטווח התאריכים שנבחר — בחר טווח אחר כדי לקבל הצעת חלוקה.
             </div>
+          ) : visibleGroups.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 text-sm">
+              <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+              לא נבחרו מוצרים — סמן לפחות מוצר אחד למעלה כדי לקבל הצעת חלוקה.
+            </div>
           ) : distribution.length === 0 ? (
             <div className="text-center py-10 text-gray-500 text-sm">
               הזן כמות להזמנה כדי לקבל הצעת חלוקה.
@@ -300,8 +380,9 @@ export default function AdminOrderDistribution() {
               </div>
 
               {distribution.map(g => {
-                const groupPercent = stats.totalUnits > 0
-                  ? ((stats.groups.find(sg => sg.group.id === g.items[0]?.groupId)?.groupTotalSold || 0) / stats.totalUnits * 100).toFixed(1)
+                const groupSold = visibleGroups.find(sg => sg.group.id === g.items[0]?.groupId)?.groupTotalSold || 0;
+                const groupPercent = visibleTotalUnits > 0
+                  ? (groupSold / visibleTotalUnits * 100).toFixed(1)
                   : '0';
                 return (
                   <div key={g.groupName} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -316,8 +397,8 @@ export default function AdminOrderDistribution() {
                     </div>
                     <div className="divide-y divide-gray-100">
                       {g.items.map(item => {
-                        const percent = stats.totalUnits > 0
-                          ? (item.weight / stats.totalUnits * 100).toFixed(1)
+                        const percent = visibleTotalUnits > 0
+                          ? (item.weight / visibleTotalUnits * 100).toFixed(1)
                           : '0';
                         return (
                           <div key={item.key} className="flex items-center justify-between px-4 py-2 text-sm">
