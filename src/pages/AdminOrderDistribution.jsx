@@ -66,15 +66,15 @@ export default function AdminOrderDistribution() {
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups', user?.email],
-    queryFn: () => (user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : []),
+    queryKey: ['product-groups-all'],
+    queryFn: () => base44.entities.ProductGroup.list('-created_date', 5000),
     enabled: !!user,
     staleTime: 60000,
   });
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants', user?.email],
-    queryFn: () => (user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : []),
+    queryKey: ['product-variants-all'],
+    queryFn: () => base44.entities.ProductVariant.list('-created_date', 5000),
     enabled: !!user,
     staleTime: 60000,
   });
