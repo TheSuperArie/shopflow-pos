@@ -46,6 +46,21 @@ export function ShipmentBatchProvider({ children }) {
     setSelectedItems(prev => prev.filter(item => item.id !== variantId));
   };
 
+  // Bulk select: adds any not-yet-selected items (preserves existing selection)
+  const selectAll = (items) => {
+    setSelectedItems(prev => {
+      const existingIds = new Set(prev.map(item => item.id));
+      const toAdd = items.filter(i => !existingIds.has(i.id));
+      return [...prev, ...toAdd];
+    });
+  };
+
+  // Bulk unselect: removes all matching ids
+  const unselectAll = (ids) => {
+    const idSet = new Set(ids);
+    setSelectedItems(prev => prev.filter(item => !idSet.has(item.id)));
+  };
+
   const isItemSelected = (variantId) => {
     return selectedItems.some(item => item.id === variantId);
   };
@@ -73,6 +88,8 @@ export function ShipmentBatchProvider({ children }) {
       toggleItem,
       removeItem,
       isItemSelected,
+      selectAll,
+      unselectAll,
       clearBatch,
       shipmentDetails,
       updateShipmentDetails,

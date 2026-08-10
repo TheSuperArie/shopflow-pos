@@ -4,14 +4,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Package, Loader2, ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 import ShipmentCheckbox from '@/components/shipment/ShipmentCheckbox';
+import { useShipmentBatch } from '@/lib/ShipmentBatchContext';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function AdminLowStock() {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const queryClient = useQueryClient();
+  const { isItemSelected, selectAll, unselectAll } = useShipmentBatch();
   useInventorySync();
   const user = useCurrentUser();
 
@@ -184,15 +187,29 @@ export default function AdminLowStock() {
                 {/* Products in Category - Expandable */}
                 {isExpanded && (
                   <div className="bg-white p-4 space-y-3">
-                    {groups.map(({ group, variants }) => (
+                    {groups.map(({ group, variants }) => {
+                      const variantIds = variants.map(v => v.id);
+                      const selectedCount = variantIds.filter(id => isItemSelected(id)).length;
+                      const allSelected = selectedCount === variantIds.length;
+                      const someSelected = selectedCount > 0 && !allSelected;
+                      const handleSelectAll = (e) => {
+                        e.stopPropagation();
+                        const items = variants.map(v => ({ ...v, group_id: group.id, group_name: group.name }));
+                        if (allSelected) {
+                          unselectAll(variantIds);
+                        } else {
+                          selectAll(items);
+                        }
+                      };
+                      return (
                       <Card key={group.id} className="border-red-200 bg-gray-50">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
                               {group.image_url && (
-                                <img 
-                                  src={group.image_url} 
-                                  alt={group.name} 
+                                <img
+                                  src={group.image_url}
+                                  alt={group.name}
                                   className="w-14 h-14 object-cover rounded-lg"
                                 />
                               )}
@@ -203,9 +220,21 @@ export default function AdminLowStock() {
                                 </p>
                               </div>
                             </div>
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
-                              {variants.length} וריאציות
-                            </Badge>
+                            <div className="flex items-center gap-3">
+                              <div
+                                onClick={handleSelectAll}
+                                className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none"
+                              >
+                                <Checkbox
+                                  checked={allSelected}
+                                  className="w-5 h-5 pointer-events-none"
+                                />
+                                <span>{allSelected ? 'בחר כלום' : 'בחר הכל'}</span>
+                              </div>
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+                                {selectedCount}/{variants.length} וריאציות
+                              </Badge>
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent>
@@ -245,7 +274,8 @@ export default function AdminLowStock() {
                           />
                         </CardContent>
                       </Card>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
