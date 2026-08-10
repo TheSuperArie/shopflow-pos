@@ -17,6 +17,7 @@ import {
   DollarSign,
   GitBranch,
   Crown,
+  BarChart3,
 } from 'lucide-react';
 
 const BRANCH_MANAGER_ITEMS = [
@@ -26,6 +27,7 @@ const BRANCH_MANAGER_ITEMS = [
   { path: '/AdminStock', label: 'עדכון מלאי', icon: TruckIcon },
   { path: '/AdminOrders', label: 'הזמנות לרשת', icon: ShoppingCart },
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
+  { path: '/AdminOrderDistribution', label: 'חלוקת הזמנה', icon: BarChart3 },
   { path: '/AdminReturns', label: 'החזרות', icon: RotateCcw },
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
   { path: '/AdminEmployees', label: 'ניהול עובדים', icon: Users },

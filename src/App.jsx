@@ -24,6 +24,7 @@ import AdminEmployees from './pages/AdminEmployees';
 import AdminCashReport from './pages/AdminCashReport';
 import AdminCategoryInsights from './pages/AdminCategoryInsights';
 import AdminNetwork from './pages/AdminNetwork';
+import AdminOrderDistribution from './pages/AdminOrderDistribution';
 import NetworkMasterDashboard from './pages/NetworkMasterDashboard';
 import BatchShipmentEntry from './pages/BatchShipmentEntry';
 import BranchNetworkOrders from './pages/BranchNetworkOrders';
@@ -76,6 +77,7 @@ const AuthenticatedApp = () => {
             <Route path="/AdminCashReport" element={<AdminCashReport />} />
             <Route path="/admin/reports/category/:id" element={<AdminCategoryInsights />} />
             <Route path="/AdminNetwork" element={<AdminNetwork />} />
+            <Route path="/AdminOrderDistribution" element={<AdminOrderDistribution />} />
           </Route>
         </Route>
         <Route path="/NetworkMasterDashboard" element={<NetworkMasterDashboard />} />
