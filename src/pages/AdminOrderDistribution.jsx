@@ -62,22 +62,22 @@ export default function AdminOrderDistribution() {
 
   const { data: sales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['order-dist-sales', user?.email],
-    queryFn: () => base44.entities.Sale.list('-created_date', 5000),
-    enabled: !!user,
+    queryFn: () => base44.entities.Sale.filter({ seller_email: user.email }, '-created_date', 5000),
+    enabled: !!user?.email,
     staleTime: 60000,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups-all'],
-    queryFn: () => base44.entities.ProductGroup.list('-created_date', 5000),
-    enabled: !!user,
+    queryKey: ['product-groups-all', user?.email],
+    queryFn: () => base44.entities.ProductGroup.filter({ created_by: user.email }, '-created_date', 5000),
+    enabled: !!user?.email,
     staleTime: 60000,
   });
 
   const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants-all'],
-    queryFn: () => base44.entities.ProductVariant.list('-created_date', 5000),
-    enabled: !!user,
+    queryKey: ['product-variants-all', user?.email],
+    queryFn: () => base44.entities.ProductVariant.filter({ created_by: user.email }, '-created_date', 5000),
+    enabled: !!user?.email,
     staleTime: 60000,
   });
 
