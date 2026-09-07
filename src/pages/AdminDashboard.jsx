@@ -10,10 +10,18 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
-  // Fetch branches where this user's station_email matches — covers invitations sent to them
+  // Resolve branches exactly like the POS does: if this account joined a network as a
+  // station, that branch takes precedence — sales here are stamped with its branch_id,
+  // so the dashboard must scope to it (not to locally-owned branches).
   const { data: branches = [] } = useQuery({
     queryKey: ['branches', user?.email],
-    queryFn: () => base44.entities.Branch.filter({ tenant_email: user.email }),
+    queryFn: async () => {
+      const [own, station] = await Promise.all([
+        base44.entities.Branch.filter({ tenant_email: user.email }),
+        base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }),
+      ]);
+      return station.length > 0 ? station : own;
+    },
     enabled: !!user?.email,
   });
 

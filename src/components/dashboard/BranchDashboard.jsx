@@ -33,14 +33,20 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   const { data: sales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['branch-dashboard-sales', branchId],
     queryFn: async () => {
-      // Fetch sales for this branch (scoped to tenant). Also fetch null-branch_id sales (single-store mode fallback).
+      // Sales made at a branch are created by the branch's own station account
+      // (not the tenant), so branch sales are scoped by branch_id ONLY — otherwise
+      // they disappear from the network master's branch dashboard.
+      const nullBranchSalesPromise = base44.entities.Sale.filter(
+        { branch_id: null, created_by: tenantEmail }, '-created_date', 2000
+      );
+      if (!branchId) return await nullBranchSalesPromise; // single-store fallback (no branches yet)
       const [branchSales, nullBranchSales] = await Promise.all([
-        base44.entities.Sale.filter({ branch_id: branchId, created_by: tenantEmail }, '-created_date', 2000),
-        base44.entities.Sale.filter({ branch_id: null, created_by: tenantEmail }, '-created_date', 2000),
+        base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 2000),
+        nullBranchSalesPromise,
       ]);
       return [...branchSales, ...nullBranchSales];
     },
-    enabled: !!branchId && !!tenantEmail,
+    enabled: !!tenantEmail,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
