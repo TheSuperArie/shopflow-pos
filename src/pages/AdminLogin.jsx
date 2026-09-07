@@ -19,23 +19,51 @@ export default function AdminLogin() {
     enabled: !!user,
   });
 
+  // The network this account's station belongs to (branch where this email is the station)
+  const { data: myNetworkBranches = [] } = useQuery({
+    queryKey: ['my-network-branch', user?.email],
+    queryFn: () => user ? base44.entities.Branch.filter({ station_email: user.email }) : [],
+    enabled: !!user,
+  });
+  const masterEmail = myNetworkBranches.find(b => b.tenant_email && b.tenant_email !== user.email)?.tenant_email;
+
+  // The network master's settings — his code works from any of his branches
+  const { data: masterSettings = [] } = useQuery({
+    queryKey: ['network-master-settings', masterEmail],
+    queryFn: () => masterEmail ? base44.entities.AppSettings.filter({ created_by: masterEmail }) : [],
+    enabled: !!masterEmail,
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const s = settings[0];
     // Fallback hardcoded values for testing — replace via AppSettings in DB
     const branchPassword = s?.admin_password || '1234';
     const networkPassword = s?.network_admin_password || '8888';
+    const masterNetworkPassword = masterEmail ? (masterSettings[0]?.network_admin_password || '8888') : null;
 
-    // Tier 1: Master Network Code → Network Dashboard
-    if (password === networkPassword) {
+    const enterNetwork = (email) => {
       sessionStorage.setItem('admin_auth', 'true');
       sessionStorage.setItem('admin_role', 'NETWORK_MASTER');
+      sessionStorage.setItem('network_master_email', email);
       navigate('/NetworkMasterDashboard');
+    };
+
+    // Tier 1: Master Network Code (own network) → Network Dashboard
+    if (password === networkPassword) {
+      enterNetwork(user.email);
+      return;
+    }
+
+    // Tier 1b: The network master's code entered from one of his branches → his Network Dashboard
+    if (masterNetworkPassword && password === masterNetworkPassword) {
+      enterNetwork(masterEmail);
       return;
     }
 
     // Tier 2: Local Branch Code → Local Dashboard
     if (password === branchPassword) {
+      sessionStorage.removeItem('network_master_email');
       sessionStorage.setItem('admin_auth', 'true');
       sessionStorage.setItem('admin_role', 'BRANCH_MANAGER');
       navigate('/AdminDashboard');

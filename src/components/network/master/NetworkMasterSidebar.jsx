@@ -17,6 +17,7 @@ export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpe
   const handleLogout = () => {
     sessionStorage.removeItem('admin_auth');
     sessionStorage.removeItem('admin_role');
+    sessionStorage.removeItem('network_master_email');
     navigate('/POS');
   };
 

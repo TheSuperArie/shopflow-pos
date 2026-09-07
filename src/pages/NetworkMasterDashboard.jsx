@@ -33,7 +33,8 @@ export default function NetworkMasterDashboard() {
     queryFn: () => base44.auth.me(),
   });
 
-  const tenantEmail = currentUser?.email;
+  // When the master entered via his code from a branch station, show HIS network — not the station's own data
+  const tenantEmail = sessionStorage.getItem('network_master_email') || currentUser?.email;
 
   const { data: branches = [], isSuccess: branchesLoaded } = useQuery({
     queryKey: ['branches', tenantEmail],
