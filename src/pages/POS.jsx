@@ -16,6 +16,7 @@ import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 import BranchInvitationBanner from '@/components/dashboard/BranchInvitationBanner';
+import CatalogShareBanner from '@/components/dashboard/CatalogShareBanner';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -82,8 +83,12 @@ export default function POS() {
     staleTime: 60000,
   });
   const virtualFolders = appSettingsList[0]?.pos_virtual_folders || [];
-  // Primary branch: first active branch (or first branch as fallback)
-  const activeBranch = branches.find(b => b.is_active) || branches[0] || null;
+  // Primary branch: a station branch in someone else's network takes precedence
+  // (the network master must see these sales), then any active branch, then any branch
+  const activeBranch =
+    branches.find(b => b.is_active && b.tenant_email !== user?.email) ||
+    branches.find(b => b.is_active) ||
+    branches[0] || null;
 
   useInventorySync();
   const { syncToServer, syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
@@ -379,6 +384,7 @@ export default function POS() {
       {pendingInvitations.map(inv => (
         <BranchInvitationBanner key={inv.id} invitation={inv} userEmail={user?.email} />
       ))}
+      <CatalogShareBanner branch={activeBranch} userEmail={user?.email} />
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">

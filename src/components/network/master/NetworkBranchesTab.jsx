@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock, Unlink } from 'lucide-react';
+import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock, Unlink, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import BranchForm from '../BranchForm';
 import BranchCommandCenter from './BranchCommandCenter';
+import CatalogShareModal from './CatalogShareModal';
 
 export default function NetworkBranchesTab({ tenantEmail, networkName }) {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showForm, setShowForm] = useState(false);
   // Branch id awaiting a second confirm click (cancel invitation / disconnect)
   const [confirmingId, setConfirmingId] = useState(null);
+  // Branch currently open in the catalog-share page
+  const [shareBranch, setShareBranch] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: branches = [], isLoading } = useQuery({
@@ -149,6 +152,11 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
               <p className="text-xs text-amber-500 mt-3 font-medium">
                 {branch.status === 'PENDING' ? 'ממתין לאישור הסניף' : branch.status === 'REJECTED' ? 'ההזמנה נדחתה' : 'לחץ לפתיחת מרכז הבקרה ←'}
               </p>
+              {branch.catalog_share?.shared_at && (
+                <p className="text-[11px] text-indigo-500 mt-1">
+                  {branch.catalog_share.pulled_at ? 'קטלוג שותף ונקלט בסניף' : 'קטלוג שותף — ממתין לקליטת הסניף'}
+                </p>
+              )}
               {(branch.status === 'PENDING' || branch.status === 'ACTIVE') && (
                 <div className="flex items-center gap-2 mt-3" onClick={e => e.stopPropagation()}>
                   {confirmingId === branch.id ? (
@@ -166,24 +174,44 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
                       </Button>
                     </>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-red-300 text-red-600 hover:bg-red-50"
-                      onClick={() => setConfirmingId(branch.id)}
-                    >
-                      {branch.status === 'PENDING' ? (
-                        <><XCircle className="w-3.5 h-3.5 ml-1" />בטל הזמנה</>
-                      ) : (
-                        <><Unlink className="w-3.5 h-3.5 ml-1" />נתק מהרשת</>
+                    <>
+                      {branch.status === 'ACTIVE' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+                          onClick={() => setShareBranch(branch)}
+                        >
+                          <Share2 className="w-3.5 h-3.5 ml-1" />שיתוף קטלוג
+                        </Button>
                       )}
-                    </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                        onClick={() => setConfirmingId(branch.id)}
+                      >
+                        {branch.status === 'PENDING' ? (
+                          <><XCircle className="w-3.5 h-3.5 ml-1" />בטל הזמנה</>
+                        ) : (
+                          <><Unlink className="w-3.5 h-3.5 ml-1" />נתק מהרשת</>
+                        )}
+                      </Button>
+                    </>
                   )}
                 </div>
               )}
             </div>
           ))}
         </div>
+      )}
+
+      {shareBranch && (
+        <CatalogShareModal
+          branch={shareBranch}
+          tenantEmail={tenantEmail}
+          onClose={() => setShareBranch(null)}
+        />
       )}
     </div>
   );
