@@ -22,11 +22,18 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
     queryFn: () => base44.entities.Branch.filter({ tenant_email: tenantEmail }),
   });
 
-  // Fetch all sales (with branch context)
-  const { data: allSales = [], isLoading: salesLoading } = useQuery({
+  // Fetch all sales, then scope to this network: the master's own sales
+  // + sales stamped with one of the network's branch ids (branch accounts)
+  const { data: rawSales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['all-sales-dashboard', tenantEmail],
-    queryFn: () => base44.entities.Sale.list('-created_date', 1000),
+    queryFn: () => base44.entities.Sale.list('-created_date', 5000),
   });
+
+  const branchIds = useMemo(() => new Set(branches.map(b => b.id)), [branches]);
+  const allSales = useMemo(
+    () => rawSales.filter(s => branchIds.has(s.branch_id) || s.seller_email === tenantEmail),
+    [rawSales, branchIds, tenantEmail]
+  );
 
   // Fetch all tickets (orders)
   const { data: allTickets = [] } = useQuery({

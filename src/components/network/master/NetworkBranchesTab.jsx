@@ -21,13 +21,26 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
 
   const createBranch = useMutation({
     // Send invitation: status=PENDING, not yet active
-    mutationFn: (data) => base44.entities.Branch.create({
-      ...data,
-      tenant_email: tenantEmail,
-      is_active: false,
-      status: 'PENDING',
-      network_name: networkName || 'הרשת',
-    }),
+    mutationFn: async (data) => {
+      const branch = await base44.entities.Branch.create({
+        ...data,
+        tenant_email: tenantEmail,
+        is_active: false,
+        status: 'PENDING',
+        network_name: networkName || 'הרשת',
+      });
+      // Notify the recipient by email that an invitation is waiting for them
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: data.station_email,
+          subject: `הזמנה להצטרף לרשת ${networkName || ''}`,
+          body: `שלום!\n\nהוזמנת להצטרף לרשת "${networkName || 'הרשת'}" בתור סניף "${data.name}".\nפתח את האפליקציה, ואשר את ההזמנה בבאנר "הזמנה להצטרף לרשת" במסך הקופה.\n\nבברכה,\nצוות הרשת`,
+        });
+      } catch (e) {
+        // ההזמנה נוצרה גם אם שליחת המייל נכשלה
+      }
+      return branch;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', tenantEmail] });
       setShowForm(false);

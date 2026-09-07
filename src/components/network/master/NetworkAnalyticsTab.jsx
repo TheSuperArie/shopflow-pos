@@ -30,15 +30,17 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
     enabled: !!tenantEmail,
   });
 
+  // All sales — scoped below to this network's branches (branch_id) + the master's own sales.
+  // Branch sales are created by the branch's own account, so they can't be fetched by tenant filter.
   const { data: allSales = [] } = useQuery({
-    queryKey: ['all-sales', tenantEmail],
-    queryFn: () => base44.entities.Sale.filter({ created_by: tenantEmail }),
+    queryKey: ['network-sales', tenantEmail],
+    queryFn: () => base44.entities.Sale.list('-created_date', 5000),
     enabled: !!tenantEmail,
   });
 
   const { data: allExpenses = [] } = useQuery({
-    queryKey: ['all-expenses', tenantEmail],
-    queryFn: () => base44.entities.Expense.filter({ created_by: tenantEmail }),
+    queryKey: ['network-expenses', tenantEmail],
+    queryFn: () => base44.entities.Expense.list('-created_date', 5000),
     enabled: !!tenantEmail,
   });
 

@@ -15,6 +15,7 @@ import OfflineSyncStatus from '@/components/pos/OfflineSyncStatus';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
+import BranchInvitationBanner from '@/components/dashboard/BranchInvitationBanner';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -38,12 +39,29 @@ export default function POS() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
-  // Resolve the branch for this device so every sale gets stamped with branch_id
+  // Resolve the branch for this device so every sale gets stamped with branch_id.
+  // If this account was approved as a branch station in a network — that branch takes precedence,
+  // so every sale made here is attributed to the network branch the master sees.
   const { data: branches = [] } = useQuery({
     queryKey: ['pos-branches', user?.email],
-    queryFn: () => base44.entities.Branch.filter({ tenant_email: user.email }),
+    queryFn: async () => {
+      const [own, station] = await Promise.all([
+        base44.entities.Branch.filter({ tenant_email: user.email }),
+        base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }),
+      ]);
+      return station.length > 0 ? station : own;
+    },
     enabled: !!user?.email,
     staleTime: 60000,
+  });
+
+  // Pending network invitations addressed to this account (station_email = this email)
+  const { data: pendingInvitations = [] } = useQuery({
+    queryKey: ['pending-invitations', user?.email],
+    queryFn: () => base44.entities.Branch.filter({ station_email: user.email, status: 'PENDING' }),
+    enabled: !!user?.email,
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: appSettingsList = [] } = useQuery({
@@ -346,6 +364,10 @@ export default function POS() {
   return (
     <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
       <OfflineSyncStatus syncStatus={syncStatus} failedCount={failedCount} processedCount={processedCount} retryFailedSync={retryFailedSync} />
+      {/* Pending network invitations — approve here to join the network */}
+      {pendingInvitations.map(inv => (
+        <BranchInvitationBanner key={inv.id} invitation={inv} userEmail={user?.email} />
+      ))}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">

@@ -41,6 +41,14 @@ export default function NetworkMasterDashboard() {
     enabled: !!tenantEmail,
   });
 
+  // Network display name — taken from the master's store settings
+  const { data: appSettings = [] } = useQuery({
+    queryKey: ['app-settings', tenantEmail],
+    queryFn: () => base44.entities.AppSettings.filter({ created_by: tenantEmail }),
+    enabled: !!tenantEmail,
+  });
+  const networkName = appSettings[0]?.store_name;
+
   const createBranch = useMutation({
     mutationFn: (data) => base44.entities.Branch.create(data),
     onSuccess: () => {
@@ -95,7 +103,7 @@ export default function NetworkMasterDashboard() {
           {tenantEmail && (
             <>
               {activeTab === 'overview' && <NetworkAdminDashboard tenantEmail={tenantEmail} />}
-              {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} />}
+              {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} networkName={networkName} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
               {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'suppliers' && <NetworkSuppliersTab tenantEmail={tenantEmail} />}

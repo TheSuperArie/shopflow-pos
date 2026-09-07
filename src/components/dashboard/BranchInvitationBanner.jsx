@@ -32,6 +32,7 @@ export default function BranchInvitationBanner({ invitation, userEmail }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', userEmail] });
       queryClient.invalidateQueries({ queryKey: ['pending-invitations', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['pos-branches', userEmail] });
       setDone(true);
     },
   });
@@ -41,6 +42,7 @@ export default function BranchInvitationBanner({ invitation, userEmail }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', userEmail] });
       queryClient.invalidateQueries({ queryKey: ['pending-invitations', userEmail] });
+      queryClient.invalidateQueries({ queryKey: ['pos-branches', userEmail] });
       setDone(true);
     },
   });
