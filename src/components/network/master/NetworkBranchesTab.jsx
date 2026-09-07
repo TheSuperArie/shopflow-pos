@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import BranchCommandCenter from './BranchCommandCenter';
 export default function NetworkBranchesTab({ tenantEmail, networkName }) {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  // Branch id awaiting a second confirm click (cancel invitation / disconnect)
+  const [confirmingId, setConfirmingId] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: branches = [], isLoading } = useQuery({
@@ -44,6 +46,17 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', tenantEmail] });
       setShowForm(false);
+    },
+  });
+
+  // Cancel a pending invitation, or disconnect an active branch from the network.
+  // Deleting the record also removes the invitation banner / branch linkage on the
+  // recipient's side (their POS listens to branch changes in real time).
+  const removeBranch = useMutation({
+    mutationFn: (branchId) => base44.entities.Branch.delete(branchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches', tenantEmail] });
+      setConfirmingId(null);
     },
   });
 
@@ -99,10 +112,10 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {branches.map(branch => (
-            <button
+            <div
               key={branch.id}
               onClick={() => setSelectedBranch(branch)}
-              className="text-right bg-white rounded-2xl border border-gray-200 p-5 hover:border-amber-400 hover:shadow-md transition-all group"
+              className="text-right bg-white rounded-2xl border border-gray-200 p-5 hover:border-amber-400 hover:shadow-md transition-all group cursor-pointer"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
@@ -136,7 +149,39 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
               <p className="text-xs text-amber-500 mt-3 font-medium">
                 {branch.status === 'PENDING' ? 'ממתין לאישור הסניף' : branch.status === 'REJECTED' ? 'ההזמנה נדחתה' : 'לחץ לפתיחת מרכז הבקרה ←'}
               </p>
-            </button>
+              {(branch.status === 'PENDING' || branch.status === 'ACTIVE') && (
+                <div className="flex items-center gap-2 mt-3" onClick={e => e.stopPropagation()}>
+                  {confirmingId === branch.id ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => removeBranch.mutate(branch.id)}
+                        disabled={removeBranch.isPending}
+                      >
+                        {branch.status === 'PENDING' ? 'אשר ביטול הזמנה' : 'אשר ניתוק'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirmingId(null)}>
+                        חזור
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-300 text-red-600 hover:bg-red-50"
+                      onClick={() => setConfirmingId(branch.id)}
+                    >
+                      {branch.status === 'PENDING' ? (
+                        <><XCircle className="w-3.5 h-3.5 ml-1" />בטל הזמנה</>
+                      ) : (
+                        <><Unlink className="w-3.5 h-3.5 ml-1" />נתק מהרשת</>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

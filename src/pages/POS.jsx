@@ -52,7 +52,7 @@ export default function POS() {
       return station.length > 0 ? station : own;
     },
     enabled: !!user?.email,
-    staleTime: 60000,
+    staleTime: 0,
   });
 
   // Pending network invitations addressed to this account (station_email = this email)
@@ -60,9 +60,20 @@ export default function POS() {
     queryKey: ['pending-invitations', user?.email],
     queryFn: () => base44.entities.Branch.filter({ station_email: user.email, status: 'PENDING' }),
     enabled: !!user?.email,
-    staleTime: 15000,
+    staleTime: 0,
     refetchOnWindowFocus: true,
   });
+
+  // Live updates from the network master: when an invitation is canceled or the station
+  // is disconnected, reflect it here immediately (banner disappears, branch linkage drops)
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsubscribe = base44.entities.Branch.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['pending-invitations', user.email] });
+      queryClient.invalidateQueries({ queryKey: ['pos-branches', user.email] });
+    });
+    return unsubscribe;
+  }, [user?.email, queryClient]);
 
   const { data: appSettingsList = [] } = useQuery({
     queryKey: ['app-settings', user?.email],
