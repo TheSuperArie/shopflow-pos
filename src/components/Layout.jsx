@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import BatchSummaryBar from '@/components/shipment/BatchSummaryBar';
+import NetworkMessageNotifier from '@/components/notifications/NetworkMessageNotifier';
 
 export default function Layout() {
   return (
@@ -13,6 +14,7 @@ export default function Layout() {
           --accent-foreground: 0 0% 10%;
         }
       `}</style>
+      <NetworkMessageNotifier />
       <Outlet />
       <BatchSummaryBar />
     </div>

@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Lock, Save, BarChart2, LogOut } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Lock, Save, BarChart2, LogOut, Bell } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
 import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
@@ -19,6 +20,7 @@ export default function AdminSettings() {
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const [defaultDimension, setDefaultDimension] = useState('');
   const [virtualFolders, setVirtualFolders] = useState([]);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -57,6 +59,7 @@ export default function AdminSettings() {
       setLowStockThreshold(settings[0].low_stock_threshold || 5);
       setDefaultDimension(settings[0].dashboard_default_dimension || '');
       setVirtualFolders(settings[0].pos_virtual_folders || []);
+      setNotificationsEnabled(settings[0].notifications_enabled !== false);
     }
   }, [settings]);
 
@@ -129,6 +132,17 @@ export default function AdminSettings() {
             />
             <p className="text-xs text-gray-400 mt-1">מוצרים עם מלאי מתחת לסף זה יוצגו כמלאי חסר ויסומנו באדום</p>
           </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="flex items-center gap-2">
+                <Bell className="w-4 h-4" /> התראות וצלילים מהרשת
+              </Label>
+              <p className="text-xs text-gray-400 mt-1">
+                צליל והתראה כשמגיעה הודעה ממטה הרשת — גם בפתיחת האתר אם הגיעו הודעות בהיעדרך
+              </p>
+            </div>
+            <Switch checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
+          </div>
           <Button
             onClick={() => mutation.mutate({
               admin_password: password,
@@ -136,6 +150,7 @@ export default function AdminSettings() {
               low_stock_threshold: lowStockThreshold,
               dashboard_default_dimension: defaultDimension || null,
               pos_virtual_folders: virtualFolders,
+              notifications_enabled: notificationsEnabled,
             })}
             className="bg-amber-500 hover:bg-amber-600 gap-2"
             disabled={!password}
