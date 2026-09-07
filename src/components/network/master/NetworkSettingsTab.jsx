@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Crown, Save, Loader2, Settings } from 'lucide-react';
+import { Crown, Save, Loader2, Settings, Network } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import LegacyDataMigration from './LegacyDataMigration';
 
 export default function NetworkSettingsTab({ tenantEmail }) {
   const [networkPassword, setNetworkPassword] = useState('');
+  const [networkName, setNetworkName] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -23,6 +24,7 @@ export default function NetworkSettingsTab({ tenantEmail }) {
   useEffect(() => {
     if (settings[0]) {
       setNetworkPassword(settings[0].network_admin_password || '');
+      setNetworkName(settings[0].network_name || '');
     }
   }, [settings]);
 
@@ -57,6 +59,36 @@ export default function NetworkSettingsTab({ tenantEmail }) {
           <p className="text-sm text-gray-500">הגדרות הנגישות רק לבעל הרשת</p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Network className="w-5 h-5 text-amber-500" /> שם הרשת
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>שם הרשת</Label>
+            <Input
+              type="text"
+              value={networkName}
+              onChange={e => setNetworkName(e.target.value)}
+              placeholder="לדוגמה: רשת אופנה ישראל"
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              השם יוצג בראש כל דף בדשבורד מנהל הרשת
+            </p>
+          </div>
+          <Button
+            onClick={() => mutation.mutate({ network_name: networkName || null })}
+            className="bg-amber-500 hover:bg-amber-600 gap-2"
+            disabled={mutation.isPending}
+          >
+            <Save className="w-4 h-4" /> שמור שם רשת
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

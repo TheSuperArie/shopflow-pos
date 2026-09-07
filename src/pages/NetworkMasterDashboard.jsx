@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Menu } from 'lucide-react';
+import { Menu, Crown } from 'lucide-react';
 import NetworkMasterSidebar from '@/components/network/master/NetworkMasterSidebar';
 import NetworkBranchesTab from '@/components/network/master/NetworkBranchesTab';
 import NetworkAnalyticsTab from '@/components/network/master/NetworkAnalyticsTab';
@@ -47,7 +47,8 @@ export default function NetworkMasterDashboard() {
     queryFn: () => base44.entities.AppSettings.filter({ created_by: tenantEmail }),
     enabled: !!tenantEmail,
   });
-  const networkName = appSettings[0]?.store_name;
+  // Network display name — set on the settings page, falls back to store name
+  const networkName = appSettings[0]?.network_name || appSettings[0]?.store_name;
 
   const createBranch = useMutation({
     mutationFn: (data) => base44.entities.Branch.create(data),
@@ -84,7 +85,7 @@ export default function NetworkMasterDashboard() {
           <button onClick={() => setMobileOpen(true)} className="p-2 rounded-xl bg-gray-100">
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="font-bold text-gray-800 flex-1">מרכז פיקוד רשת</h1>
+          <h1 className="font-bold text-gray-800 flex-1">{networkName || 'מרכז פיקוד רשת'}</h1>
           {tenantEmail && (
             <div className="bg-gray-900 rounded-xl p-1">
               <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} onNavigateToBranches={() => setActiveTab('branches')} />
@@ -92,12 +93,18 @@ export default function NetworkMasterDashboard() {
           )}
         </header>
 
-        {/* Desktop notification bell in top-right */}
-        {tenantEmail && (
-          <div className="hidden lg:flex items-center justify-end px-6 py-2 bg-gray-950 border-b border-white/5">
+        {/* Desktop top bar: network name (start) + notification bell (end) */}
+        <div className="hidden lg:flex items-center justify-between px-6 py-2 bg-gray-950 border-b border-white/5">
+          {networkName && (
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-400" />
+              <span className="font-bold text-white text-sm">{networkName}</span>
+            </div>
+          )}
+          {tenantEmail && (
             <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} onNavigateToBranches={() => setActiveTab('branches')} />
-          </div>
-        )}
+          )}
+        </div>
 
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           {tenantEmail && (

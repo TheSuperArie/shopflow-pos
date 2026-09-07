@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import CatalogVisibility from '../CatalogVisibility';
-import BranchInventory from '../BranchInventory';
+import BranchCatalogView from './BranchCatalogView';
+import BranchStockView from './BranchStockView';
 import BranchDashboard from '@/components/dashboard/BranchDashboard';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 
@@ -78,7 +78,7 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
         <TabsList className="grid grid-cols-5 w-full max-w-2xl">
           <TabsTrigger value="dashboard">לוח בקרה</TabsTrigger>
           <TabsTrigger value="details">פרטי סניף</TabsTrigger>
-          <TabsTrigger value="catalog">נראות קטלוג</TabsTrigger>
+          <TabsTrigger value="catalog">קטלוג</TabsTrigger>
           <TabsTrigger value="inventory">מלאי</TabsTrigger>
           <TabsTrigger value="chat" className="relative">
             צ'אט
@@ -168,14 +168,14 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
           </Card>
         </TabsContent>
 
-        {/* ── CATALOG TAB — master-only ── */}
+        {/* ── CATALOG TAB — the branch station's own catalog ── */}
         <TabsContent value="catalog" className="mt-4">
-          <CatalogVisibility branch={branch} tenantEmail={tenantEmail} />
+          <BranchCatalogView branch={branch} />
         </TabsContent>
 
-        {/* ── INVENTORY TAB ── */}
+        {/* ── INVENTORY TAB — the branch station's own stock ── */}
         <TabsContent value="inventory" className="mt-4">
-          <BranchInventory branch={branch} tenantEmail={tenantEmail} />
+          <BranchStockView branch={branch} />
         </TabsContent>
 
         {/* ── CHAT TAB ── */}
