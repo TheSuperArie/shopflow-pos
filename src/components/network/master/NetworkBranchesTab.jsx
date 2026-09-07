@@ -152,6 +152,11 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
               <p className="text-xs text-amber-500 mt-3 font-medium">
                 {branch.status === 'PENDING' ? 'ממתין לאישור הסניף' : branch.status === 'REJECTED' ? 'ההזמנה נדחתה' : 'לחץ לפתיחת מרכז הבקרה ←'}
               </p>
+              {branch.station_email === tenantEmail && (
+                <p className="text-[11px] text-gray-400 mt-1">
+                  החנות המקורית — מקור הקטלוג של הרשת
+                </p>
+              )}
               {branch.catalog_share?.shared_at && (
                 <p className="text-[11px] text-indigo-500 mt-1">
                   {branch.catalog_share.pulled_at ? 'קטלוג שותף ונקלט בסניף' : 'קטלוג שותף — ממתין לקליטת הסניף'}
@@ -175,7 +180,7 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
                     </>
                   ) : (
                     <>
-                      {branch.status === 'ACTIVE' && (
+                      {branch.status === 'ACTIVE' && branch.station_email !== tenantEmail && (
                         <Button
                           size="sm"
                           variant="outline"
