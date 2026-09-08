@@ -59,9 +59,10 @@ export default function NetworkMasterDashboard() {
     },
   });
 
-  // Auto-bootstrap: if tenant has no branches, create "סניף ראשי"
+  // Auto-bootstrap: if the master himself has no branches, create "סניף ראשי"
+  // (never for a station account viewing the master's dashboard via his code)
   useEffect(() => {
-    if (branchesLoaded && branches.length === 0 && tenantEmail && !bootstrapped && !createBranch.isPending) {
+    if (branchesLoaded && branches.length === 0 && tenantEmail && tenantEmail === currentUser?.email && !bootstrapped && !createBranch.isPending) {
       createBranch.mutate({
         tenant_email: tenantEmail,
         name: 'סניף ראשי',

@@ -52,6 +52,14 @@ export default function AdminSettings() {
 
   const dimensionNames = [...new Set(dimensions.filter(d => d.is_active !== false).map(d => d.name))];
 
+  // If this store joined a network as a branch station, the branch name is set by the network owner
+  const { data: myNetworkBranches = [] } = useQuery({
+    queryKey: ['my-network-branch-settings', user?.email],
+    queryFn: () => user ? base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }) : [],
+    enabled: !!user,
+  });
+  const networkBranch = myNetworkBranches.find(b => b.tenant_email && b.tenant_email !== user?.email) || null;
+
   useEffect(() => {
     if (settings[0]) {
       setPassword(settings[0].admin_password || '12345678');
@@ -61,7 +69,9 @@ export default function AdminSettings() {
       setVirtualFolders(settings[0].pos_virtual_folders || []);
       setNotificationsEnabled(settings[0].notifications_enabled !== false);
     }
-  }, [settings]);
+    // Connected branch: store name automatically follows the network owner's branch name
+    if (networkBranch) setStoreName(networkBranch.name);
+  }, [settings, networkBranch]);
 
   const mutation = useMutation({
     mutationFn: async (data) => {
@@ -98,7 +108,8 @@ export default function AdminSettings() {
         <CardContent className="space-y-4">
           <div>
             <Label>שם החנות</Label>
-            <Input value={storeName} onChange={e => setStoreName(e.target.value)} />
+            <Input value={storeName} onChange={e => setStoreName(e.target.value)} disabled={!!networkBranch} />
+            {!!networkBranch && <p className="text-xs text-gray-400 mt-1">החנות מחוברת לרשת — שם הסניף נקבע על ידי בעל הרשת</p>}
           </div>
           <div>
             <Label>קוד מנהל סניף מקומי</Label>

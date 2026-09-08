@@ -22,9 +22,10 @@ export default function AdminLogin() {
   // The network this account's station belongs to (branch where this email is the station)
   const { data: myNetworkBranches = [] } = useQuery({
     queryKey: ['my-network-branch', user?.email],
-    queryFn: () => user ? base44.entities.Branch.filter({ station_email: user.email }) : [],
+    queryFn: () => user ? base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }) : [],
     enabled: !!user,
   });
+  // An approved connection to someone else's network → this account is a branch station
   const masterEmail = myNetworkBranches.find(b => b.tenant_email && b.tenant_email !== user.email)?.tenant_email;
 
   // The network master's settings — his code works from any of his branches
@@ -49,8 +50,10 @@ export default function AdminLogin() {
       navigate('/NetworkMasterDashboard');
     };
 
-    // Tier 1: Master Network Code (own network) → Network Dashboard
-    if (password === networkPassword) {
+    // Tier 1: Master Network Code (own network) → Network Dashboard.
+    // Blocked for accounts that joined a network as a branch station — they get only
+    // the network they joined (via the master's code, below) or their local branch.
+    if (!masterEmail && password === networkPassword) {
       enterNetwork(user.email);
       return;
     }
