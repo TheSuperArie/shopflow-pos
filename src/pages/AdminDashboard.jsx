@@ -46,8 +46,12 @@ export default function AdminDashboard() {
     return () => { unsub1(); unsub2(); unsub3(); };
   }, [queryClient]);
 
-  // Use the main branch (first active branch for this tenant)
-  const mainBranch = branches.find(b => b.is_active && b.status !== 'PENDING') || branches.find(b => b.is_active);
+  // Use the same precedence as the POS: a station branch in someone else's network
+  // takes precedence (sales are stamped with ITS branch_id), then any active branch.
+  const mainBranch =
+    branches.find(b => b.is_active && b.status !== 'PENDING' && b.tenant_email !== user?.email) ||
+    branches.find(b => b.is_active && b.status !== 'PENDING') ||
+    branches.find(b => b.is_active);
 
   if (!user) return null;
 
