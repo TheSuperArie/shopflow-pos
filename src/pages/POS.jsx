@@ -83,6 +83,8 @@ export default function POS() {
     staleTime: 60000,
   });
   const virtualFolders = appSettingsList[0]?.pos_virtual_folders || [];
+  // "פעל ע"פ מלאי" (settings): off → sell without stock limits, sales don't touch stock
+  const stockModeEnabled = appSettingsList[0]?.stock_mode_enabled !== false;
   // Primary branch: a station branch in someone else's network takes precedence
   // (the network master must see these sales), then any active branch, then any branch
   const activeBranch =
@@ -240,8 +242,10 @@ export default function POS() {
 
       const saveOffline = async () => {
         await offlineManager.addPendingSale(saleData);
-        const updatedVariants = await offlineManager.deductLocalStock(saleItems);
-        queryClient.setQueryData(['product-variants', isOfflineMode, user?.email], updatedVariants);
+        if (stockModeEnabled) {
+          const updatedVariants = await offlineManager.deductLocalStock(saleItems);
+          queryClient.setQueryData(['product-variants', isOfflineMode, user?.email], updatedVariants);
+        }
         return { ...saleData, id: 'offline_' + Date.now(), _savedOffline: true };
       };
 
@@ -252,13 +256,15 @@ export default function POS() {
       // Online path — auto-fallback to offline on any network failure
       try {
         const sale = await base44.entities.Sale.create(saleData);
-        for (const item of saleItems) {
-          if (!item.variant_id) continue;
-          const variant = allVariants.find(v => v.id === item.variant_id);
-          if (variant) {
-            await base44.entities.ProductVariant.update(variant.id, {
-              stock: Math.max(0, (variant.stock || 0) - item.quantity),
-            });
+        if (stockModeEnabled) {
+          for (const item of saleItems) {
+            if (!item.variant_id) continue;
+            const variant = allVariants.find(v => v.id === item.variant_id);
+            if (variant) {
+              await base44.entities.ProductVariant.update(variant.id, {
+                stock: Math.max(0, (variant.stock || 0) - item.quantity),
+              });
+            }
           }
         }
         return sale;
@@ -301,7 +307,7 @@ export default function POS() {
     }
 
     const liveVariant = allVariants.find(v => v.id === variant.id);
-    if ((liveVariant?.stock || 0) <= 0) {
+    if (stockModeEnabled && (liveVariant?.stock || 0) <= 0) {
       toast({ title: '⛔ אין מלאי', description: 'הפריט אזל מהמלאי', duration: 2000 });
       return;
     }
@@ -415,6 +421,7 @@ export default function POS() {
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <SmartSearch
+            stockModeEnabled={stockModeEnabled}
             groups={allGroups}
             variants={allVariants}
             categories={categories}
@@ -524,6 +531,7 @@ export default function POS() {
                   : groups}
                 variants={allVariants}
                 virtualFolders={virtualFolders}
+                stockModeEnabled={stockModeEnabled}
                 currentCategoryId={selectedSubCategory && selectedSubCategory !== '__direct__' ? selectedSubCategory : selectedCategory}
                 onSelect={handleGroupSelect}
               />
@@ -557,6 +565,7 @@ export default function POS() {
         variants={allVariants.filter(v => v.group_id === selectedGroup?.id)}
         allVariants={allVariants}
         categories={categories}
+        stockModeEnabled={stockModeEnabled}
         onConfirm={handleVariantConfirm}
         onClose={() => setSelectedGroup(null)}
       />

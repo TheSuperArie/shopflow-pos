@@ -9,7 +9,7 @@ import { Folder } from 'lucide-react';
  * onSelect(group): callback כשבוחרים מוצר
  * onClose(): סגור
  */
-export default function VirtualFolderPickerModal({ folder, groups, variants, onSelect, onClose }) {
+export default function VirtualFolderPickerModal({ folder, groups, variants, onSelect, onClose, stockModeEnabled = true }) {
   if (!folder) return null;
 
   const folderGroups = groups.filter(g => folder.group_ids.includes(g.id));
@@ -30,7 +30,7 @@ export default function VirtualFolderPickerModal({ folder, groups, variants, onS
           {folderGroups.map(group => {
             const groupVariants = variants.filter(v => v.group_id === group.id);
             const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
-            const isOutOfStock = totalStock <= 0;
+            const isOutOfStock = stockModeEnabled && totalStock <= 0;
 
             return (
               <button

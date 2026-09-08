@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
-export default function DynamicVariantSelector({ open, group, variants, allVariants: allVariantsLive, categories = [], onConfirm, onClose }) {
+export default function DynamicVariantSelector({ open, group, variants, allVariants: allVariantsLive, categories = [], onConfirm, onClose, stockModeEnabled = true }) {
   const [currentDimensionIndex, setCurrentDimensionIndex] = useState(0);
   const [selectedValues, setSelectedValues] = useState({});
 
@@ -58,7 +58,7 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
   // If no dimensions configured, show simple stock check
   if (enabledDimensions.length === 0) {
     const variant = allVariants[0];
-    const hasStock = variant && (variant.stock || 0) > 0;
+    const hasStock = !!variant && (!stockModeEnabled || (variant.stock || 0) > 0);
     
     return (
       <Dialog open={open} onOpenChange={handleClose}>
@@ -113,8 +113,8 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
         if (variant.dimensions?.[currentDimension.name] !== value) {
           return false;
         }
-        // Check has stock
-        return (variant.stock || 0) > 0;
+        // Check has stock (ignored when the store runs without stock mode)
+        return !stockModeEnabled || (variant.stock || 0) > 0;
       });
     });
   };
@@ -132,7 +132,7 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
         return enabledDimensions.every(dim => v.dimensions[dim.name] === newSelections[dim.name]);
       });
 
-      if (variant && (variant.stock || 0) > 0) {
+      if (variant && (!stockModeEnabled || (variant.stock || 0) > 0)) {
         onConfirm(variant, group);
         handleClose();
       }

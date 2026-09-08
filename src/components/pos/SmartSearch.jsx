@@ -4,7 +4,7 @@ import { Search, Package, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { offlineManager } from '@/components/pos/offlineManager';
 
-export default function SmartSearch({ groups, variants, onSelectGroup, onSelectVariant, categories }) {
+export default function SmartSearch({ groups, variants, onSelectGroup, onSelectVariant, categories, stockModeEnabled = true }) {
   // Fallback to cache if data is empty
   const [cachedGroups, setCachedGroups] = useState(groups);
   const [cachedVariants, setCachedVariants] = useState(variants);
@@ -107,7 +107,7 @@ export default function SmartSearch({ groups, variants, onSelectGroup, onSelectV
     // Match group-level barcode
     const groupBarcodeMatch = group.barcode && group.barcode.toLowerCase().includes(searchLower);
 
-    return (nameMatch || variantMatch || groupBarcodeMatch) && hasStock;
+    return (nameMatch || variantMatch || groupBarcodeMatch) && (!stockModeEnabled || hasStock);
   }).slice(0, 8) : [];
 
   const handleSelectGroup = (group) => {

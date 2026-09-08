@@ -9,7 +9,7 @@ import VirtualFolderPickerModal from './VirtualFolderPickerModal';
  * currentCategoryId: הקטגוריה הנוכחית שמוצגת
  * onSelect(group): callback כשבוחרים מוצר
  */
-export default function ProductGrid({ groups, variants, virtualFolders = [], currentCategoryId, onSelect }) {
+export default function ProductGrid({ groups, variants, virtualFolders = [], currentCategoryId, onSelect, stockModeEnabled = true }) {
   const [openFolder, setOpenFolder] = useState(null);
 
   if (!groups.length) {
@@ -37,7 +37,7 @@ export default function ProductGrid({ groups, variants, virtualFolders = [], cur
   const renderGroupCard = (group) => {
     const groupVariants = variants.filter(v => v.group_id === group.id);
     const totalStock = groupVariants.reduce((s, v) => s + (v.stock || 0), 0);
-    const isOutOfStock = totalStock <= 0;
+    const isOutOfStock = stockModeEnabled && totalStock <= 0;
 
     return (
       <button
@@ -79,7 +79,7 @@ export default function ProductGrid({ groups, variants, virtualFolders = [], cur
     const totalStock = folderGroups.reduce((sum, g) => {
       return sum + variants.filter(v => v.group_id === g.id).reduce((s, v) => s + (v.stock || 0), 0);
     }, 0);
-    const isOutOfStock = totalStock <= 0;
+    const isOutOfStock = stockModeEnabled && totalStock <= 0;
 
     return (
       <button
@@ -115,6 +115,7 @@ export default function ProductGrid({ groups, variants, virtualFolders = [], cur
         folder={openFolder}
         groups={groups}
         variants={variants}
+        stockModeEnabled={stockModeEnabled}
         onSelect={(group) => { setOpenFolder(null); onSelect(group); }}
         onClose={() => setOpenFolder(null)}
       />

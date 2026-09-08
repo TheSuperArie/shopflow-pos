@@ -21,6 +21,7 @@ export default function AdminSettings() {
   const [defaultDimension, setDefaultDimension] = useState('');
   const [virtualFolders, setVirtualFolders] = useState([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [stockModeEnabled, setStockModeEnabled] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useCurrentUser();
@@ -68,6 +69,7 @@ export default function AdminSettings() {
       setDefaultDimension(settings[0].dashboard_default_dimension || '');
       setVirtualFolders(settings[0].pos_virtual_folders || []);
       setNotificationsEnabled(settings[0].notifications_enabled !== false);
+      setStockModeEnabled(settings[0].stock_mode_enabled !== false);
     }
     // Connected branch: store name automatically follows the network owner's branch name
     if (networkBranch) setStoreName(networkBranch.name);
@@ -154,6 +156,15 @@ export default function AdminSettings() {
             </div>
             <Switch checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
           </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>פעל ע"פ מלאי</Label>
+              <p className="text-xs text-gray-400 mt-1">
+                כבוי — החנות פועלת ללא קשר למלאי: ניתן למכור בקופה גם מוצרים שאינם במלאי ומכירות אינן מורידות מלאי
+              </p>
+            </div>
+            <Switch checked={stockModeEnabled} onCheckedChange={setStockModeEnabled} />
+          </div>
           <Button
             onClick={() => mutation.mutate({
               admin_password: password,
@@ -162,6 +173,7 @@ export default function AdminSettings() {
               dashboard_default_dimension: defaultDimension || null,
               pos_virtual_folders: virtualFolders,
               notifications_enabled: notificationsEnabled,
+              stock_mode_enabled: stockModeEnabled,
             })}
             className="bg-amber-500 hover:bg-amber-600 gap-2"
             disabled={!password}
@@ -216,6 +228,7 @@ export default function AdminSettings() {
           low_stock_threshold: lowStockThreshold,
           dashboard_default_dimension: defaultDimension || null,
           pos_virtual_folders: virtualFolders,
+          stock_mode_enabled: stockModeEnabled,
         })}
         isSaving={mutation.isPending}
       />

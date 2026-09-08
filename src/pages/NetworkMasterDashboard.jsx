@@ -33,6 +33,15 @@ export default function NetworkMasterDashboard() {
     queryFn: () => base44.auth.me(),
   });
 
+  // A store that joined a network as a branch station has NO independent master dashboard —
+  // it may only view the network it joined (entered via the master's code).
+  const { data: myStationBranches = [] } = useQuery({
+    queryKey: ['my-station-branch', currentUser?.email],
+    queryFn: () => base44.entities.Branch.filter({ station_email: currentUser.email, is_active: true, status: 'ACTIVE' }),
+    enabled: !!currentUser?.email,
+  });
+  const joinedMasterEmail = myStationBranches.find(b => b.tenant_email && b.tenant_email !== currentUser?.email)?.tenant_email || null;
+
   // When the master entered via his code from a branch station, show HIS network — not the station's own data
   const tenantEmail = sessionStorage.getItem('network_master_email') || currentUser?.email;
 
@@ -59,10 +68,19 @@ export default function NetworkMasterDashboard() {
     },
   });
 
+  // Connected station still holding an old self-master session → kick it out of it
+  useEffect(() => {
+    if (joinedMasterEmail && tenantEmail && tenantEmail === currentUser?.email) {
+      sessionStorage.removeItem('network_master_email');
+      sessionStorage.setItem('admin_role', 'ADMIN');
+      navigate('/POS');
+    }
+  }, [joinedMasterEmail, tenantEmail, currentUser?.email, navigate]);
+
   // Auto-bootstrap: if the master himself has no branches, create "סניף ראשי"
   // (never for a station account viewing the master's dashboard via his code)
   useEffect(() => {
-    if (branchesLoaded && branches.length === 0 && tenantEmail && tenantEmail === currentUser?.email && !bootstrapped && !createBranch.isPending) {
+    if (branchesLoaded && branches.length === 0 && tenantEmail && tenantEmail === currentUser?.email && !joinedMasterEmail && !bootstrapped && !createBranch.isPending) {
       createBranch.mutate({
         tenant_email: tenantEmail,
         name: 'סניף ראשי',
@@ -70,7 +88,7 @@ export default function NetworkMasterDashboard() {
         is_active: true,
       });
     }
-  }, [branchesLoaded, branches.length, tenantEmail, bootstrapped]);
+  }, [branchesLoaded, branches.length, tenantEmail, joinedMasterEmail, bootstrapped]);
 
   return (
     <div dir="rtl" className="flex min-h-screen bg-gray-50">
