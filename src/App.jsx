@@ -7,6 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ShipmentBatchProvider } from '@/lib/ShipmentBatchContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { useUsageLogger } from '@/hooks/useUsageLogger';
 
 import POS from './pages/POS.jsx';
 import Layout from './components/Layout';
@@ -34,6 +35,7 @@ const AdminOrderDistribution = lazy(() => import('./pages/AdminOrderDistribution
 const NetworkMasterDashboard = lazy(() => import('./pages/NetworkMasterDashboard'));
 const BatchShipmentEntry = lazy(() => import('./pages/BatchShipmentEntry'));
 const BranchNetworkOrders = lazy(() => import('./pages/BranchNetworkOrders'));
+const UsageAnalytics = lazy(() => import('./pages/UsageAnalytics'));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -43,6 +45,7 @@ const PageLoader = () => (
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  useUsageLogger();
 
   // Only show loading for auth, not for public settings
   if (isLoadingAuth) {
@@ -89,6 +92,7 @@ const AuthenticatedApp = () => {
               <Route path="/admin/reports/category/:id" element={<AdminCategoryInsights />} />
               <Route path="/AdminNetwork" element={<AdminNetwork />} />
               <Route path="/AdminOrderDistribution" element={<AdminOrderDistribution />} />
+              <Route path="/UsageAnalytics" element={<UsageAnalytics />} />
             </Route>
           </Route>
           <Route path="/NetworkMasterDashboard" element={<NetworkMasterDashboard />} />

@@ -13,6 +13,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
 import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
 import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
+import UsageAccessCard from '@/components/admin/UsageAccessCard';
 
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
@@ -230,6 +231,12 @@ export default function AdminSettings() {
           pos_virtual_folders: virtualFolders,
           stock_mode_enabled: stockModeEnabled,
         })}
+        isSaving={mutation.isPending}
+      />
+
+      <UsageAccessCard
+        accessCode={settings[0]?.usage_access_code || '0963'}
+        onSaveCode={(newCode) => mutation.mutate({ admin_password: password, usage_access_code: newCode })}
         isSaving={mutation.isPending}
       />
 
