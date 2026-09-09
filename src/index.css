@@ -86,3 +86,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* הסתרת באדג' הפלטפורמה באתר המפורסם */
+.base44-badge,
+[id^="base44-badge"],
+[class*="base44-badge"],
+.base44-badge *,
+.base44-edit-badge,
+.base44-editor-badge,
+.base44-powered-badge {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
