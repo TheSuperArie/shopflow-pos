@@ -10,7 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 
-export default function ReturnFormModal({ open, onClose }) {
+export default function ReturnFormModal({ open, onClose, branchId = null }) {
   const [form, setForm] = useState({
     customer_name: '',
     customer_email: '',
@@ -45,6 +45,7 @@ export default function ReturnFormModal({ open, onClose }) {
       // Create return with approved status
       const returnRecord = await base44.entities.Return.create({
         ...data,
+        branch_id: branchId || null,
         items: selectedItems,
         total_amount: totalAmount,
         status: 'אושר',
@@ -107,6 +108,7 @@ export default function ReturnFormModal({ open, onClose }) {
           category: 'אחר',
           custom_category: 'החזרות מוצרים',
           date: new Date().toISOString().split('T')[0],
+          branch_id: branchId || null,
         });
       }
     },

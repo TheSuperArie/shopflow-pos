@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Trash2, Loader2, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 
 const EXPENSE_CATEGORIES = ['שכר עובדים', 'הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 
@@ -18,13 +18,15 @@ export default function AdminExpenses() {
   const [showForm, setShowForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
+  const { user, branchId, isLoading: loadingBranch } = useCurrentBranch();
 
-  const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ['expenses', user?.email],
-    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date') : [],
-    enabled: !!user,
+  const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
+    queryKey: ['expenses', branchId, user?.email],
+    queryFn: () => filterBranchScoped(base44.entities.Expense, branchId, user.email, {}, '-date', 2000),
+    enabled: !loadingBranch && !!user,
   });
+
+  const isLoading = loadingBranch || loadingExpenses;
 
   const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
 
@@ -65,7 +67,7 @@ export default function AdminExpenses() {
         </div>
       )}
 
-      <ExpenseFormModal open={showForm} onClose={() => setShowForm(false)} queryClient={queryClient} toast={toast} />
+      <ExpenseFormModal open={showForm} onClose={() => setShowForm(false)} queryClient={queryClient} toast={toast} branchId={branchId} />
     </div>
   );
 }
@@ -102,13 +104,13 @@ function ExpenseItem({ expense, queryClient, toast }) {
   );
 }
 
-function ExpenseFormModal({ open, onClose, queryClient, toast }) {
+function ExpenseFormModal({ open, onClose, queryClient, toast, branchId }) {
   const [form, setForm] = useState({
     description: '', amount: 0, category: '', custom_category: '', date: format(new Date(), 'yyyy-MM-dd'),
   });
 
   const mutation = useMutation({
-    mutationFn: (data) => base44.entities.Expense.create(data),
+    mutationFn: (data) => base44.entities.Expense.create({ ...data, branch_id: branchId || null }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       toast({ title: 'ההוצאה נוספה' });

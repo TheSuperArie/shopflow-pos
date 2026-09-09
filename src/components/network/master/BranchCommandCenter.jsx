@@ -12,6 +12,9 @@ import BranchCatalogView from './BranchCatalogView';
 import BranchStockView from './BranchStockView';
 import BranchDashboard from '@/components/dashboard/BranchDashboard';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
+import BranchExpensesView from './BranchExpensesView';
+import BranchReturnsView from './BranchReturnsView';
+import BranchEmployeesView from './BranchEmployeesView';
 
 export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
   const { toast } = useToast();
@@ -75,11 +78,14 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
       </div>
 
       <Tabs defaultValue="dashboard" dir="rtl">
-        <TabsList className="grid grid-cols-5 w-full max-w-2xl">
+        <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full max-w-3xl h-auto">
           <TabsTrigger value="dashboard">לוח בקרה</TabsTrigger>
           <TabsTrigger value="details">פרטי סניף</TabsTrigger>
           <TabsTrigger value="catalog">קטלוג</TabsTrigger>
           <TabsTrigger value="inventory">מלאי</TabsTrigger>
+          <TabsTrigger value="expenses">הוצאות</TabsTrigger>
+          <TabsTrigger value="returns">החזרות</TabsTrigger>
+          <TabsTrigger value="employees">עובדים</TabsTrigger>
           <TabsTrigger value="chat" className="relative">
             צ'אט
             {unreadCount > 0 && (
@@ -176,6 +182,17 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
         {/* ── INVENTORY TAB — the branch station's own stock ── */}
         <TabsContent value="inventory" className="mt-4">
           <BranchStockView branch={branch} />
+        </TabsContent>
+
+        {/* ── EXPENSES / RETURNS / EMPLOYEES — scoped to this branch only ── */}
+        <TabsContent value="expenses" className="mt-4">
+          <BranchExpensesView branch={branch} />
+        </TabsContent>
+        <TabsContent value="returns" className="mt-4">
+          <BranchReturnsView branch={branch} />
+        </TabsContent>
+        <TabsContent value="employees" className="mt-4">
+          <BranchEmployeesView branch={branch} />
         </TabsContent>
 
         {/* ── CHAT TAB ── */}

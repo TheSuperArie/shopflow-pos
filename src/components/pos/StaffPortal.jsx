@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Users, LogIn, LogOut, Clock, DollarSign, Delete, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 
 const ACTIVE_SHIFTS_KEY = 'active_shifts'; // Maps employee_id -> shift data
 
@@ -38,12 +38,12 @@ export default function StaffPortal({ open, onClose }) {
   const [expenseForm, setExpenseForm] = useState({ amount: '', description: '', category: 'other', payment_method: 'מזומן' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
+  const { user, branchId, isLoading: loadingBranch } = useCurrentBranch();
 
   const { data: employees = [] } = useQuery({
-    queryKey: ['employees', user?.email],
-    queryFn: () => user ? base44.entities.Employee.filter({ created_by: user.email, is_active: true }) : [],
-    enabled: !!user,
+    queryKey: ['employees', branchId, user?.email, 'active'],
+    queryFn: () => filterBranchScoped(base44.entities.Employee, branchId, user.email, { is_active: true }, 'name', 500),
+    enabled: !loadingBranch && !!user,
   });
 
   useEffect(() => {
@@ -62,6 +62,7 @@ export default function StaffPortal({ open, onClose }) {
         clock_in: now,
         date: format(new Date(), 'yyyy-MM-dd'),
         opening_cash: openingCash,
+        branch_id: employee?.branch_id || branchId || null,
       });
       // Store shift indexed by employee ID
       const shifts = getAllActiveShifts();
@@ -109,6 +110,7 @@ export default function StaffPortal({ open, onClose }) {
         custom_category: data.category,
         date: format(new Date(), 'yyyy-MM-dd'),
         notes: `משמרת: ${activeShiftForEmployee?.logId || ''} | שיטת תשלום: ${data.payment_method}`,
+        branch_id: foundEmployee?.branch_id || branchId || null,
       });
     },
     onSuccess: () => {

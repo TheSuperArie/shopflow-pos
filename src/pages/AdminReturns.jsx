@@ -9,7 +9,7 @@ import { RotateCcw, Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide
 import { format } from 'date-fns';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import ReturnDetailsModal from '@/components/returns/ReturnDetailsModal';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 
 export default function AdminReturns() {
   const [showForm, setShowForm] = useState(false);
@@ -17,13 +17,15 @@ export default function AdminReturns() {
   const [filterStatus, setFilterStatus] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
+  const { user, branchId, isLoading: loadingBranch } = useCurrentBranch();
 
-  const { data: returns = [], isLoading } = useQuery({
-    queryKey: ['returns', user?.email],
-    queryFn: () => user ? base44.entities.Return.filter({ created_by: user.email }, '-created_date') : [],
-    enabled: !!user,
+  const { data: returns = [], isLoading: loadingReturns } = useQuery({
+    queryKey: ['returns', branchId, user?.email],
+    queryFn: () => filterBranchScoped(base44.entities.Return, branchId, user.email, {}, '-created_date', 2000),
+    enabled: !loadingBranch && !!user,
   });
+
+  const isLoading = loadingBranch || loadingReturns;
 
   const { data: credits = [] } = useQuery({
     queryKey: ['credits', user?.email],
@@ -72,6 +74,7 @@ export default function AdminReturns() {
           category: 'אחר',
           custom_category: 'החזרות מוצרים',
           date: format(new Date(), 'yyyy-MM-dd'),
+          branch_id: returnData.branch_id || null,
         });
       }
     },
@@ -189,7 +192,7 @@ export default function AdminReturns() {
         </div>
       )}
 
-      <ReturnFormModal open={showForm} onClose={() => setShowForm(false)} />
+      <ReturnFormModal open={showForm} onClose={() => setShowForm(false)} branchId={branchId} />
       <ReturnDetailsModal open={!!selectedReturn} returnData={selectedReturn} onClose={() => setSelectedReturn(null)} />
     </div>
   );

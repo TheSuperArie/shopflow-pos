@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut, Calendar, Wallet, ClipboardEdit } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 import EmployeePaymentPanel from '@/components/admin/EmployeePaymentPanel';
 
 export default function AdminEmployees() {
@@ -24,19 +24,21 @@ export default function AdminEmployees() {
   const [endDate, setEndDate] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
+  const { user, branchId, isLoading: loadingBranch } = useCurrentBranch();
 
-  const { data: employees = [], isLoading } = useQuery({
-    queryKey: ['employees', user?.email],
-    queryFn: () => user ? base44.entities.Employee.filter({ created_by: user.email }) : [],
-    enabled: !!user,
+  const { data: employees = [], isLoading: loadingEmployees } = useQuery({
+    queryKey: ['employees', branchId, user?.email],
+    queryFn: () => filterBranchScoped(base44.entities.Employee, branchId, user.email, {}, 'name', 500),
+    enabled: !loadingBranch && !!user,
   });
 
   const { data: logs = [] } = useQuery({
-    queryKey: ['attendance-logs', user?.email],
-    queryFn: () => user ? base44.entities.AttendanceLog.filter({ created_by: user.email }, '-clock_in') : [],
-    enabled: !!user,
+    queryKey: ['attendance-logs', branchId, user?.email],
+    queryFn: () => filterBranchScoped(base44.entities.AttendanceLog, branchId, user.email, {}, '-clock_in', 2000),
+    enabled: !loadingBranch && !!user,
   });
+
+  const isLoading = loadingBranch || loadingEmployees;
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Employee.delete(id),
@@ -235,6 +237,7 @@ export default function AdminEmployees() {
         onClose={() => setShowForm(false)}
         queryClient={queryClient}
         toast={toast}
+        branchId={branchId}
       />
 
       <ManualHoursModal
@@ -243,12 +246,13 @@ export default function AdminEmployees() {
         onClose={() => setManualHoursEmployee(null)}
         queryClient={queryClient}
         toast={toast}
+        branchId={branchId}
       />
     </div>
   );
 }
 
-function ManualHoursModal({ open, employee, onClose, queryClient, toast }) {
+function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchId }) {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [form, setForm] = useState({ date: today, start_time: '', end_time: '', notes: '' });
 
@@ -267,6 +271,7 @@ function ManualHoursModal({ open, employee, onClose, queryClient, toast }) {
         clock_out: clockOut,
         date: data.date,
         notes: data.notes || 'הזנה ידנית',
+        branch_id: employee?.branch_id || branchId || null,
       });
     },
     onSuccess: () => {
@@ -343,7 +348,7 @@ function ManualHoursModal({ open, employee, onClose, queryClient, toast }) {
   );
 }
 
-function EmployeeFormModal({ open, employee, onClose, queryClient, toast }) {
+function EmployeeFormModal({ open, employee, onClose, queryClient, toast, branchId }) {
   const [form, setForm] = useState({ name: '', pin: '', phone: '', role: 'קופאי', is_active: true });
 
   React.useEffect(() => {
@@ -356,7 +361,9 @@ function EmployeeFormModal({ open, employee, onClose, queryClient, toast }) {
 
   const mutation = useMutation({
     mutationFn: (data) =>
-      employee ? base44.entities.Employee.update(employee.id, data) : base44.entities.Employee.create(data),
+      employee
+        ? base44.entities.Employee.update(employee.id, data)
+        : base44.entities.Employee.create({ ...data, branch_id: branchId || null }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast({ title: employee ? '✅ העובד עודכן' : '✅ העובד נוסף', duration: 2000 });

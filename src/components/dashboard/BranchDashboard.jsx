@@ -53,8 +53,18 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['branch-dashboard-expenses', tenantEmail],
-    queryFn: () => base44.entities.Expense.filter({ created_by: tenantEmail }, '-date'),
+    queryKey: ['branch-dashboard-expenses', branchId, tenantEmail],
+    queryFn: async () => {
+      // Same scoping rule as sales: this branch's expenses + legacy records
+      // with no branch_id (backward compatible).
+      const legacyPromise = base44.entities.Expense.filter({ branch_id: null, created_by: tenantEmail }, '-date', 2000);
+      if (!branchId) return await legacyPromise;
+      const [branchExpenses, legacyExpenses] = await Promise.all([
+        base44.entities.Expense.filter({ branch_id: branchId }, '-date', 2000),
+        legacyPromise,
+      ]);
+      return [...branchExpenses, ...legacyExpenses];
+    },
     enabled: !!tenantEmail,
     staleTime: 0,
   });
