@@ -46,7 +46,7 @@ export default function AdminLowStock() {
     enabled: !!user,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
  const { data: variants = [], isLoading: variantsLoading } = useQuery({
@@ -55,8 +55,8 @@ export default function AdminLowStock() {
     enabled: !!user,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    staleTime: 0,
-    refetchInterval: 5000,
+    staleTime: 60000,
+    refetchInterval: 60000,
   });
 
   const { data: categories = [] } = useQuery({
@@ -65,7 +65,7 @@ export default function AdminLowStock() {
     enabled: !!user,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
-    staleTime: 0,
+    staleTime: 60000,
   });
 
   const isLoading = groupsLoading || variantsLoading;

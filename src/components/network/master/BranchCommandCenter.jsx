@@ -45,7 +45,7 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
   const { data: unreadMsgs = [] } = useQuery({
     queryKey: ['general-chat-unread', branch.id],
     queryFn: () => base44.entities.BranchGeneralChat.filter({ branch_id: branch.id, sender_role: 'BRANCH', is_read: false }),
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
   const unreadCount = unreadMsgs.length;
 

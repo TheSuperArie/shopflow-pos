@@ -18,7 +18,7 @@ export default function GeneralChatDrawer({ open, onClose, branchId, tenantEmail
     queryKey: ['general-chat', branchId],
     queryFn: () => base44.entities.BranchGeneralChat.filter({ branch_id: branchId, tenant_email: tenantEmail }, 'created_date'),
     enabled: !!branchId && open,
-    refetchInterval: 8000,
+    refetchInterval: 20000,
   });
 
   // Mark incoming as read

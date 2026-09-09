@@ -20,7 +20,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     queryKey: ['order-tickets', tenantEmail],
     queryFn: () => base44.entities.OrderTicket.filter({ tenant_email: tenantEmail }, '-created_date'),
     enabled: !!tenantEmail,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
 
   // Network alerts (unread)
@@ -28,7 +28,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     queryKey: ['network-alerts', tenantEmail],
     queryFn: () => base44.entities.NetworkAlert.filter({ tenant_email: tenantEmail, is_read: false }, '-created_date'),
     enabled: !!tenantEmail,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
 
   // Unread chat messages from branches (HQ side)
@@ -36,7 +36,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     queryKey: ['ticket-chats-hq-bell', tenantEmail],
     queryFn: () => base44.entities.TicketChat.filter({ sender_role: 'BRANCH', is_read: false }),
     enabled: !!tenantEmail,
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
   // Group unread chats by ticket_id, attach branch name via tickets

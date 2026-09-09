@@ -28,20 +28,7 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
     queryKey: ['branches', tenantEmail],
     queryFn: () => base44.entities.Branch.filter({ tenant_email: tenantEmail }),
     enabled: !!tenantEmail,
-  });
-
-  // All sales — scoped below to this network's branches (branch_id) + the master's own sales.
-  // Branch sales are created by the branch's own account, so they can't be fetched by tenant filter.
-  const { data: allSales = [] } = useQuery({
-    queryKey: ['network-sales', tenantEmail],
-    queryFn: () => base44.entities.Sale.list('-created_date', 5000),
-    enabled: !!tenantEmail,
-  });
-
-  const { data: allExpenses = [] } = useQuery({
-    queryKey: ['network-expenses', tenantEmail],
-    queryFn: () => base44.entities.Expense.list('-created_date', 5000),
-    enabled: !!tenantEmail,
+    staleTime: 120000,
   });
 
   const { from, to } = useMemo(() => {
@@ -54,6 +41,30 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
     }
     return { from: subDays(now, 7), to: now };
   }, [preset, customFrom, customTo]);
+
+  // Server-side lower bound on the selected range instead of pulling thousands of
+  // all-time rows. The client-side isInRange() filtering below is unchanged, so the
+  // displayed numbers are identical — only fewer rows travel over the network.
+  const fromIso = from.toISOString();
+  // Expenses are bucketed by their `date` field (which can differ from created_date),
+  // so they get a generous buffer to be safe against back-dated entries.
+  const expensesFromIso = useMemo(() => subDays(from, 90).toISOString(), [from]);
+
+  // All sales in range — scoped below to this network's branches (branch_id) + the master's own sales.
+  // Branch sales are created by the branch's own account, so they can't be fetched by tenant filter.
+  const { data: allSales = [] } = useQuery({
+    queryKey: ['network-sales', tenantEmail, fromIso],
+    queryFn: () => base44.entities.Sale.filter({ created_date: { $gte: fromIso } }, '-created_date', 5000),
+    enabled: !!tenantEmail,
+    staleTime: 60000,
+  });
+
+  const { data: allExpenses = [] } = useQuery({
+    queryKey: ['network-expenses', tenantEmail, expensesFromIso],
+    queryFn: () => base44.entities.Expense.filter({ created_date: { $gte: expensesFromIso } }, '-created_date', 5000),
+    enabled: !!tenantEmail,
+    staleTime: 60000,
+  });
 
   const isInRange = (dateStr) => {
     try {

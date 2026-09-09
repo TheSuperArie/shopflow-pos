@@ -53,7 +53,7 @@ export default function POS() {
       return station.length > 0 ? station : own;
     },
     enabled: !!user?.email,
-    staleTime: 0,
+    staleTime: 120000,
   });
 
   // Pending network invitations addressed to this account (station_email = this email)
@@ -61,7 +61,7 @@ export default function POS() {
     queryKey: ['pending-invitations', user?.email],
     queryFn: () => base44.entities.Branch.filter({ station_email: user.email, status: 'PENDING' }),
     enabled: !!user?.email,
-    staleTime: 0,
+    staleTime: 60000,
     refetchOnWindowFocus: true,
   });
 
@@ -69,11 +69,21 @@ export default function POS() {
   // is disconnected, reflect it here immediately (banner disappears, branch linkage drops)
   useEffect(() => {
     if (!user?.email) return;
+    // Debounced: a burst of branch changes collapses into one refetch instead of
+    // two queries re-running on every connected station for every single change.
+    let timer = null;
     const unsubscribe = base44.entities.Branch.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['pending-invitations', user.email] });
-      queryClient.invalidateQueries({ queryKey: ['pos-branches', user.email] });
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        queryClient.invalidateQueries({ queryKey: ['pending-invitations', user.email] });
+        queryClient.invalidateQueries({ queryKey: ['pos-branches', user.email] });
+      }, 3000);
     });
-    return unsubscribe;
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
   }, [user?.email, queryClient]);
 
   const { data: appSettingsList = [] } = useQuery({

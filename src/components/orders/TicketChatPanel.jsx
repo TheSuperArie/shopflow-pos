@@ -19,7 +19,7 @@ export default function TicketChatPanel({ ticketId, senderRole }) {
     queryKey: ['ticket-chat', ticketId],
     queryFn: () => base44.entities.TicketChat.filter({ ticket_id: ticketId }, 'created_date'),
     enabled: !!ticketId,
-    refetchInterval: 10000,
+    refetchInterval: 20000,
   });
 
   // Mark incoming messages as read

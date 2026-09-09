@@ -27,6 +27,9 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   const { data: rawSales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['all-sales-dashboard', tenantEmail],
     queryFn: () => base44.entities.Sale.list('-created_date', 5000),
+    // This dashboard's KPIs are all-time (no date filter in the UI), so the fetch
+    // can't be narrowed without changing the numbers — cached instead.
+    staleTime: 120000,
   });
 
   const branchIds = useMemo(() => new Set(branches.map(b => b.id)), [branches]);
@@ -45,11 +48,13 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   const { data: productGroups = [] } = useQuery({
     queryKey: ['product-groups-dashboard'],
     queryFn: () => base44.entities.ProductGroup.list(),
+    staleTime: 120000,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories-dashboard'],
     queryFn: () => base44.entities.Category.list(),
+    staleTime: 120000,
   });
 
   // ── 1. Orders by month (last 12 months)

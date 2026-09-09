@@ -34,7 +34,7 @@ export default function NetworkOrdersTab({ tenantEmail }) {
     queryKey: ['ticket-chats-hq', tenantEmail],
     queryFn: () => base44.entities.TicketChat.filter({ sender_role: 'BRANCH', is_read: false }),
     enabled: !!tenantEmail,
-    refetchInterval: 15000,
+    refetchInterval: 60000,
   });
 
   const unreadByTicket = {};
