@@ -64,13 +64,16 @@ export default function AdminReturns() {
         });
       }
 
-      await base44.entities.Expense.create({
-        description: `החזרה - ${returnData.customer_name || 'לקוח'}`,
-        amount: returnData.total_amount,
-        category: 'אחר',
-        custom_category: 'החזרות מוצרים',
-        date: format(new Date(), 'yyyy-MM-dd'),
-      });
+      // Create expense record only for actual cash refunds
+      if (returnData.refund_method === 'החזר כספי') {
+        await base44.entities.Expense.create({
+          description: `החזרה - ${returnData.customer_name || 'לקוח'}`,
+          amount: returnData.total_amount,
+          category: 'אחר',
+          custom_category: 'החזרות מוצרים',
+          date: format(new Date(), 'yyyy-MM-dd'),
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns'] });

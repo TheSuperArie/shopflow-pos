@@ -20,7 +20,9 @@ export default function ReturnFormModal({ open, onClose }) {
     notes: '',
   });
   const [selectedItems, setSelectedItems] = useState([]);
+  const [exchangeItems, setExchangeItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [exchangeSearchQuery, setExchangeSearchQuery] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -48,16 +50,35 @@ export default function ReturnFormModal({ open, onClose }) {
         status: 'אושר',
         approval_date: new Date().toISOString().split('T')[0],
         processed_by: 'system',
+        ...(data.refund_method === 'החלפה' && exchangeItems.length > 0
+          ? { exchange_items: exchangeItems }
+          : {}),
       });
 
-      // Update inventory immediately
-      const variants = await base44.entities.ProductVariant.list();
+      // Update inventory: returned items go back to stock
+      const variantsById = new Map(
+        (await base44.entities.ProductVariant.list()).map(v => [v.id, v])
+      );
       for (const item of selectedItems) {
-        const variant = variants.find(v => v.id === item.variant_id);
+        const variant = variantsById.get(item.variant_id);
         if (variant) {
+          variant.stock = (variant.stock || 0) + item.quantity;
           await base44.entities.ProductVariant.update(variant.id, {
-            stock: (variant.stock || 0) + item.quantity,
+            stock: variant.stock,
           });
+        }
+      }
+
+      // Exchange: replacement items leave stock
+      if (data.refund_method === 'החלפה') {
+        for (const item of exchangeItems) {
+          const variant = variantsById.get(item.variant_id);
+          if (variant) {
+            variant.stock = Math.max(0, (variant.stock || 0) - item.quantity);
+            await base44.entities.ProductVariant.update(variant.id, {
+              stock: variant.stock,
+            });
+          }
         }
       }
 
@@ -78,14 +99,16 @@ export default function ReturnFormModal({ open, onClose }) {
         });
       }
 
-      // Create expense record for return
-      await base44.entities.Expense.create({
-        description: `החזרה - ${data.customer_name || 'לקוח'}`,
-        amount: totalAmount,
-        category: 'אחר',
-        custom_category: 'החזרות מוצרים',
-        date: new Date().toISOString().split('T')[0],
-      });
+      // Create expense record only for actual cash refunds
+      if (data.refund_method === 'החזר כספי') {
+        await base44.entities.Expense.create({
+          description: `החזרה - ${data.customer_name || 'לקוח'}`,
+          amount: totalAmount,
+          category: 'אחר',
+          custom_category: 'החזרות מוצרים',
+          date: new Date().toISOString().split('T')[0],
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns'] });
@@ -111,7 +134,9 @@ export default function ReturnFormModal({ open, onClose }) {
       notes: '',
     });
     setSelectedItems([]);
+    setExchangeItems([]);
     setSearchQuery('');
+    setExchangeSearchQuery('');
     onClose();
   };
 
@@ -148,6 +173,40 @@ export default function ReturnFormModal({ open, onClose }) {
         return group?.name.toLowerCase().includes(searchQuery.toLowerCase());
       }).slice(0, 5)
     : [];
+
+  const filteredExchangeVariants = exchangeSearchQuery.trim().length >= 2
+    ? variants.filter(v => {
+        const group = groups.find(g => g.id === v.group_id);
+        return group?.name.toLowerCase().includes(exchangeSearchQuery.toLowerCase());
+      }).slice(0, 5)
+    : [];
+
+  const addExchangeItem = (variant, group) => {
+    const existingIndex = exchangeItems.findIndex(i => i.variant_id === variant.id);
+    if (existingIndex >= 0) {
+      const updated = [...exchangeItems];
+      updated[existingIndex].quantity += 1;
+      setExchangeItems(updated);
+    } else {
+      const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
+      setExchangeItems([...exchangeItems, {
+        variant_id: variant.id,
+        product_name: `${group.name} - מידה ${variant.size}, ${variant.cut}, ${variant.collar}`,
+        quantity: 1,
+        sell_price: sellPrice,
+      }]);
+    }
+  };
+
+  const removeExchangeItem = (index) => {
+    setExchangeItems(exchangeItems.filter((_, i) => i !== index));
+  };
+
+  const updateExchangeQuantity = (index, quantity) => {
+    const updated = [...exchangeItems];
+    updated[index].quantity = Math.max(1, quantity);
+    setExchangeItems(updated);
+  };
 
   const totalAmount = selectedItems.reduce((sum, item) => 
     sum + (item.sell_price * item.quantity), 0
@@ -254,6 +313,68 @@ export default function ReturnFormModal({ open, onClose }) {
             </div>
           )}
 
+          {/* Exchange Items (only for החלפה) */}
+          {form.refund_method === 'החלפה' && (
+            <div className="border rounded-lg p-3 bg-purple-50">
+              <p className="font-semibold mb-2">מוצרים חלופיים (יוצאים מהמלאי):</p>
+              <Input
+                value={exchangeSearchQuery}
+                onChange={e => setExchangeSearchQuery(e.target.value)}
+                placeholder="הקלד שם מוצר חלופי..."
+              />
+              {filteredExchangeVariants.length > 0 && (
+                <div className="mt-2 border rounded-lg max-h-40 overflow-y-auto">
+                  {filteredExchangeVariants.map(variant => {
+                    const group = groups.find(g => g.id === variant.group_id);
+                    return (
+                      <button
+                        key={variant.id}
+                        onClick={() => addExchangeItem(variant, group)}
+                        className="w-full p-2 text-right hover:bg-gray-50 border-b last:border-0"
+                      >
+                        <p className="font-medium">{group?.name}</p>
+                        <p className="text-sm text-gray-500">
+                          מידה {variant.size} | {variant.cut} | {variant.collar}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {exchangeItems.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {exchangeItems.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{item.product_name}</p>
+                        <p className="text-xs text-gray-500">₪{item.sell_price} ליחידה</p>
+                      </div>
+                      <Input
+                        type="number"
+                        value={item.quantity}
+                        onChange={e => updateExchangeQuantity(idx, parseInt(e.target.value) || 1)}
+                        className="w-16"
+                        min="1"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeExchangeItem(idx)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {exchangeItems.length === 0 && (
+                <p className="text-xs text-purple-700 mt-2">
+                  חובה לבחור לפחות מוצר חלופי אחד להשלמת ההחלפה
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Return Details */}
           <div>
             <Label>סיבת ההחזרה *</Label>
@@ -296,7 +417,13 @@ export default function ReturnFormModal({ open, onClose }) {
           </Button>
           <Button
             onClick={() => createReturnMutation.mutate(form)}
-            disabled={!form.customer_name || !form.reason || selectedItems.length === 0 || createReturnMutation.isPending}
+            disabled={
+              !form.customer_name ||
+              !form.reason ||
+              selectedItems.length === 0 ||
+              (form.refund_method === 'החלפה' && exchangeItems.length === 0) ||
+              createReturnMutation.isPending
+            }
             className="bg-purple-600 hover:bg-purple-700"
           >
             {createReturnMutation.isPending ? (
