@@ -15,6 +15,10 @@ import { getVariantFolders, getPrimaryDimensionKey } from '@/lib/variantHierarch
  *   badgeColor      - tailwind class for the badge bg (default: "bg-amber-500")
  *   folderBg        - tailwind class for folder header bg (default: "bg-amber-50")
  *   folderBorder    - tailwind class for folder border (default: "border-amber-200")
+ *   leafClassName   - layout for the container of the rendered variants (list by default,
+ *                     callers can pass a grid to get square cards instead of full-width rows)
+ *   renderFolderExtra - (folderVariants) => ReactNode — extra control in a folder header,
+ *                     used for the folder-level "select all"
  */
 export default function VariantDimensionFolders({
   variants,
@@ -24,6 +28,8 @@ export default function VariantDimensionFolders({
   badgeColor = 'bg-amber-500',
   folderBg = 'bg-amber-50',
   folderBorder = 'border-amber-200',
+  leafClassName = 'space-y-2',
+  renderFolderExtra,
 }) {
   const [expandedDim, setExpandedDim] = useState(null);
 
@@ -33,7 +39,7 @@ export default function VariantDimensionFolders({
 
   // If single variant, render flat
   if (variants.length === 1) {
-    return <div>{renderVariant(variants[0])}</div>;
+    return <div className={leafClassName}>{renderVariant(variants[0])}</div>;
   }
 
   // Get folders organized by primary dimension
@@ -42,7 +48,7 @@ export default function VariantDimensionFolders({
   // If no valid primary dimension found, render flat
   if (folders.length === 0 || !folders[0]?.primaryDimensionKey) {
     return (
-      <div className="space-y-2">
+      <div className={leafClassName}>
         {variants.map(v => (
           <div key={v.id}>{renderVariant(v)}</div>
         ))}
@@ -58,21 +64,24 @@ export default function VariantDimensionFolders({
         const isOpen = expandedDim === folder.primaryValue;
         return (
           <div key={folder.primaryValue} className={`border-2 ${folderBorder} rounded-xl overflow-hidden`}>
-            <button
-              onClick={() => setExpandedDim(isOpen ? null : folder.primaryValue)}
-              className={`w-full ${folderBg} px-4 py-3 flex items-center justify-between hover:brightness-95 transition-all`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-base">📁</span>
-                <span className="font-semibold text-gray-800">{primaryDimKey}: {folder.primaryValue}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge className={`${badgeColor} text-white text-xs`}>{folder.variants.length}</Badge>
-                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-              </div>
-            </button>
+            <div className={`${folderBg} flex items-center gap-2 pl-3`}>
+              <button
+                onClick={() => setExpandedDim(isOpen ? null : folder.primaryValue)}
+                className="flex-1 px-4 py-3 flex items-center justify-between hover:brightness-95 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-base">📁</span>
+                  <span className="font-semibold text-gray-800">{primaryDimKey}: {folder.primaryValue}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={`${badgeColor} text-white text-xs`}>{folder.variants.length}</Badge>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              {renderFolderExtra && renderFolderExtra(folder.variants)}
+            </div>
             {isOpen && (
-              <div className="bg-white p-3 space-y-2">
+              <div className={`bg-white p-3 ${leafClassName}`}>
                 {folder.variants.map(v => (
                   <div key={v.id}>{renderVariant(v)}</div>
                 ))}
