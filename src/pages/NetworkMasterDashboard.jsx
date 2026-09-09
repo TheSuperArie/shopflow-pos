@@ -9,6 +9,7 @@ import NetworkAnalyticsTab from '@/components/network/master/NetworkAnalyticsTab
 import NetworkSettingsTab from '@/components/network/master/NetworkSettingsTab';
 import NetworkSuppliersTab from '@/components/network/master/NetworkSuppliersTab';
 import NetworkOrdersTab from '@/components/network/master/NetworkOrdersTab';
+import NetworkWarehouseOrdersTab from '@/components/network/master/NetworkWarehouseOrdersTab';
 import NotificationBell from '@/components/network/master/NotificationBell';
 import NetworkAdminDashboard from '@/components/network/master/NetworkAdminDashboard';
 
@@ -133,6 +134,7 @@ export default function NetworkMasterDashboard() {
               {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} networkName={networkName} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
               {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}
+              {activeTab === 'warehouse' && <NetworkWarehouseOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'suppliers' && <NetworkSuppliersTab tenantEmail={tenantEmail} />}
               {activeTab === 'settings' && <NetworkSettingsTab tenantEmail={tenantEmail} />}
             </>
