@@ -59,7 +59,11 @@ export default function POS() {
   // Pending network invitations addressed to this account (station_email = this email)
   const { data: pendingInvitations = [] } = useQuery({
     queryKey: ['pending-invitations', user?.email],
-    queryFn: () => base44.entities.Branch.filter({ station_email: user.email, status: 'PENDING' }),
+    // Only offers already approved by the system (developer) reach the branch owner
+    queryFn: async () => {
+      const list = await base44.entities.Branch.filter({ station_email: user.email, status: 'PENDING' });
+      return list.filter(b => b.system_approval !== 'PENDING_SYSTEM' && b.system_approval !== 'REJECTED');
+    },
     enabled: !!user?.email,
     staleTime: 60000,
     refetchOnWindowFocus: true,

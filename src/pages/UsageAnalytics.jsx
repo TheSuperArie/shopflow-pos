@@ -1,7 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import AccessRequestsPanel from '@/components/dev/AccessRequestsPanel';
+import ApprovedAccountsPanel from '@/components/dev/ApprovedAccountsPanel';
+import PendingInvitesPanel from '@/components/dev/PendingInvitesPanel';
+import DevEmailCard from '@/components/dev/DevEmailCard';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +28,21 @@ export default function UsageAnalytics() {
     },
     enabled: !!devCode,
     retry: false,
+  });
+
+  const { data: access, refetch: refetchAccess } = useQuery({
+    queryKey: ['access-admin', devCode],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('accessControl', { action: 'list', code: devCode });
+      return res.data;
+    },
+    enabled: !!devCode,
+    retry: false,
+  });
+
+  const accessAction = useMutation({
+    mutationFn: (payload) => base44.functions.invoke('accessControl', { ...payload, code: devCode }),
+    onSuccess: () => refetchAccess(),
   });
 
   // Direct URL entry without a verified code goes back to settings
@@ -100,6 +119,33 @@ export default function UsageAnalytics() {
         </Button>
       </div>
 
+      <div>
+        <h2 className="text-base font-bold text-gray-800 mb-2">בקשות גישה חדשות</h2>
+        <AccessRequestsPanel
+          requests={access?.requests || []}
+          isPending={accessAction.isPending}
+          onDecide={(request_id, decision) => accessAction.mutate({ action: 'decide', request_id, decision })}
+        />
+      </div>
+
+      <div>
+        <h2 className="text-base font-bold text-gray-800 mb-2">הצעות הצטרפות לרשת — ממתינות לאישור מערכת</h2>
+        <PendingInvitesPanel
+          invites={access?.pendingInvites || []}
+          isPending={accessAction.isPending}
+          onDecide={(branch_id, decision) => accessAction.mutate({ action: 'decideInvite', branch_id, decision })}
+        />
+      </div>
+
+      <div>
+        <h2 className="text-base font-bold text-gray-800 mb-2">חשבונות מאושרים</h2>
+        <ApprovedAccountsPanel
+          accounts={access?.accounts || []}
+          isPending={accessAction.isPending}
+          onSetStatus={(email, status) => accessAction.mutate({ action: 'setAccountStatus', email, status })}
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
@@ -141,6 +187,7 @@ export default function UsageAnalytics() {
         <UsageHistoryTable logs={filtered} />
       </div>
 
+      <DevEmailCard code={devCode} currentEmail={access?.dev_email} />
       <DeveloperCodeCard code={devCode} />
     </div>
   );

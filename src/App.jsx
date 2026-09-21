@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { ShipmentBatchProvider } from '@/lib/ShipmentBatchContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { useUsageLogger } from '@/hooks/useUsageLogger';
+import AccessGate from '@/components/access/AccessGate';
 
 import POS from './pages/POS.jsx';
 import Layout from './components/Layout';
@@ -69,6 +70,7 @@ const AuthenticatedApp = () => {
   // Always render the app - let individual pages handle their own data loading
   return (
     <ShipmentBatchProvider>
+      <AccessGate>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route element={<Layout />}>
@@ -100,6 +102,7 @@ const AuthenticatedApp = () => {
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </Suspense>
+      </AccessGate>
     </ShipmentBatchProvider>
   );
 };

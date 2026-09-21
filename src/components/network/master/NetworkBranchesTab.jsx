@@ -32,18 +32,10 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
         tenant_email: tenantEmail,
         is_active: false,
         status: 'PENDING',
+        // The offer first waits for system (developer) approval — only then it reaches the branch
+        system_approval: 'PENDING_SYSTEM',
         network_name: networkName || 'הרשת',
       });
-      // Notify the recipient by email that an invitation is waiting for them
-      try {
-        await base44.integrations.Core.SendEmail({
-          to: data.station_email,
-          subject: `הזמנה להצטרף לרשת ${networkName || ''}`,
-          body: `שלום!\n\nהוזמנת להצטרף לרשת "${networkName || 'הרשת'}" בתור סניף "${data.name}".\nפתח את האפליקציה, ואשר את ההזמנה בבאנר "הזמנה להצטרף לרשת" במסך הקופה.\n\nבברכה,\nצוות הרשת`,
-        });
-      } catch (e) {
-        // ההזמנה נוצרה גם אם שליחת המייל נכשלה
-      }
       return branch;
     },
     onSuccess: () => {
@@ -124,7 +116,11 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
                   <MapPin className="w-5 h-5 text-amber-500" />
                 </div>
-                {branch.status === 'PENDING' ? (
+                {branch.system_approval === 'PENDING_SYSTEM' ? (
+                  <Badge className="text-xs bg-indigo-100 text-indigo-700 border border-indigo-300">
+                    <Clock className="w-3 h-3 mr-1" />ממתין לאישור מערכת
+                  </Badge>
+                ) : branch.status === 'PENDING' ? (
                   <Badge className="text-xs bg-amber-100 text-amber-700 border border-amber-300">
                     <Clock className="w-3 h-3 mr-1" />ממתין לאישור
                   </Badge>
@@ -150,7 +146,7 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
                 <span className="truncate">{branch.station_email}</span>
               </div>
               <p className="text-xs text-amber-500 mt-3 font-medium">
-                {branch.status === 'PENDING' ? 'ממתין לאישור הסניף' : branch.status === 'REJECTED' ? 'ההזמנה נדחתה' : 'לחץ לפתיחת מרכז הבקרה ←'}
+                {branch.system_approval === 'PENDING_SYSTEM' ? 'ממתין לאישור מערכת' : branch.status === 'PENDING' ? 'ממתין לאישור הסניף' : branch.status === 'REJECTED' ? 'ההזמנה נדחתה' : 'לחץ לפתיחת מרכז הבקרה ←'}
               </p>
               {branch.station_email === tenantEmail && (
                 <p className="text-[11px] text-gray-400 mt-1">
