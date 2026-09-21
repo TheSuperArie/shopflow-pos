@@ -125,6 +125,9 @@ export default function StaffPortal({ open, onClose }) {
         custom_category: data.category,
         date: format(new Date(), 'yyyy-MM-dd'),
         notes: `משמרת: ${activeShiftForEmployee?.logId || ''} | שיטת תשלום: ${data.payment_method}`,
+        employee_id: foundEmployee?.id || null,
+        employee_name: foundEmployee?.name || null,
+        deduct_from_debt: true,
         branch_id: foundEmployee?.branch_id || branchId || null,
       });
     },

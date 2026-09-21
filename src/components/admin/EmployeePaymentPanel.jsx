@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Wallet, Banknote, Clock, Scale } from 'lucide-react';
+import { Plus, Wallet, Banknote, Clock, Scale, Receipt } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
+import EmployeeExpensesPanel from '@/components/admin/EmployeeExpensesPanel';
 
 const METHOD_COLORS = {
   'מזומן': 'bg-green-100 text-green-700',
@@ -38,6 +39,12 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [], br
     enabled: !!employee,
   });
 
+  const { data: employeeExpenses = [] } = useQuery({
+    queryKey: ['employee-expenses', employee?.id],
+    queryFn: () => base44.entities.Expense.filter({ employee_id: employee.id }, '-date'),
+    enabled: !!employee,
+  });
+
   const inMonth = (dateStr) => !month || (dateStr || '').startsWith(month);
 
   const filteredLogs = useMemo(
@@ -56,8 +63,19 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [], br
 
   const hourlyRate = employee?.hourly_rate || 0;
   const earned = totalHours * hourlyRate;
+  const filteredExpenses = useMemo(
+    () => employeeExpenses.filter(e => inMonth(e.date)),
+    [employeeExpenses, month]
+  );
+  const deductedExpenses = filteredExpenses
+    .filter(e => e.deduct_from_debt !== false)
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+  const nonDeductedExpenses = filteredExpenses
+    .filter(e => e.deduct_from_debt === false)
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+
   const totalPaid = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const balance = earned - totalPaid;
+  const balance = earned - totalPaid - deductedExpenses;
 
   if (!employee) {
     return (
@@ -104,16 +122,35 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [], br
             <p className="text-xl font-bold text-green-600">₪{totalPaid.toLocaleString()}</p>
           </CardContent>
         </Card>
-        <Card className={balance > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}>
+        <Card className="bg-orange-50 border-orange-200">
           <CardContent className="p-3 text-center">
-            <Scale className={`w-4 h-4 mx-auto mb-1 ${balance > 0 ? 'text-red-500' : 'text-gray-400'}`} />
-            <p className="text-xs text-gray-500">יתרת חוב לעובד</p>
-            <p className={`text-xl font-bold ${balance > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-              ₪{balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            <Receipt className="w-4 h-4 text-orange-500 mx-auto mb-1" />
+            <p className="text-xs text-gray-500">הוצאות משוכללות</p>
+            <p className="text-xl font-bold text-orange-600">₪{deductedExpenses.toLocaleString()}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              לא משוכללות: ₪{nonDeductedExpenses.toLocaleString()}
             </p>
           </CardContent>
         </Card>
       </div>
+
+      <Card className={balance > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}>
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Scale className={`w-4 h-4 ${balance > 0 ? 'text-red-500' : 'text-gray-400'}`} /> יתרת חוב לעובד
+            </span>
+            <span className={`text-2xl font-bold ${balance > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+              ₪{balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-1">
+            שכר מגיע ₪{earned.toLocaleString(undefined, { maximumFractionDigits: 0 })} − תשלומים ₪{totalPaid.toLocaleString()} − הוצאות משוכללות ₪{deductedExpenses.toLocaleString()}
+          </p>
+        </CardContent>
+      </Card>
+
+      <EmployeeExpensesPanel employee={employee} expenses={filteredExpenses} branchId={branchId} />
 
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-700 flex items-center gap-2">
