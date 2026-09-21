@@ -4,7 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Search, Activity, Users, Code2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Search, Activity, Users, Code2, LogOut } from 'lucide-react';
 import UsageAccountList from '@/components/usage/UsageAccountList';
 import UsageHistoryTable from '@/components/usage/UsageHistoryTable';
 import DeveloperCodeCard from '@/components/usage/DeveloperCodeCard';
@@ -30,7 +31,7 @@ export default function UsageAnalytics() {
   useEffect(() => {
     if (blocked) {
       clearDevCode();
-      navigate('/AdminSettings', { replace: true });
+      navigate('/AdminLogin', { replace: true });
     }
   }, [blocked, navigate]);
 
@@ -82,12 +83,21 @@ export default function UsageAnalytics() {
   }
 
   return (
-    <div className="space-y-6" dir="rtl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <Code2 className="w-6 h-6" /> דף מפתחים
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">נתוני שימוש באתר — מי נכנס, מתי, ומאיזה חשבון</p>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 space-y-6" dir="rtl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <Code2 className="w-6 h-6" /> דף מפתחים
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">נתוני שימוש באתר — מי נכנס, מתי, ומאיזה חשבון</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => { clearDevCode(); navigate('/POS'); }}
+          className="gap-2 shrink-0"
+        >
+          <LogOut className="w-4 h-4" /> יציאה
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

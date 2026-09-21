@@ -13,7 +13,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import DangerZone from '@/components/admin/DangerZone';
 import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
 import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
-import DeveloperAccessCard from '@/components/admin/DeveloperAccessCard';
 
 export default function AdminSettings() {
   const [password, setPassword] = useState('');
@@ -233,8 +232,6 @@ export default function AdminSettings() {
         })}
         isSaving={mutation.isPending}
       />
-
-      <DeveloperAccessCard />
 
       <SaleMigrationTool tenantEmail={user?.email} />
       <DangerZone user={user} />

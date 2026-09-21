@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Lock, Loader2 } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { DEV_CODE_SESSION_KEY } from '@/lib/developerAccess';
 
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
@@ -35,7 +36,7 @@ export default function AdminLogin() {
     enabled: !!masterEmail,
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const s = settings[0];
     // Fallback hardcoded values for testing — replace via AppSettings in DB
@@ -71,6 +72,18 @@ export default function AdminLogin() {
       sessionStorage.setItem('admin_role', 'BRANCH_MANAGER');
       navigate('/AdminDashboard');
       return;
+    }
+
+    // Tier 3: Global developer code (verified server-side) → Developer page
+    try {
+      const res = await base44.functions.invoke('developerPortal', { action: 'verify', code: password });
+      if (res.data?.ok) {
+        sessionStorage.setItem(DEV_CODE_SESSION_KEY, password);
+        navigate('/UsageAnalytics');
+        return;
+      }
+    } catch {
+      // not the developer code either
     }
 
     setError('סיסמה שגויה');

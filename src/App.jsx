@@ -92,9 +92,9 @@ const AuthenticatedApp = () => {
               <Route path="/admin/reports/category/:id" element={<AdminCategoryInsights />} />
               <Route path="/AdminNetwork" element={<AdminNetwork />} />
               <Route path="/AdminOrderDistribution" element={<AdminOrderDistribution />} />
-              <Route path="/UsageAnalytics" element={<UsageAnalytics />} />
             </Route>
           </Route>
+          <Route path="/UsageAnalytics" element={<UsageAnalytics />} />
           <Route path="/NetworkMasterDashboard" element={<NetworkMasterDashboard />} />
           <Route path="/BatchShipmentEntry" element={<BatchShipmentEntry />} />
           <Route path="*" element={<PageNotFound />} />
