@@ -46,12 +46,14 @@ export default function StaffPortal({ open, onClose }) {
     enabled: !loadingBranch && !!user,
   });
 
-  useEffect(() => {
-    if (open && foundEmployee) {
-      // Check if THIS specific employee has an active shift
-      setActiveShiftForEmployee(getActiveShiftForEmployee(foundEmployee.id));
-    }
-  }, [open, foundEmployee]);
+  const [checkingShift, setCheckingShift] = useState(false);
+
+  // Server is the source of truth for an open shift: the employee's latest
+  // AttendanceLog with no clock_out, regardless of device/browser.
+  const fetchOpenShifts = async (employeeId) => {
+    const logs = await base44.entities.AttendanceLog.filter({ employee_id: employeeId }, '-clock_in', 50);
+    return logs.filter(l => !l.clock_out);
+  };
 
   const clockInMutation = useMutation({
     mutationFn: async ({ employee, openingCash }) => {
@@ -71,12 +73,17 @@ export default function StaffPortal({ open, onClose }) {
       return log;
     },
     onSuccess: () => {
-      if (foundEmployee) {
-        setActiveShiftForEmployee(getActiveShiftForEmployee(foundEmployee.id));
-      }
       queryClient.invalidateQueries({ queryKey: ['attendance-logs'] });
       toast({ title: `✅ כניסה נרשמה - ${foundEmployee?.name}`, duration: 3000 });
       resetAndClose();
+    },
+    onError: (error) => {
+      toast({
+        title: '❌ רישום הכניסה נכשל',
+        description: error?.message || 'נסה שוב',
+        variant: 'destructive',
+        duration: 5000,
+      });
     },
   });
 
@@ -99,6 +106,14 @@ export default function StaffPortal({ open, onClose }) {
       toast({ title: `✅ יציאה נרשמה - ${foundEmployee?.name}`, duration: 3000 });
       resetAndClose();
     },
+    onError: (error) => {
+      toast({
+        title: '❌ רישום היציאה נכשל',
+        description: error?.message || 'נסה שוב',
+        variant: 'destructive',
+        duration: 5000,
+      });
+    },
   });
 
   const addExpenseMutation = useMutation({
@@ -120,6 +135,14 @@ export default function StaffPortal({ open, onClose }) {
       setExpenseForm({ amount: '', description: '', category: 'other', payment_method: 'מזומן' });
       setMode('select');
     },
+    onError: (error) => {
+      toast({
+        title: '❌ רישום ההוצאה נכשל',
+        description: error?.message || 'נסה שוב',
+        variant: 'destructive',
+        duration: 5000,
+      });
+    },
   });
 
   const handlePinInput = (digit) => {
@@ -128,7 +151,8 @@ export default function StaffPortal({ open, onClose }) {
 
   const handlePinDelete = () => setPin(prev => prev.slice(0, -1));
 
-  const handlePinSubmit = () => {
+  const handlePinSubmit = async () => {
+    if (checkingShift || clockInMutation.isPending) return;
     const emp = employees.find(e => e.pin === pin);
     if (!emp) {
       toast({ title: '❌ קוד PIN שגוי', variant: 'destructive', duration: 2000 });
@@ -136,7 +160,32 @@ export default function StaffPortal({ open, onClose }) {
       return;
     }
     setFoundEmployee(emp);
-    const employeeShift = getActiveShiftForEmployee(emp.id);
+
+    let openShifts = [];
+    setCheckingShift(true);
+    try {
+      openShifts = await fetchOpenShifts(emp.id);
+    } catch (error) {
+      setCheckingShift(false);
+      toast({
+        title: '❌ בדיקת משמרת נכשלה',
+        description: error?.message || 'נסה שוב',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      return;
+    }
+    setCheckingShift(false);
+
+    if (openShifts.length > 1) {
+      toast({
+        title: '⚠️ נמצאו כמה משמרות פתוחות',
+        description: 'המשמרת האחרונה תיסגר — פנה למנהל לתיקון השאר',
+        duration: 6000,
+      });
+    }
+
+    const employeeShift = openShifts[0] ? { logId: openShifts[0].id, employee: emp } : null;
     setActiveShiftForEmployee(employeeShift);
     const isCashier = emp.role === 'קופאי';
 
@@ -258,9 +307,9 @@ export default function StaffPortal({ open, onClose }) {
                 className="h-14 text-xl font-bold bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
                 0
               </button>
-              <button onClick={handlePinSubmit} disabled={pin.length !== 4}
+              <button onClick={handlePinSubmit} disabled={pin.length !== 4 || checkingShift || clockInMutation.isPending}
                 className="h-14 text-xl font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-colors disabled:opacity-40">
-                ✓
+                {checkingShift || clockInMutation.isPending ? '...' : '✓'}
               </button>
             </div>
           </div>
@@ -376,6 +425,7 @@ export default function StaffPortal({ open, onClose }) {
                   amount,
                   description: expenseForm.description || 'הוצאה',
                   category: expenseForm.category,
+                  payment_method: expenseForm.payment_method,
                 });
               }}
               className="w-full bg-amber-500 hover:bg-amber-600 gap-2"

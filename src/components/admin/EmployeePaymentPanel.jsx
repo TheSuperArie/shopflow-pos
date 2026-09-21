@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Wallet, TrendingUp, Banknote, Clock } from 'lucide-react';
+import { Plus, Wallet, Banknote, Clock, Scale } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const METHOD_COLORS = {
   'מזומן': 'bg-green-100 text-green-700',
@@ -27,11 +26,11 @@ const TYPE_COLORS = {
   'אחר': 'bg-gray-100 text-gray-700',
 };
 
-export default function EmployeePaymentPanel({ employee, attendanceLogs = [] }) {
+export default function EmployeePaymentPanel({ employee, attendanceLogs = [], branchId }) {
   const [showAddPayment, setShowAddPayment] = useState(false);
+  const [month, setMonth] = useState(''); // '' = all time, else 'yyyy-MM'
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const user = useCurrentUser();
 
   const { data: payments = [] } = useQuery({
     queryKey: ['employee-payments', employee?.id],
@@ -39,16 +38,26 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [] }) 
     enabled: !!employee,
   });
 
-  // Calculate total hours from attendance logs (completed shifts only)
-  const totalHours = attendanceLogs.reduce((sum, log) => {
+  const inMonth = (dateStr) => !month || (dateStr || '').startsWith(month);
+
+  const filteredLogs = useMemo(
+    () => attendanceLogs.filter(l => inMonth(l.date)),
+    [attendanceLogs, month]
+  );
+  const filteredPayments = useMemo(
+    () => payments.filter(p => inMonth(p.payment_date)),
+    [payments, month]
+  );
+
+  const totalHours = filteredLogs.reduce((sum, log) => {
     if (!log.clock_out) return sum;
-    const mins = differenceInMinutes(parseISO(log.clock_out), parseISO(log.clock_in));
-    return sum + mins / 60;
+    return sum + differenceInMinutes(parseISO(log.clock_out), parseISO(log.clock_in)) / 60;
   }, 0);
 
-  const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const totalSalaryPayments = payments.filter(p => p.payment_type === 'משכורת').reduce((sum, p) => sum + p.amount, 0);
-  const totalBonuses = payments.filter(p => p.payment_type !== 'משכורת').reduce((sum, p) => sum + p.amount, 0);
+  const hourlyRate = employee?.hourly_rate || 0;
+  const earned = totalHours * hourlyRate;
+  const totalPaid = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const balance = earned - totalPaid;
 
   if (!employee) {
     return (
@@ -60,13 +69,32 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [] }) 
 
   return (
     <div className="space-y-4" dir="rtl">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <Label className="text-xs">חודש</Label>
+          <Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="h-9" />
+        </div>
+        {month && (
+          <Button variant="outline" size="sm" onClick={() => setMonth('')}>הצג הכל</Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="p-3 text-center">
             <Clock className="w-4 h-4 text-blue-500 mx-auto mb-1" />
             <p className="text-xs text-gray-500">שעות עבודה</p>
             <p className="text-xl font-bold text-blue-600">{totalHours.toFixed(1)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="p-3 text-center">
+            <Wallet className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+            <p className="text-xs text-gray-500">שכר מגיע</p>
+            <p className="text-xl font-bold text-amber-600">₪{earned.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              {hourlyRate ? `₪${hourlyRate} לשעה` : 'לא הוגדר שכר לשעה'}
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-green-50 border-green-200">
@@ -76,16 +104,17 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [] }) 
             <p className="text-xl font-bold text-green-600">₪{totalPaid.toLocaleString()}</p>
           </CardContent>
         </Card>
-        <Card className="bg-amber-50 border-amber-200">
+        <Card className={balance > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}>
           <CardContent className="p-3 text-center">
-            <TrendingUp className="w-4 h-4 text-amber-500 mx-auto mb-1" />
-            <p className="text-xs text-gray-500">בונוסים</p>
-            <p className="text-xl font-bold text-amber-600">₪{totalBonuses.toLocaleString()}</p>
+            <Scale className={`w-4 h-4 mx-auto mb-1 ${balance > 0 ? 'text-red-500' : 'text-gray-400'}`} />
+            <p className="text-xs text-gray-500">יתרת חוב לעובד</p>
+            <p className={`text-xl font-bold ${balance > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+              ₪{balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Add Payment Button */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-700 flex items-center gap-2">
           <Wallet className="w-4 h-4" /> היסטוריית תשלומים
@@ -95,15 +124,14 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [] }) 
         </Button>
       </div>
 
-      {/* Payments Table */}
-      {payments.length === 0 ? (
+      {filteredPayments.length === 0 ? (
         <p className="text-center text-gray-400 py-6 text-sm">אין תשלומים רשומים</p>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto">
-          {payments.map(payment => (
+          {filteredPayments.map(payment => (
             <Card key={payment.id} className="border-gray-200">
               <CardContent className="p-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-1">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-gray-800">₪{payment.amount.toLocaleString()}</span>
                     <Badge className={`text-xs ${TYPE_COLORS[payment.payment_type] || ''}`}>
@@ -115,9 +143,7 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [] }) 
                   </div>
                   <span className="text-xs text-gray-500">{payment.payment_date}</span>
                 </div>
-                {payment.notes && (
-                  <p className="text-xs text-gray-500 mt-1">{payment.notes}</p>
-                )}
+                {payment.notes && <p className="text-xs text-gray-500 mt-1">{payment.notes}</p>}
               </CardContent>
             </Card>
           ))}
@@ -127,18 +153,26 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [] }) 
       <AddPaymentModal
         open={showAddPayment}
         employee={employee}
+        branchId={branchId}
         onClose={() => setShowAddPayment(false)}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['employee-payments', employee.id] });
-          toast({ title: '✅ תשלום נרשם', duration: 2000 });
+          queryClient.invalidateQueries({ queryKey: ['expenses'] });
+          toast({ title: '✅ תשלום נרשם ונרשם גם כהוצאה', duration: 2500 });
           setShowAddPayment(false);
         }}
+        onError={(error) => toast({
+          title: '❌ רישום התשלום נכשל',
+          description: error?.message || 'נסה שוב',
+          variant: 'destructive',
+          duration: 5000,
+        })}
       />
     </div>
   );
 }
 
-function AddPaymentModal({ open, employee, onClose, onSuccess }) {
+function AddPaymentModal({ open, employee, branchId, onClose, onSuccess, onError }) {
   const [form, setForm] = useState({
     amount: '',
     payment_method: 'מזומן',
@@ -148,13 +182,26 @@ function AddPaymentModal({ open, employee, onClose, onSuccess }) {
   });
 
   const mutation = useMutation({
-    mutationFn: (data) => base44.entities.EmployeePayment.create({
-      ...data,
-      employee_id: employee.id,
-      employee_name: employee.name,
-      amount: parseFloat(data.amount),
-    }),
+    mutationFn: async (data) => {
+      const amount = parseFloat(data.amount);
+      const payment = await base44.entities.EmployeePayment.create({
+        ...data,
+        employee_id: employee.id,
+        employee_name: employee.name,
+        amount,
+      });
+      // Mirror the payment as a branch expense so it shows in expense reports
+      await base44.entities.Expense.create({
+        description: `תשלום לעובד ${employee.name}${data.notes ? ` — ${data.notes}` : ''}`,
+        amount,
+        category: 'שכר עובדים',
+        date: data.payment_date,
+        branch_id: employee.branch_id || branchId || null,
+      });
+      return payment;
+    },
     onSuccess,
+    onError,
   });
 
   const isValid = form.amount && parseFloat(form.amount) > 0 && form.payment_date;

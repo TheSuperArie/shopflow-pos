@@ -13,12 +13,14 @@ import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut, Calendar, W
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 import EmployeePaymentPanel from '@/components/admin/EmployeePaymentPanel';
+import ShiftEditModal from '@/components/admin/ShiftEditModal';
 
 export default function AdminEmployees() {
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [manualHoursEmployee, setManualHoursEmployee] = useState(null);
+  const [editingLog, setEditingLog] = useState(null);
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'payments'
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -201,10 +203,20 @@ export default function AdminEmployees() {
                   <Card key={log.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm">{log.date}</span>
-                        <Badge className={log.clock_out ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700'}>
-                          {calcDuration(log)}
-                        </Badge>
+                        <span className="font-semibold text-sm flex items-center gap-2">
+                          {log.date}
+                          {log.manually_edited && (
+                            <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-300">עודכן ידנית</Badge>
+                          )}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Badge className={log.clock_out ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700'}>
+                            {calcDuration(log)}
+                          </Badge>
+                          <button onClick={() => setEditingLog(log)} className="p-1.5 hover:bg-blue-50 rounded-lg" title="עריכת משמרת">
+                            <Pencil className="w-3.5 h-3.5 text-blue-500" />
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
                         <div className="flex items-center gap-1">
@@ -225,7 +237,11 @@ export default function AdminEmployees() {
             )}
 
             {activeTab === 'payments' && (
-              <EmployeePaymentPanel employee={selectedEmployee} attendanceLogs={employeeLogs} />
+              <EmployeePaymentPanel
+                employee={selectedEmployee}
+                attendanceLogs={selectedEmployee ? logs.filter(l => l.employee_id === selectedEmployee.id) : []}
+                branchId={branchId}
+              />
             )}
           </div>
         </div>
@@ -238,6 +254,12 @@ export default function AdminEmployees() {
         queryClient={queryClient}
         toast={toast}
         branchId={branchId}
+      />
+
+      <ShiftEditModal
+        open={!!editingLog}
+        log={editingLog}
+        onClose={() => setEditingLog(null)}
       />
 
       <ManualHoursModal
@@ -271,6 +293,7 @@ function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchI
         clock_out: clockOut,
         date: data.date,
         notes: data.notes || 'הזנה ידנית',
+        manually_edited: true,
         branch_id: employee?.branch_id || branchId || null,
       });
     },
@@ -279,6 +302,7 @@ function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchI
       toast({ title: '✅ שעות נרשמו בהצלחה', duration: 2000 });
       onClose();
     },
+    onError: (error) => toast({ title: '❌ שמירת השעות נכשלה', description: error?.message, variant: 'destructive', duration: 5000 }),
   });
 
   const isValid = form.date && form.start_time && form.end_time && form.end_time > form.start_time;
@@ -349,26 +373,29 @@ function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchI
 }
 
 function EmployeeFormModal({ open, employee, onClose, queryClient, toast, branchId }) {
-  const [form, setForm] = useState({ name: '', pin: '', phone: '', role: 'קופאי', is_active: true });
+  const [form, setForm] = useState({ name: '', pin: '', phone: '', role: 'קופאי', hourly_rate: '', is_active: true });
 
   React.useEffect(() => {
     if (employee) {
-      setForm({ name: employee.name, pin: employee.pin, phone: employee.phone || '', role: employee.role || 'קופאי', is_active: employee.is_active !== false });
+      setForm({ name: employee.name, pin: employee.pin, phone: employee.phone || '', role: employee.role || 'קופאי', hourly_rate: employee.hourly_rate ?? '', is_active: employee.is_active !== false });
     } else {
-      setForm({ name: '', pin: '', phone: '', role: 'קופאי', is_active: true });
+      setForm({ name: '', pin: '', phone: '', role: 'קופאי', hourly_rate: '', is_active: true });
     }
   }, [employee, open]);
 
   const mutation = useMutation({
-    mutationFn: (data) =>
-      employee
-        ? base44.entities.Employee.update(employee.id, data)
-        : base44.entities.Employee.create({ ...data, branch_id: branchId || null }),
+    mutationFn: (data) => {
+      const payload = { ...data, hourly_rate: data.hourly_rate === '' ? null : Number(data.hourly_rate) };
+      return employee
+        ? base44.entities.Employee.update(employee.id, payload)
+        : base44.entities.Employee.create({ ...payload, branch_id: branchId || null });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast({ title: employee ? '✅ העובד עודכן' : '✅ העובד נוסף', duration: 2000 });
       onClose();
     },
+    onError: (error) => toast({ title: '❌ שמירת העובד נכשלה', description: error?.message, variant: 'destructive', duration: 5000 }),
   });
 
   const isValid = form.name && form.pin.length === 4 && /^\d{4}$/.test(form.pin);
@@ -397,6 +424,16 @@ function EmployeeFormModal({ open, employee, onClose, queryClient, toast, branch
           <div>
             <Label>טלפון (אופציונלי)</Label>
             <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="050-0000000" />
+          </div>
+          <div>
+            <Label>שכר לשעה (₪)</Label>
+            <Input
+              type="number"
+              value={form.hourly_rate}
+              onChange={e => setForm({ ...form, hourly_rate: e.target.value })}
+              placeholder="למשל: 45"
+            />
+            <p className="text-xs text-gray-400 mt-1">לפי שדה זה מחושב השכר המגיע לעובד וחוב החנות אליו</p>
           </div>
           <div>
             <Label>תפקיד</Label>
