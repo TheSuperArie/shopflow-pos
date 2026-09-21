@@ -128,27 +128,5 @@
     "tenant_email",
     "name",
     "station_email"
-  ],
-  "rls": {
-    "read": {
-      "user_condition": {
-        "access_status": "approved"
-      }
-    },
-    "create": {
-      "user_condition": {
-        "access_status": "approved"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "access_status": "approved"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "access_status": "approved"
-      }
-    }
-  }
+  ]
 }
