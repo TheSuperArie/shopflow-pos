@@ -1,19 +1,38 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Search, Activity, Users } from 'lucide-react';
+import { Loader2, Search, Activity, Users, Code2 } from 'lucide-react';
 import UsageAccountList from '@/components/usage/UsageAccountList';
 import UsageHistoryTable from '@/components/usage/UsageHistoryTable';
+import DeveloperCodeCard from '@/components/usage/DeveloperCodeCard';
+import { getDevCode, clearDevCode } from '@/lib/developerAccess';
 
 export default function UsageAnalytics() {
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const devCode = getDevCode();
 
-  const { data: logs = [], isLoading } = useQuery({
-    queryKey: ['usage-logs'],
-    queryFn: () => base44.entities.UsageLog.list('-login_at', 3000),
+  const { data: logs = [], isLoading, isError } = useQuery({
+    queryKey: ['usage-logs', devCode],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('developerPortal', { action: 'logs', code: devCode });
+      return res.data?.logs || [];
+    },
+    enabled: !!devCode,
+    retry: false,
   });
+
+  // Direct URL entry without a verified code goes back to settings
+  const blocked = !devCode || isError;
+  useEffect(() => {
+    if (blocked) {
+      clearDevCode();
+      navigate('/AdminSettings', { replace: true });
+    }
+  }, [blocked, navigate]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -52,6 +71,8 @@ export default function UsageAnalytics() {
     return Object.values(map).sort((a, b) => new Date(b.last_login) - new Date(a.last_login));
   }, [filtered]);
 
+  if (blocked) return null;
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -63,8 +84,10 @@ export default function UsageAnalytics() {
   return (
     <div className="space-y-6" dir="rtl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">נתוני שימוש באתר</h1>
-        <p className="text-sm text-gray-500 mt-1">מי נכנס לאפליקציה, מתי, ומאיזה חשבון</p>
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <Code2 className="w-6 h-6" /> דף מפתחים
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">נתוני שימוש באתר — מי נכנס, מתי, ומאיזה חשבון</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -107,6 +130,8 @@ export default function UsageAnalytics() {
         <h2 className="text-base font-bold text-gray-800 mb-2">היסטוריית כניסות</h2>
         <UsageHistoryTable logs={filtered} />
       </div>
+
+      <DeveloperCodeCard code={devCode} />
     </div>
   );
 }

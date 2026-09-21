@@ -39,5 +39,16 @@
   "required": [
     "user_email",
     "login_at"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "__developer_service_role_only__"
+    },
+    "update": {
+      "created_by_id": "__developer_service_role_only__"
+    },
+    "delete": {
+      "created_by_id": "__developer_service_role_only__"
+    }
+  }
 }
