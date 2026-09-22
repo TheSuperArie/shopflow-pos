@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, GitFork } from 'lucide-react';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
 // Mode: 'single' or 'split'
 function AssignmentRow({ baseName, count, sell_price, candidates, groups, onDone }) {
@@ -90,11 +91,8 @@ export default function SaleMigrationTool({ tenantEmail }) {
     gcTime: 0,
   });
 
-  const { data: groups = [], isLoading: loadingGroups } = useQuery({
-    queryKey: ['migration-groups', tenantEmail],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: tenantEmail }, 'name', 500),
-    enabled: !!tenantEmail,
-  });
+  // Own products + products the network master added for this branch (same scope as the POS)
+  const { data: groups = [], isPending: loadingGroups } = usePosCatalogQuery('migration-groups', 'ProductGroup', { sort: 'name', limit: 500 });
 
   const unassignedNames = useMemo(() => {
     const map = {};

@@ -11,6 +11,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { format, startOfMonth } from 'date-fns';
+import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 
 export default function AdminCategoryInsights() {
   const { id: categoryId } = useParams();
@@ -41,8 +42,9 @@ export default function AdminCategoryInsights() {
 
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [], isLoading: loadingCategories, isFetching: fetchingCategories } = useQuery({
-    queryKey: ['categories', ownerEmail],
-    queryFn: () => base44.entities.Category.filter({ created_by: ownerEmail }),
+    queryKey: ['insights-categories', ownerEmail, branchId],
+    // Owner's catalog + records the network master added for this branch (same scope as the POS)
+    queryFn: () => fetchPosCatalogRecords(base44.entities.Category, ownerEmail, branchId),
     enabled: !!ownerEmail,
     staleTime: 0,
   });
@@ -78,15 +80,15 @@ export default function AdminCategoryInsights() {
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['insights-groups', ownerEmail],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: ownerEmail }),
+    queryKey: ['insights-groups', ownerEmail, branchId],
+    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductGroup, ownerEmail, branchId),
     enabled: !!ownerEmail,
     staleTime: 0,
   });
 
   const { data: productVariants = [] } = useQuery({
-    queryKey: ['insights-variants', ownerEmail],
-    queryFn: () => base44.entities.ProductVariant.filter({ created_by: ownerEmail }),
+    queryKey: ['insights-variants', ownerEmail, branchId],
+    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductVariant, ownerEmail, branchId),
     enabled: !!ownerEmail,
     staleTime: 0,
   });

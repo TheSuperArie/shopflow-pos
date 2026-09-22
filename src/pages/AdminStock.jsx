@@ -15,6 +15,7 @@ import BulkStockUpdate from '@/components/admin/BulkStockUpdate';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 import StockCategoryTree from '@/components/stock/StockCategoryTree';
 import BulkStockActionBar from '@/components/stock/BulkStockActionBar';
 
@@ -30,23 +31,10 @@ export default function AdminStock() {
     enabled: !!user,
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories', user?.email],
-    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [],
-    enabled: !!user,
-  });
-
-  const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
-
-  const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants', user?.email],
-    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
+  // Own catalog + products the network master added for this branch (same scope as the POS)
+  const { data: categories = [] } = usePosCatalogQuery('categories', 'Category', { sort: 'sort_order' });
+  const { data: groups = [] } = usePosCatalogQuery('product-groups', 'ProductGroup');
+  const { data: variants = [] } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
   const { data: allDimensions = [] } = useQuery({
     queryKey: ['variant-dimensions', user?.email],
@@ -144,23 +132,9 @@ function StockFormModal({ open, onClose }) {
     quantity_added: 0, supplier_id: '', order_id: '', arrival_date: format(new Date(), 'yyyy-MM-dd'), notes: '',
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories', modalUser?.email],
-    queryFn: () => modalUser ? base44.entities.Category.filter({ created_by: modalUser.email }, 'sort_order') : [],
-    enabled: !!modalUser,
-  });
-
-  const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups', modalUser?.email],
-    queryFn: () => modalUser ? base44.entities.ProductGroup.filter({ created_by: modalUser.email }) : [],
-    enabled: !!modalUser,
-  });
-
-  const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants', modalUser?.email],
-    queryFn: () => modalUser ? base44.entities.ProductVariant.filter({ created_by: modalUser.email }) : [],
-    enabled: !!modalUser,
-  });
+  const { data: categories = [] } = usePosCatalogQuery('categories', 'Category', { sort: 'sort_order' });
+  const { data: groups = [] } = usePosCatalogQuery('product-groups', 'ProductGroup');
+  const { data: variants = [] } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ['suppliers', modalUser?.email],

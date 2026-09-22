@@ -9,7 +9,7 @@ export default function EmployeeExpenseFolderContent({ expenses, onEdit, onDelet
 
   const byEmployee = {};
   expenses.forEach(e => {
-    const name = e.employee_name || 'ללא שם עובד';
+    const name = e.employee_name || e.description || 'ללא שם עובד';
     (byEmployee[name] = byEmployee[name] || []).push(e);
   });
   const names = Object.keys(byEmployee).sort((a, b) => sumExpenses(byEmployee[b]) - sumExpenses(byEmployee[a]));

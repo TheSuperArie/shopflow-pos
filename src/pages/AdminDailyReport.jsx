@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Calendar, TrendingUp, Clock, Package } from 'lucide-react';
 import moment from 'moment';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
 export default function AdminDailyReport() {
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
@@ -19,11 +20,8 @@ export default function AdminDailyReport() {
     enabled: !!user,
   });
 
-  const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
+  // Own catalog + products the network master added for this branch (same scope as the POS)
+  const { data: groups = [] } = usePosCatalogQuery('product-groups', 'ProductGroup');
 
   // Filter sales for selected date
   const daySales = sales.filter(sale => 

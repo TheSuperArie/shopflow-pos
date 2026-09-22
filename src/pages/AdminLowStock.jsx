@@ -7,6 +7,7 @@ import StockCategoryTree from '@/components/stock/StockCategoryTree';
 import BulkStockActionBar from '@/components/stock/BulkStockActionBar';
 import { useInventorySync } from '@/hooks/useInventorySync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
 export default function AdminLowStock() {
   const queryClient = useQueryClient();
@@ -35,33 +36,11 @@ export default function AdminLowStock() {
     },
   });
 
-  const { data: groups = [], isLoading: groupsLoading } = useQuery({
-    queryKey: ['product-groups', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    staleTime: 60000,
-  });
-
- const { data: variants = [], isLoading: variantsLoading } = useQuery({
-    queryKey: ['product-variants', user?.email],
-    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    staleTime: 60000,
-    refetchInterval: 60000,
-  });
-
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories', user?.email],
-    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [],
-    enabled: !!user,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    staleTime: 60000,
-  });
+  // Own catalog + products the network master added for this branch (same scope as the POS)
+  const freshness = { refetchOnMount: 'always', refetchOnWindowFocus: true, staleTime: 60000 };
+  const { data: groups = [], isPending: groupsLoading } = usePosCatalogQuery('product-groups', 'ProductGroup', freshness);
+  const { data: variants = [], isPending: variantsLoading } = usePosCatalogQuery('product-variants', 'ProductVariant', { ...freshness, refetchInterval: 60000 });
+  const { data: categories = [] } = usePosCatalogQuery('categories', 'Category', { ...freshness, sort: 'sort_order' });
 
   const { data: allDimensions = [] } = useQuery({
     queryKey: ['variant-dimensions', user?.email],

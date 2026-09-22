@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Lock, Save, BarChart2, LogOut, Bell } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 import DangerZone from '@/components/admin/DangerZone';
 import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
 import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
@@ -39,17 +40,9 @@ export default function AdminSettings() {
     enabled: !!user,
   });
 
-  const { data: allGroups = [] } = useQuery({
-    queryKey: ['all-groups-settings', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
-
-  const { data: allCategories = [] } = useQuery({
-    queryKey: ['all-categories-settings', user?.email],
-    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
+  // Own catalog + products the network master added for this branch (same scope as the POS)
+  const { data: allGroups = [] } = usePosCatalogQuery('all-groups-settings', 'ProductGroup');
+  const { data: allCategories = [] } = usePosCatalogQuery('all-categories-settings', 'Category');
 
   const dimensionNames = [...new Set(dimensions.filter(d => d.is_active !== false).map(d => d.name))];
 

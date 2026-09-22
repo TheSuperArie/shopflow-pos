@@ -17,8 +17,24 @@ export async function fetchBranchCatalogRecords(entity, branch, sort) {
 }
 
 /** POS side: this account's own records + records the network master added for its branch. */
-export async function fetchPosCatalogRecords(entity, userEmail, branchId, sort) {
-  const requests = [entity.filter({ created_by: userEmail }, sort)];
-  if (branchId) requests.push(entity.filter({ branch_id: branchId }, sort));
+export async function fetchPosCatalogRecords(entity, userEmail, branchId, sort, limit) {
+  const requests = [entity.filter({ created_by: userEmail }, sort, limit)];
+  if (branchId) requests.push(entity.filter({ branch_id: branchId }, sort, limit));
   return dedupe((await Promise.all(requests)).flat());
+}
+
+/** Branches this account may operate as: an approved station branch first, else its own branches. */
+export async function fetchPosBranches(entities, userEmail) {
+  const [own, station] = await Promise.all([
+    entities.Branch.filter({ tenant_email: userEmail }),
+    entities.Branch.filter({ station_email: userEmail, is_active: true, status: 'ACTIVE' }),
+  ]);
+  return station.length > 0 ? station : own;
+}
+
+/** The POS's active branch: a station branch in someone else's network, then any active branch. */
+export function pickActiveBranch(branches = [], userEmail) {
+  return branches.find(b => b.is_active && b.tenant_email !== userEmail) ||
+    branches.find(b => b.is_active) ||
+    branches[0] || null;
 }

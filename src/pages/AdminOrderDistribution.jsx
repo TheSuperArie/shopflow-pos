@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Calendar, Package, TrendingUp, Calculator, CheckCheck, Eraser } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
 const PRESETS = [
   { label: '7 ימים', days: 7 },
@@ -67,19 +68,9 @@ export default function AdminOrderDistribution() {
     staleTime: 60000,
   });
 
-  const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups-all', user?.email],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: user.email }, '-created_date', 5000),
-    enabled: !!user?.email,
-    staleTime: 60000,
-  });
-
-  const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants-all', user?.email],
-    queryFn: () => base44.entities.ProductVariant.filter({ created_by: user.email }, '-created_date', 5000),
-    enabled: !!user?.email,
-    staleTime: 60000,
-  });
+  // Own catalog + products the network master added for this branch (same scope as the POS)
+  const { data: groups = [] } = usePosCatalogQuery('product-groups-all', 'ProductGroup', { sort: '-created_date', limit: 5000, staleTime: 60000 });
+  const { data: variants = [] } = usePosCatalogQuery('product-variants-all', 'ProductVariant', { sort: '-created_date', limit: 5000, staleTime: 60000 });
 
   // Aggregate sales within the date range, per variant
   const stats = useMemo(() => {

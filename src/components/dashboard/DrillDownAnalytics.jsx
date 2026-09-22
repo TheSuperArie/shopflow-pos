@@ -38,24 +38,26 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
 
   // ── Lookup maps ──────────────────────────────────────────────────
   // Deduplicate by ID to prevent duplicate category entries causing double-counting
+  // In scope: the owner's records + records the network master added for this branch
+  const inScope = (r) => !tenantEmail || r.created_by === tenantEmail || (!!branchId && r.branch_id === branchId);
   const uniqueCategories = useMemo(() => {
     const seen = new Set();
     return categories
-      .filter(c => !tenantEmail || c.created_by === tenantEmail)
+      .filter(inScope)
       .filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
-  }, [categories, tenantEmail]);
+  }, [categories, tenantEmail, branchId]);
   const uniqueGroups = useMemo(() => {
     const seen = new Set();
     return groups
-      .filter(g => !tenantEmail || g.created_by === tenantEmail)
+      .filter(inScope)
       .filter(g => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
-  }, [groups, tenantEmail]);
+  }, [groups, tenantEmail, branchId]);
   const uniqueVariants = useMemo(() => {
     const seen = new Set();
     return variants
-      .filter(v => !tenantEmail || v.created_by === tenantEmail)
+      .filter(inScope)
       .filter(v => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
-  }, [variants, tenantEmail]);
+  }, [variants, tenantEmail, branchId]);
 
   const categoryById = useMemo(() => Object.fromEntries(uniqueCategories.map(c => [c.id, c])), [uniqueCategories]);
   const groupById = useMemo(() => Object.fromEntries(uniqueGroups.map(g => [g.id, g])), [uniqueGroups]);

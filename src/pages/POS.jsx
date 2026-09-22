@@ -22,6 +22,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGlobalBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
+import { usePosBranch } from '@/hooks/usePosCatalog';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
@@ -44,18 +45,7 @@ export default function POS() {
   // Resolve the branch for this device so every sale gets stamped with branch_id.
   // If this account was approved as a branch station in a network — that branch takes precedence,
   // so every sale made here is attributed to the network branch the master sees.
-  const { data: branches = [] } = useQuery({
-    queryKey: ['pos-branches', user?.email],
-    queryFn: async () => {
-      const [own, station] = await Promise.all([
-        base44.entities.Branch.filter({ tenant_email: user.email }),
-        base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }),
-      ]);
-      return station.length > 0 ? station : own;
-    },
-    enabled: !!user?.email,
-    staleTime: 120000,
-  });
+  const { activeBranch } = usePosBranch();
 
   // Pending network invitations addressed to this account (station_email = this email)
   const { data: pendingInvitations = [] } = useQuery({
@@ -100,12 +90,6 @@ export default function POS() {
   const virtualFolders = appSettingsList[0]?.pos_virtual_folders || [];
   // "פעל ע"פ מלאי" (settings): off → sell without stock limits, sales don't touch stock
   const stockModeEnabled = appSettingsList[0]?.stock_mode_enabled !== false;
-  // Primary branch: a station branch in someone else's network takes precedence
-  // (the network master must see these sales), then any active branch, then any branch
-  const activeBranch =
-    branches.find(b => b.is_active && b.tenant_email !== user?.email) ||
-    branches.find(b => b.is_active) ||
-    branches[0] || null;
 
   useInventorySync();
   const { syncToServer, syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();

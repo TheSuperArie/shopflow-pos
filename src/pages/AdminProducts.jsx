@@ -16,6 +16,7 @@ import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders'
 import BarcodePrintModal from '@/components/admin/BarcodePrintModal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useInheritedDimensions } from '@/hooks/useInheritedDimensions';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
 
 
@@ -35,23 +36,10 @@ export default function AdminProducts() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories', user?.email],
-    queryFn: () => user ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : [],
-    enabled: !!user,
-  });
-
-  const { data: groups = [], isLoading: loadingGroups } = useQuery({
-    queryKey: ['product-groups', user?.email],
-    queryFn: () => user ? base44.entities.ProductGroup.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
-
-  const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants', user?.email],
-    queryFn: () => user ? base44.entities.ProductVariant.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
+  // Own catalog + products the network master added for this branch (same scope as the POS)
+  const { data: categories = [] } = usePosCatalogQuery('categories', 'Category', { sort: 'sort_order' });
+  const { data: groups = [], isLoading: loadingGroups } = usePosCatalogQuery('product-groups', 'ProductGroup');
+  const { data: variants = [] } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
   // Build hierarchy: top-level categories, each with sub-categories
   const topLevelCategories = categories.filter(c => !c.parent_id);

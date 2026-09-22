@@ -8,6 +8,7 @@ import { format, startOfMonth, subDays } from 'date-fns';
 import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
 import HourlySalesChart from '@/components/dashboard/HourlySalesChart';
 import { withoutNetworkOnly } from '@/lib/branchScope';
+import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 
 /**
  * BranchDashboard – reusable dashboard scoped to a specific branch + tenant.
@@ -75,21 +76,22 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
     staleTime: 0,
   });
 
+  // Catalog: the owner's records + records the network master added for this branch (same scope as the POS)
   const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups-all', tenantEmail],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: tenantEmail }, 'name', 2000),
+    queryKey: ['product-groups-all', tenantEmail, branchId],
+    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductGroup, tenantEmail, branchId, 'name', 2000),
     enabled: !!tenantEmail,
   });
 
   const { data: productVariants = [] } = useQuery({
-    queryKey: ['product-variants-all', tenantEmail],
-    queryFn: () => base44.entities.ProductVariant.filter({ created_by: tenantEmail }, 'id', 5000),
+    queryKey: ['product-variants-all', tenantEmail, branchId],
+    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductVariant, tenantEmail, branchId, 'id', 5000),
     enabled: !!tenantEmail,
   });
 
   const { data: flexibleVariants = [] } = useQuery({
-    queryKey: ['flexible-variants-all', tenantEmail],
-    queryFn: () => base44.entities.FlexibleVariant.filter({ created_by: tenantEmail }, 'id', 5000),
+    queryKey: ['flexible-variants-all', tenantEmail, branchId],
+    queryFn: () => fetchPosCatalogRecords(base44.entities.FlexibleVariant, tenantEmail, branchId, 'id', 5000),
     enabled: !!tenantEmail,
   });
 
@@ -97,8 +99,8 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
   const variants = [...productVariants, ...flexibleVariants];
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories-all', tenantEmail],
-    queryFn: () => base44.entities.Category.filter({ created_by: tenantEmail }, 'sort_order', 500),
+    queryKey: ['categories-all', tenantEmail, branchId],
+    queryFn: () => fetchPosCatalogRecords(base44.entities.Category, tenantEmail, branchId, 'sort_order', 500),
     enabled: !!tenantEmail,
   });
 

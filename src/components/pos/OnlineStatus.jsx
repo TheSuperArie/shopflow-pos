@@ -5,7 +5,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { offlineManager } from './offlineManager';
 import { base44 } from '@/api/base44Client';
 import SyncModal from './SyncModal';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { usePosBranch } from '@/hooks/usePosCatalog';
+import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 
 export default function OnlineStatus({ onModeChange, onSync }) {
   const [networkOnline, setNetworkOnline] = useState(navigator.onLine);
@@ -13,7 +14,13 @@ export default function OnlineStatus({ onModeChange, onSync }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [modalMode, setModalMode] = useState(null); // 'go-offline' | 'go-online' | null
   const { toast } = useToast();
-  const user = useCurrentUser();
+  const { user, branchId } = usePosBranch();
+  // Same catalog scope as the POS: own records + records the network master added for this branch
+  const fetchCatalog = () => Promise.all([
+    fetchPosCatalogRecords(base44.entities.Category, user.email, branchId, 'sort_order'),
+    fetchPosCatalogRecords(base44.entities.ProductGroup, user.email, branchId),
+    fetchPosCatalogRecords(base44.entities.ProductVariant, user.email, branchId),
+  ]);
 
   // Track real network status
   useEffect(() => {
@@ -43,11 +50,7 @@ export default function OnlineStatus({ onModeChange, onSync }) {
   // ── Go Offline handlers ────────────────────────────────────────
   const cacheInventory = async () => {
     if (!user?.email) throw new Error('לא מחובר');
-    const [categories, groups, variants] = await Promise.all([
-      base44.entities.Category.filter({ created_by: user.email }, 'sort_order'),
-      base44.entities.ProductGroup.filter({ created_by: user.email }),
-      base44.entities.ProductVariant.filter({ created_by: user.email }),
-    ]);
+    const [categories, groups, variants] = await fetchCatalog();
     await offlineManager.cacheInventory(categories, groups, variants);
     toast({ title: `✅ מלאי נשמר מקומית (${variants.length} וריאציות)`, duration: 2500 });
   };
@@ -71,7 +74,7 @@ export default function OnlineStatus({ onModeChange, onSync }) {
     try {
       // Fetch live variants once
       const liveVariants = user?.email
-        ? await base44.entities.ProductVariant.filter({ created_by: user.email })
+        ? await fetchPosCatalogRecords(base44.entities.ProductVariant, user.email, branchId)
         : await base44.entities.ProductVariant.list();
 
       for (const sale of pending) {
@@ -100,11 +103,13 @@ export default function OnlineStatus({ onModeChange, onSync }) {
 
   const switchToOnline = async () => {
     // Refresh inventory cache from server
-    const [categories, groups, variants] = await Promise.all([
-      user?.email ? base44.entities.Category.filter({ created_by: user.email }, 'sort_order') : base44.entities.Category.list('sort_order'),
-      user?.email ? base44.entities.ProductGroup.filter({ created_by: user.email }) : base44.entities.ProductGroup.list(),
-      user?.email ? base44.entities.ProductVariant.filter({ created_by: user.email }) : base44.entities.ProductVariant.list(),
-    ]);
+    const [categories, groups, variants] = user?.email
+      ? await fetchCatalog()
+      : await Promise.all([
+          base44.entities.Category.list('sort_order'),
+          base44.entities.ProductGroup.list(),
+          base44.entities.ProductVariant.list(),
+        ]);
     await offlineManager.cacheInventory(categories, groups, variants);
 
     offlineManager.setOfflineMode(false);
