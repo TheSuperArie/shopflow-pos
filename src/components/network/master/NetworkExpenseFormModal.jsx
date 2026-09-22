@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 
-const EXPENSE_CATEGORIES = ['שכר עובדים', 'הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
+import { EXPENSE_TYPES } from '@/lib/expenseGrouping';
+
+const EXPENSE_CATEGORIES = ['הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 
 /** Network-only expense for a branch — visible to the network master, hidden from the branch manager. */
 export default function NetworkExpenseFormModal({ open, onClose, branch, expense, onSaved, onError }) {
