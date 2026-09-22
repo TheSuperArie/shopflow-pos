@@ -6,7 +6,7 @@ import { Plus, Trash2 } from 'lucide-react';
 const labelOf = (dims = {}) => Object.values(dims).join(' / ');
 
 /** Inline editor for a product's variants (label / stock / price / cost). */
-export default function BranchVariantsEditor({ variants, onChange, hasUniformPrice }) {
+export default function BranchVariantsEditor({ variants, onChange, hasUniformPrice, hideStock = false }) {
   const update = (idx, patch) => onChange(variants.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
 
   const setLabel = (idx, value) => {
@@ -19,7 +19,7 @@ export default function BranchVariantsEditor({ variants, onChange, hasUniformPri
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-700">וריאנטים ומלאי</p>
+        <p className="text-sm font-medium text-gray-700">{hideStock ? 'וריאנטים / מידות' : 'וריאנטים ומלאי'}</p>
         <Button type="button" size="sm" variant="outline"
           onClick={() => onChange([...variants, { dimensions: {}, stock: 0, sell_price: null, cost_price: null }])}>
           <Plus className="w-3.5 h-3.5 ml-1" /> וריאנט
@@ -36,10 +36,12 @@ export default function BranchVariantsEditor({ variants, onChange, hasUniformPri
             <Input value={labelOf(v.dimensions)} onChange={e => setLabel(idx, e.target.value)}
               placeholder="תיאור (למשל: L / כחול)" />
           </div>
-          <div className="w-20">
-            <Input type="number" value={v.stock ?? 0} onChange={e => update(idx, { stock: Number(e.target.value) })}
-              placeholder="מלאי" />
-          </div>
+          {!hideStock && (
+            <div className="w-20">
+              <Input type="number" value={v.stock ?? 0} onChange={e => update(idx, { stock: Number(e.target.value) })}
+                placeholder="מלאי" />
+            </div>
+          )}
           {!hasUniformPrice && (
             <>
               <div className="w-20">

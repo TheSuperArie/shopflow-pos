@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock, Unlink, Share2 } from 'lucide-react';
+import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock, Unlink, Share2, PackagePlus } from 'lucide-react';
+import NetworkProductFormModal from './NetworkProductFormModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ export default function NetworkBranchesTab({ tenantEmail, networkName, initialBr
   const [confirmingId, setConfirmingId] = useState(null);
   // Branch currently open in the catalog-share page
   const [shareBranch, setShareBranch] = useState(null);
+  const [showProductForm, setShowProductForm] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: branches = [], isLoading } = useQuery({
@@ -86,11 +88,24 @@ export default function NetworkBranchesTab({ tenantEmail, networkName, initialBr
             <p className="text-sm text-gray-500">{branches.length} סניפים רשומים</p>
           </div>
         </div>
-        <Button onClick={() => setShowForm(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          סניף חדש
-        </Button>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Button variant="outline" onClick={() => setShowProductForm(true)} className="gap-2">
+            <PackagePlus className="w-4 h-4" />
+            הוספת מוצר לרשת
+          </Button>
+          <Button onClick={() => setShowForm(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            סניף חדש
+          </Button>
+        </div>
       </div>
+
+      <NetworkProductFormModal
+        open={showProductForm}
+        onClose={() => setShowProductForm(false)}
+        // Older branch records have no stored status — the schema default is ACTIVE
+        branches={branches.filter(b => (b.status || 'ACTIVE') === 'ACTIVE' && b.system_approval !== 'PENDING_SYSTEM')}
+      />
 
       {showForm && (
         <BranchForm
