@@ -43,8 +43,17 @@
       "type": "string",
       "enum": [
         "\u05de\u05d6\u05d5\u05de\u05df",
-        "\u05d0\u05e9\u05e8\u05d0\u05d9"
+        "\u05d0\u05e9\u05e8\u05d0\u05d9",
+        "\u05de\u05d6\u05d5\u05de\u05df + \u05d0\u05e9\u05e8\u05d0\u05d9"
       ]
+    },
+    "cash_amount": {
+      "type": "number",
+      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05de\u05d6\u05d5\u05de\u05df \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc"
+    },
+    "credit_amount": {
+      "type": "number",
+      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05d0\u05e9\u05e8\u05d0\u05d9 \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc"
     },
     "cash_received": {
       "type": "number",

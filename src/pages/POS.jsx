@@ -249,6 +249,9 @@ export default function POS() {
         payment_method: paymentMethod,
         cash_received: cashDetails?.received,
         cash_change: cashDetails?.change,
+        // Split payment (cash + credit): record how much went to each method
+        cash_amount: cashDetails?.cashAmount,
+        credit_amount: cashDetails?.creditAmount,
         seller_email: user?.email,
         seller_name: user?.full_name,
         created_date: new Date().toISOString(),
