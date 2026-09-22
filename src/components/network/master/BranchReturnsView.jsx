@@ -5,11 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
+import { fetchBranchScoped } from '@/lib/branchScope';
 
 export default function BranchReturnsView({ branch }) {
   const { data: returns = [], isLoading } = useQuery({
     queryKey: ['branch-returns', branch.id],
-    queryFn: () => base44.entities.Return.filter({ branch_id: branch.id }, '-created_date', 1000),
+    queryFn: () => fetchBranchScoped(base44.entities.Return, branch, {}, '-created_date', 1000),
   });
 
   const total = returns.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);

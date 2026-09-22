@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Plus, Trash2, Loader2, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
+import { withoutNetworkOnly } from '@/lib/branchScope';
 
 const EXPENSE_CATEGORIES = ['שכר עובדים', 'הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 
@@ -22,7 +23,8 @@ export default function AdminExpenses() {
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
     queryKey: ['expenses', branchId, user?.email],
-    queryFn: () => filterBranchScoped(base44.entities.Expense, branchId, user.email, {}, '-date', 2000),
+    // Network-master expenses (network_only) are never shown to the branch manager.
+    queryFn: async () => withoutNetworkOnly(await filterBranchScoped(base44.entities.Expense, branchId, user.email, {}, '-date', 2000)),
     enabled: !loadingBranch && !!user,
   });
 

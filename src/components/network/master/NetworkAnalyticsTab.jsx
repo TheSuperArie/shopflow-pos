@@ -101,7 +101,9 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
     branches.forEach(b => { emailToBranch[b.station_email] = b.id; });
 
     allExpenses.filter(e => isInRange(e.date || e.created_date)).forEach(e => {
-      const bid = emailToBranch[e.created_by];
+      // Branch-stamped expenses first (incl. network-only ones), then legacy
+      // expenses identified by the station account that created them.
+      const bid = (e.branch_id && stats[e.branch_id]) ? e.branch_id : emailToBranch[e.created_by];
       if (bid && stats[bid]) {
         stats[bid].expenses += e.amount || 0;
       }

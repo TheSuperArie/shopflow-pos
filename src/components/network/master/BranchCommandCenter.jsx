@@ -98,7 +98,12 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
 
         {/* ── DASHBOARD TAB ── */}
         <TabsContent value="dashboard" className="mt-4">
-          <BranchDashboard branchId={branch.id} tenantEmail={tenantEmail} />
+          <BranchDashboard
+            branchId={branch.id}
+            tenantEmail={tenantEmail}
+            stationEmail={branch.station_email}
+            includeNetworkOnly={true}
+          />
         </TabsContent>
 
         {/* ── BRANCH DETAILS TAB ── */}

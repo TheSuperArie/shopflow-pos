@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2 } f
 import { format, startOfMonth, subDays } from 'date-fns';
 import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
 import HourlySalesChart from '@/components/dashboard/HourlySalesChart';
+import { withoutNetworkOnly } from '@/lib/branchScope';
 
 /**
  * BranchDashboard – reusable dashboard scoped to a specific branch + tenant.
@@ -22,7 +23,10 @@ function readSession(key, fallback) {
   try { return sessionStorage.getItem(key) || fallback; } catch { return fallback; }
 }
 
-export default function BranchDashboard({ branchId, tenantEmail }) {
+export default function BranchDashboard({ branchId, tenantEmail, stationEmail, includeNetworkOnly = false }) {
+  // Legacy records (no branch_id) belong to whoever created them — the branch's own
+  // station account when the network master views a branch, otherwise this account.
+  const legacyEmail = stationEmail || tenantEmail;
   const [dateFrom, setDateFrom] = useState(() => readSession(SESSION_KEY_FROM, format(startOfMonth(new Date()), 'yyyy-MM-dd')));
   const [dateTo, setDateTo] = useState(() => readSession(SESSION_KEY_TO, format(new Date(), 'yyyy-MM-dd')));
   const [includeExpenses, setIncludeExpenses] = useState(true);
@@ -31,13 +35,13 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   const handleDateTo = (val) => { setDateTo(val); try { sessionStorage.setItem(SESSION_KEY_TO, val); } catch {} };
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['branch-dashboard-sales', branchId],
+    queryKey: ['branch-dashboard-sales', branchId, legacyEmail],
     queryFn: async () => {
       // Sales made at a branch are created by the branch's own station account
       // (not the tenant), so branch sales are scoped by branch_id ONLY — otherwise
       // they disappear from the network master's branch dashboard.
       const nullBranchSalesPromise = base44.entities.Sale.filter(
-        { branch_id: null, created_by: tenantEmail }, '-created_date', 2000
+        { branch_id: null, created_by: legacyEmail }, '-created_date', 2000
       );
       if (!branchId) return await nullBranchSalesPromise; // single-store fallback (no branches yet)
       const [branchSales, nullBranchSales] = await Promise.all([
@@ -53,17 +57,19 @@ export default function BranchDashboard({ branchId, tenantEmail }) {
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['branch-dashboard-expenses', branchId, tenantEmail],
+    queryKey: ['branch-dashboard-expenses', branchId, legacyEmail, includeNetworkOnly],
     queryFn: async () => {
       // Same scoping rule as sales: this branch's expenses + legacy records
       // with no branch_id (backward compatible).
-      const legacyPromise = base44.entities.Expense.filter({ branch_id: null, created_by: tenantEmail }, '-date', 2000);
-      if (!branchId) return await legacyPromise;
+      const legacyPromise = base44.entities.Expense.filter({ branch_id: null, created_by: legacyEmail }, '-date', 2000);
+      if (!branchId) return withoutNetworkOnly(await legacyPromise);
       const [branchExpenses, legacyExpenses] = await Promise.all([
         base44.entities.Expense.filter({ branch_id: branchId }, '-date', 2000),
         legacyPromise,
       ]);
-      return [...branchExpenses, ...legacyExpenses];
+      const all = [...branchExpenses, ...legacyExpenses];
+      // Network-only expenses count for the network master, never for the branch itself.
+      return includeNetworkOnly ? all : withoutNetworkOnly(all);
     },
     enabled: !!tenantEmail,
     staleTime: 0,

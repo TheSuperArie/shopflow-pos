@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +7,8 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
-import { TrendingUp, Store, Package, ShoppingBag } from 'lucide-react';
+import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
+import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 
 const COLORS = [
   '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6',
@@ -15,7 +16,20 @@ const COLORS = [
   '#34d399', '#60a5fa', '#a78bfa', '#fbbf24', '#4ade80'
 ];
 
+const toLocalDate = (iso) => {
+  if (!iso) return null;
+  const safe = typeof iso === 'string' && iso.length > 10 && !iso.endsWith('Z') ? `${iso}Z` : iso;
+  try { return new Date(safe).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); } catch { return null; }
+};
+
 export default function NetworkAdminDashboard({ tenantEmail }) {
+  // Date range — defaults to the current month
+  const [range, setRange] = useState(() => ({ ...DATE_PRESETS[2].range(), preset: 'month' }));
+  const inRange = (iso) => {
+    const d = toLocalDate(iso);
+    return !!d && d >= range.from && d <= range.to;
+  };
+
   // Fetch branches
   const { data: branches = [] } = useQuery({
     queryKey: ['branches-dashboard', tenantEmail],
@@ -33,9 +47,28 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   });
 
   const branchIds = useMemo(() => new Set(branches.map(b => b.id)), [branches]);
+  const stationEmails = useMemo(() => new Set(branches.map(b => b.station_email).filter(Boolean)), [branches]);
   const allSales = useMemo(
-    () => rawSales.filter(s => branchIds.has(s.branch_id) || s.seller_email === tenantEmail),
-    [rawSales, branchIds, tenantEmail]
+    () => rawSales.filter(s => (branchIds.has(s.branch_id) || s.seller_email === tenantEmail) && inRange(s.created_date)),
+    [rawSales, branchIds, tenantEmail, range.from, range.to]
+  );
+
+  // Network expenses in range — branch expenses (incl. legacy ones created by a station
+  // account) + the master's own, and network-only expenses the master added for a branch.
+  const { data: rawExpenses = [] } = useQuery({
+    queryKey: ['all-expenses-dashboard', tenantEmail],
+    queryFn: () => base44.entities.Expense.list('-date', 5000),
+    staleTime: 120000,
+  });
+
+  const totalExpenses = useMemo(() => rawExpenses
+    .filter(e => (branchIds.has(e.branch_id) || stationEmails.has(e.created_by) || e.created_by === tenantEmail))
+    .filter(e => {
+      const d = e.date || toLocalDate(e.created_date);
+      return !!d && d >= range.from && d <= range.to;
+    })
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0),
+    [rawExpenses, branchIds, stationEmails, tenantEmail, range.from, range.to]
   );
 
   // Fetch all tickets (orders)
@@ -133,7 +166,7 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
   // ── KPI totals
   const totalRevenue = allSales.reduce((s, sale) => s + (sale.total || 0), 0);
-  const totalOrders = allTickets.length;
+  const totalOrders = allTickets.filter(t => inRange(t.created_date)).length;
   const activeBranches = branches.filter(b => b.is_active).length;
   const totalItems = allSales.reduce((s, sale) => s + (sale.items?.length || 0), 0);
 
@@ -158,10 +191,13 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
         <p className="text-sm text-gray-500 mt-1">סקירה כללית של פעילות הרשת</p>
       </div>
 
+      <NetworkDateRangeFilter from={range.from} to={range.to} preset={range.preset} onChange={setRange} />
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: 'סה"כ הכנסות', value: fmt(totalRevenue), icon: TrendingUp, color: 'text-amber-500' },
+          { label: 'סה"כ הוצאות', value: fmt(totalExpenses), icon: TrendingDown, color: 'text-red-500' },
           { label: 'הזמנות מסניפים', value: totalOrders, icon: ShoppingBag, color: 'text-blue-500' },
           { label: 'סניפים פעילים', value: activeBranches, icon: Store, color: 'text-green-500' },
           { label: 'פריטים שנמכרו', value: totalItems.toLocaleString(), icon: Package, color: 'text-purple-500' },

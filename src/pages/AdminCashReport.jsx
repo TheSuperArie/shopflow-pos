@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, DollarSign, TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { withoutNetworkOnly } from '@/lib/branchScope';
 
 export default function AdminCashReport() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -27,7 +28,7 @@ export default function AdminCashReport() {
 
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
     queryKey: ['expenses', user?.email],
-    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }, '-date') : [],
+    queryFn: async () => user ? withoutNetworkOnly(await base44.entities.Expense.filter({ created_by: user.email }, '-date')) : [],
     enabled: !!user,
   });
 
