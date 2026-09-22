@@ -233,6 +233,7 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
             dimensions={dimensions}
             defaultDimension={defaultDimension}
             tenantEmail={tenantEmail}
+            stationEmail={stationEmail}
             dateFrom={dateFrom}
             dateTo={dateTo}
             branchId={branchId}

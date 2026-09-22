@@ -14,8 +14,25 @@ import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
  *   2 = P3 (product groups under selected P2)
  *   3+ = P4, P5... (variant dimensions)
  */
-export default function DrillDownAnalytics({ sales, categories, groups, variants, dimensions, defaultDimension, tenantEmail, dateFrom, dateTo, branchId }) {
+export default function DrillDownAnalytics({ sales, categories, groups, variants, dimensions, defaultDimension, tenantEmail, stationEmail, dateFrom, dateTo, branchId }) {
   const navigate = useNavigate();
+
+  // Network master viewing a branch → open the network-side insights page, scoped to the
+  // branch's own data, and return to the branch command center when going back.
+  const openInsights = (categoryId) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('from', dateFrom);
+    if (dateTo) params.set('to', dateTo);
+    if (branchId) params.set('branchId', branchId);
+    if (tenantEmail) params.set('owner', tenantEmail);
+    if (stationEmail) {
+      params.set('legacy', stationEmail);
+      params.set('returnTo', `/NetworkMasterDashboard?tab=branches&branch=${branchId || ''}`);
+      navigate(`/network/reports/category/${categoryId}?${params.toString()}`);
+      return;
+    }
+    navigate(`/admin/reports/category/${categoryId}?${params.toString()}`);
+  };
   const [drillPath, setDrillPath] = useState([]); // [{level, id, name}]
   const [selectedDimension, setSelectedDimension] = useState(defaultDimension || '__auto__');
 
@@ -329,7 +346,7 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                     {/* Link to full insights page for P1 categories */}
                     {currentLevel === 0 && !row.id.startsWith('__') && (
                       <button
-                        onClick={() => navigate(`/admin/reports/category/${row.id}?from=${dateFrom || ''}&to=${dateTo || ''}&branchId=${branchId || ''}`)}
+                        onClick={() => openInsights(row.id)}
                         className="mr-2 p-1.5 rounded-lg hover:bg-amber-100 transition-colors"
                         title="ניתוח מפורט"
                       >

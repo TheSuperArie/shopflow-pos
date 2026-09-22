@@ -14,7 +14,10 @@ import NotificationBell from '@/components/network/master/NotificationBell';
 import NetworkAdminDashboard from '@/components/network/master/NetworkAdminDashboard';
 
 export default function NetworkMasterDashboard() {
-  const [activeTab, setActiveTab] = useState('overview');
+  // Returning from a branch insights page restores the tab (and branch) it was opened from
+  const initialParams = new URLSearchParams(window.location.search);
+  const [activeTab, setActiveTab] = useState(initialParams.get('tab') || 'overview');
+  const initialBranchId = initialParams.get('branch') || null;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [bootstrapped, setBootstrapped] = useState(false);
   const navigate = useNavigate();
@@ -131,7 +134,7 @@ export default function NetworkMasterDashboard() {
           {tenantEmail && (
             <>
               {activeTab === 'overview' && <NetworkAdminDashboard tenantEmail={tenantEmail} />}
-              {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} networkName={networkName} />}
+              {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} networkName={networkName} initialBranchId={initialBranchId} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
               {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'warehouse' && <NetworkWarehouseOrdersTab tenantEmail={tenantEmail} />}

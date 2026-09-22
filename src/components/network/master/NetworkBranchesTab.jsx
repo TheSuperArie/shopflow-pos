@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Plus, GitBranch, MapPin, Mail, CheckCircle2, XCircle, Clock, Unlink, Share2 } from 'lucide-react';
@@ -9,8 +9,9 @@ import BranchForm from '../BranchForm';
 import BranchCommandCenter from './BranchCommandCenter';
 import CatalogShareModal from './CatalogShareModal';
 
-export default function NetworkBranchesTab({ tenantEmail, networkName }) {
+export default function NetworkBranchesTab({ tenantEmail, networkName, initialBranchId = null }) {
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [restoredId, setRestoredId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   // Branch id awaiting a second confirm click (cancel invitation / disconnect)
   const [confirmingId, setConfirmingId] = useState(null);
@@ -54,6 +55,15 @@ export default function NetworkBranchesTab({ tenantEmail, networkName }) {
       setConfirmingId(null);
     },
   });
+
+  // Reopen the branch the user came back from (once the branch list has loaded)
+  useEffect(() => {
+    if (initialBranchId && initialBranchId !== restoredId && !selectedBranch && branches.length > 0) {
+      const match = branches.find(b => b.id === initialBranchId);
+      setRestoredId(initialBranchId);
+      if (match) setSelectedBranch(match);
+    }
+  }, [initialBranchId, restoredId, selectedBranch, branches]);
 
   // Only allow drilling into ACTIVE branches
   if (selectedBranch && selectedBranch.status !== 'PENDING') {

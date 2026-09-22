@@ -98,6 +98,10 @@ const AuthenticatedApp = () => {
           </Route>
           <Route path="/UsageAnalytics" element={<UsageAnalytics />} />
           <Route path="/NetworkMasterDashboard" element={<NetworkMasterDashboard />} />
+          <Route
+            path="/network/reports/category/:id"
+            element={<div className="min-h-screen bg-gray-50 p-4 md:p-6"><AdminCategoryInsights /></div>}
+          />
           <Route path="/BatchShipmentEntry" element={<BatchShipmentEntry />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>

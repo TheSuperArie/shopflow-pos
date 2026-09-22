@@ -22,6 +22,11 @@ export default function AdminCategoryInsights() {
   const [dateFrom, setDateFrom] = useState(() => searchParams.get('from') || format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(() => searchParams.get('to') || format(new Date(), 'yyyy-MM-dd'));
   const branchId = searchParams.get('branchId') || null;
+  // When the network master opens this page for a branch, the data owner is the network
+  // owner (catalog) while legacy branch records belong to the branch station account.
+  const ownerEmail = searchParams.get('owner') || user?.email || null;
+  const legacyEmail = searchParams.get('legacy') || ownerEmail;
+  const returnTo = searchParams.get('returnTo') || '/AdminDashboard';
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
   const [level0GroupBy, setLevel0GroupBy] = useState('subcat'); // 'subcat' | 'dimension'
 
@@ -36,9 +41,9 @@ export default function AdminCategoryInsights() {
 
   // ── Data fetching ────────────────────────────────────────────────
   const { data: categories = [], isLoading: loadingCategories, isFetching: fetchingCategories } = useQuery({
-    queryKey: ['categories', user?.email],
-    queryFn: () => base44.entities.Category.filter({ created_by: user.email }),
-    enabled: !!user,
+    queryKey: ['categories', ownerEmail],
+    queryFn: () => base44.entities.Category.filter({ created_by: ownerEmail }),
+    enabled: !!ownerEmail,
     staleTime: 0,
   });
 
@@ -55,32 +60,34 @@ export default function AdminCategoryInsights() {
   }, [categories, loadingCategories, fetchingCategories]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['insights-sales', user?.email, branchId],
+    queryKey: ['insights-sales', ownerEmail, legacyEmail, branchId],
     queryFn: async () => {
       if (branchId) {
+        // Branch sales are created by the branch station account — scope by branch_id only,
+        // plus legacy records with no branch_id belonging to that account.
         const [branchSales, nullBranchSales] = await Promise.all([
-          base44.entities.Sale.filter({ created_by: user.email, branch_id: branchId }, '-created_date', 10000),
-          base44.entities.Sale.filter({ created_by: user.email, branch_id: null }, '-created_date', 2000),
+          base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 10000),
+          base44.entities.Sale.filter({ created_by: legacyEmail, branch_id: null }, '-created_date', 2000),
         ]);
         return [...branchSales, ...nullBranchSales];
       }
-      return base44.entities.Sale.filter({ created_by: user.email }, '-created_date', 10000);
+      return base44.entities.Sale.filter({ created_by: legacyEmail }, '-created_date', 10000);
     },
-    enabled: !!user,
+    enabled: !!ownerEmail,
     staleTime: 0,
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ['insights-groups', user?.email],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: user.email }),
-    enabled: !!user,
+    queryKey: ['insights-groups', ownerEmail],
+    queryFn: () => base44.entities.ProductGroup.filter({ created_by: ownerEmail }),
+    enabled: !!ownerEmail,
     staleTime: 0,
   });
 
   const { data: productVariants = [] } = useQuery({
-    queryKey: ['insights-variants', user?.email],
-    queryFn: () => base44.entities.ProductVariant.filter({ created_by: user.email }),
-    enabled: !!user,
+    queryKey: ['insights-variants', ownerEmail],
+    queryFn: () => base44.entities.ProductVariant.filter({ created_by: ownerEmail }),
+    enabled: !!ownerEmail,
     staleTime: 0,
   });
 
@@ -93,9 +100,9 @@ export default function AdminCategoryInsights() {
   const variants = [...productVariants, ...flexibleVariants];
 
   const { data: dimensions = [] } = useQuery({
-    queryKey: ['insights-dimensions', user?.email],
-    queryFn: () => base44.entities.VariantDimension.filter({ created_by: user.email }),
-    enabled: !!user,
+    queryKey: ['insights-dimensions', ownerEmail],
+    queryFn: () => base44.entities.VariantDimension.filter({ created_by: ownerEmail }),
+    enabled: !!ownerEmail,
     staleTime: 0,
   });
 
@@ -550,7 +557,7 @@ export default function AdminCategoryInsights() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => navigate('/AdminDashboard')} className="gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(returnTo)} className="gap-2">
             <ArrowRight className="w-4 h-4" />
             חזור ללוח בקרה
           </Button>
