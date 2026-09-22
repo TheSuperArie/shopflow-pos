@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2, Package } from 'lucide-react';
 import { format, startOfMonth, subDays } from 'date-fns';
 import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
 import HourlySalesChart from '@/components/dashboard/HourlySalesChart';
@@ -138,6 +138,13 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
   const totalExpenses = filteredExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const grossProfit = totalSales - totalCost;
   const netProfit = includeExpenses ? grossProfit - totalExpenses : grossProfit;
+  // Items sold — sum of quantities across all sale lines (not number of transactions) + their value
+  const soldItems = filteredSales.reduce((sum, sale) => sum + (sale.items || []).reduce((q, it) => q + (Number(it.quantity) || 0), 0), 0);
+  const soldItemsValue = filteredSales.reduce(
+    (sum, sale) => sum + (sale.items || []).reduce((v, it) => v + (Number(it.quantity) || 0) * (Number(it.sell_price) || 0), 0),
+    0
+  );
+
   const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
   const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
 
@@ -162,7 +169,15 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
       ) : (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <StatCard
+              title="פריטים שנמכרו"
+              value={soldItems.toLocaleString()}
+              subValue={`₪${soldItemsValue.toFixed(0)}`}
+              icon={Package}
+              color="text-purple-600"
+              bg="bg-purple-50"
+            />
             <StatCard title="מכירות" value={`₪${totalSales.toFixed(0)}`} icon={DollarSign} color="text-green-600" bg="bg-green-50" />
             <StatCard title="עלות סחורה" value={`₪${totalCost.toFixed(0)}`} icon={TrendingDown} color="text-red-500" bg="bg-red-50" />
             <StatCard title="הוצאות" value={`₪${totalExpenses.toFixed(0)}`} icon={TrendingDown} color="text-orange-500" bg="bg-orange-50" />
@@ -228,7 +243,7 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
   );
 }
 
-function StatCard({ title, value, icon: Icon, color, bg }) {
+function StatCard({ title, value, subValue, icon: Icon, color, bg }) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-4">
@@ -239,6 +254,7 @@ function StatCard({ title, value, icon: Icon, color, bg }) {
           </div>
         </div>
         <p className={`text-2xl font-bold ${color}`}>{value}</p>
+        {subValue && <p className="text-sm font-semibold text-gray-500 mt-0.5">{subValue}</p>}
       </CardContent>
     </Card>
   );
