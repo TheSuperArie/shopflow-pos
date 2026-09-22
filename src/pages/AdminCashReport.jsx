@@ -39,9 +39,16 @@ export default function AdminCashReport() {
   const daySales = sales.filter(s => s.created_date?.startsWith(selectedDate));
   const dayExpenses = expenses.filter(e => e.date === selectedDate);
 
-  // Cash sales only
-  const cashSales = daySales.filter(s => s.payment_method === 'מזומן');
-  const totalCashSales = cashSales.reduce((s, sale) => s + (sale.total || 0), 0);
+  // How much of a sale actually entered the cash drawer:
+  // full cash sale = the total, split sale = only its cash portion.
+  const cashPortion = (sale) => {
+    if (sale.payment_method === 'מזומן') return sale.total || 0;
+    if (sale.payment_method === 'מזומן + אשראי') return sale.cash_amount || 0;
+    return 0;
+  };
+
+  const cashSales = daySales.filter(s => cashPortion(s) > 0);
+  const totalCashSales = cashSales.reduce((s, sale) => s + cashPortion(sale), 0);
   const totalExpenses = dayExpenses.reduce((s, e) => s + (e.amount || 0), 0);
 
   // Per shift summary
@@ -60,7 +67,7 @@ export default function AdminCashReport() {
       return dayLogs.length === 1;
     });
 
-    const shiftCashSales = shiftSales.reduce((s, sale) => s + (sale.total || 0), 0);
+    const shiftCashSales = shiftSales.reduce((s, sale) => s + cashPortion(sale), 0);
     const shiftExp = shiftExpenses.reduce((s, e) => s + (e.amount || 0), 0);
     // Cash amounts are optional — missing values are shown as "לא הוזן"
     // and never produce a cash discrepancy.
