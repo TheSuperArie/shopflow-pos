@@ -1,16 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PaymentFormModal from '@/components/admin/PaymentFormModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Wallet, Banknote, Clock, Scale, Receipt } from 'lucide-react';
-import { format, parseISO, differenceInMinutes } from 'date-fns';
+import { Plus, Wallet, Banknote, Clock, Scale, Receipt, Pencil, Trash2 } from 'lucide-react';
+import { parseISO, differenceInMinutes } from 'date-fns';
 import EmployeeExpensesPanel from '@/components/admin/EmployeeExpensesPanel';
 
 const METHOD_COLORS = {
@@ -29,6 +28,7 @@ const TYPE_COLORS = {
 
 export default function EmployeePaymentPanel({ employee, attendanceLogs = [], branchId }) {
   const [showAddPayment, setShowAddPayment] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
   const [month, setMonth] = useState(''); // '' = all time, else 'yyyy-MM'
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -76,6 +76,31 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [], br
 
   const totalPaid = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const balance = earned - totalPaid - deductedExpenses;
+
+  const refreshPayments = () => {
+    queryClient.invalidateQueries({ queryKey: ['employee-payments', employee.id] });
+    queryClient.invalidateQueries({ queryKey: ['employee-expenses', employee.id] });
+    queryClient.invalidateQueries({ queryKey: ['expenses'] });
+  };
+
+  // Deleting a payment also removes the expense that mirrors it
+  const deleteMutation = useMutation({
+    mutationFn: async (payment) => {
+      const linked = await base44.entities.Expense.filter({ employee_payment_id: payment.id });
+      for (const exp of linked) await base44.entities.Expense.delete(exp.id);
+      await base44.entities.EmployeePayment.delete(payment.id);
+    },
+    onSuccess: () => {
+      refreshPayments();
+      toast({ title: '🗑️ התשלום נמחק', duration: 2500 });
+    },
+    onError: (error) => toast({
+      title: '❌ מחיקת התשלום נכשלה',
+      description: error?.message || 'נסה שוב',
+      variant: 'destructive',
+      duration: 5000,
+    }),
+  });
 
   if (!employee) {
     return (
@@ -178,7 +203,22 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [], br
                       {payment.payment_method}
                     </Badge>
                   </div>
-                  <span className="text-xs text-gray-500">{payment.payment_date}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">{payment.payment_date}</span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-blue-600"
+                      onClick={() => setEditingPayment(payment)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-600"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm(`למחוק את התשלום על ₪${payment.amount}? ההוצאה המשויכת תימחק גם.`)) {
+                          deleteMutation.mutate(payment);
+                        }
+                      }}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 {payment.notes && <p className="text-xs text-gray-500 mt-1">{payment.notes}</p>}
               </CardContent>
@@ -187,132 +227,25 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [], br
         </div>
       )}
 
-      <AddPaymentModal
-        open={showAddPayment}
+      <PaymentFormModal
+        open={showAddPayment || !!editingPayment}
         employee={employee}
         branchId={branchId}
-        onClose={() => setShowAddPayment(false)}
+        payment={editingPayment}
+        onClose={() => { setShowAddPayment(false); setEditingPayment(null); }}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['employee-payments', employee.id] });
-          queryClient.invalidateQueries({ queryKey: ['expenses'] });
-          toast({ title: '✅ תשלום נרשם ונרשם גם כהוצאה', duration: 2500 });
+          refreshPayments();
+          toast({ title: editingPayment ? '✅ התשלום עודכן' : '✅ תשלום נרשם ונרשם גם כהוצאה', duration: 2500 });
           setShowAddPayment(false);
+          setEditingPayment(null);
         }}
         onError={(error) => toast({
-          title: '❌ רישום התשלום נכשל',
+          title: '❌ שמירת התשלום נכשלה',
           description: error?.message || 'נסה שוב',
           variant: 'destructive',
           duration: 5000,
         })}
       />
     </div>
-  );
-}
-
-function AddPaymentModal({ open, employee, branchId, onClose, onSuccess, onError }) {
-  const [form, setForm] = useState({
-    amount: '',
-    payment_method: 'מזומן',
-    payment_type: 'משכורת',
-    payment_date: format(new Date(), 'yyyy-MM-dd'),
-    notes: '',
-  });
-
-  const mutation = useMutation({
-    mutationFn: async (data) => {
-      const amount = parseFloat(data.amount);
-      const payment = await base44.entities.EmployeePayment.create({
-        ...data,
-        employee_id: employee.id,
-        employee_name: employee.name,
-        amount,
-      });
-      // Mirror the payment as a branch expense so it shows in expense reports
-      await base44.entities.Expense.create({
-        description: `תשלום לעובד ${employee.name}${data.notes ? ` — ${data.notes}` : ''}`,
-        amount,
-        category: 'שכר עובדים',
-        date: data.payment_date,
-        branch_id: employee.branch_id || branchId || null,
-      });
-      return payment;
-    },
-    onSuccess,
-    onError,
-  });
-
-  const isValid = form.amount && parseFloat(form.amount) > 0 && form.payment_date;
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>תשלום ל{employee?.name}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>סכום (₪)</Label>
-            <Input
-              type="number"
-              value={form.amount}
-              onChange={e => setForm({ ...form, amount: e.target.value })}
-              placeholder="0.00"
-              className="text-lg"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>סוג תשלום</Label>
-              <Select value={form.payment_type} onValueChange={v => setForm({ ...form, payment_type: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="משכורת">משכורת</SelectItem>
-                  <SelectItem value="בונוס">בונוס</SelectItem>
-                  <SelectItem value="עמלה">עמלה</SelectItem>
-                  <SelectItem value="אחר">אחר</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>אמצעי תשלום</Label>
-              <Select value={form.payment_method} onValueChange={v => setForm({ ...form, payment_method: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="מזומן">מזומן</SelectItem>
-                  <SelectItem value="העברה בנקאית">העברה בנקאית</SelectItem>
-                  <SelectItem value="צ'ק">צ'ק</SelectItem>
-                  <SelectItem value="אחר">אחר</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <Label>תאריך</Label>
-            <Input
-              type="date"
-              value={form.payment_date}
-              onChange={e => setForm({ ...form, payment_date: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>הערות (אופציונלי)</Label>
-            <Input
-              value={form.notes}
-              onChange={e => setForm({ ...form, notes: e.target.value })}
-              placeholder="למשל: משכורת חודש מרץ"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            onClick={() => mutation.mutate(form)}
-            disabled={!isValid || mutation.isPending}
-            className="w-full bg-green-600 hover:bg-green-700"
-          >
-            {mutation.isPending ? 'שומר...' : 'שמור תשלום'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

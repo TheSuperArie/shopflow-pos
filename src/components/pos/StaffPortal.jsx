@@ -58,14 +58,16 @@ export default function StaffPortal({ open, onClose }) {
   const clockInMutation = useMutation({
     mutationFn: async ({ employee, openingCash }) => {
       const now = new Date().toISOString();
-      const log = await base44.entities.AttendanceLog.create({
+      const payload = {
         employee_id: employee.id,
         employee_name: employee.name,
         clock_in: now,
         date: format(new Date(), 'yyyy-MM-dd'),
-        opening_cash: openingCash,
         branch_id: employee?.branch_id || branchId || null,
-      });
+      };
+      // Cash amount is optional — an empty field stays unset (not 0)
+      if (openingCash !== null && openingCash !== undefined) payload.opening_cash = openingCash;
+      const log = await base44.entities.AttendanceLog.create(payload);
       // Store shift indexed by employee ID
       const shifts = getAllActiveShifts();
       shifts[employee.id] = { logId: log.id, employee };
@@ -89,10 +91,10 @@ export default function StaffPortal({ open, onClose }) {
 
   const clockOutMutation = useMutation({
     mutationFn: async ({ employeeId, logId, closingCash }) => {
-      await base44.entities.AttendanceLog.update(logId, {
-        clock_out: new Date().toISOString(),
-        closing_cash: closingCash,
-      });
+      const payload = { clock_out: new Date().toISOString() };
+      // Cash amount is optional — an empty field stays unset (not 0)
+      if (closingCash !== null && closingCash !== undefined) payload.closing_cash = closingCash;
+      await base44.entities.AttendanceLog.update(logId, payload);
       // Remove THIS employee's shift from active shifts
       const shifts = getAllActiveShifts();
       delete shifts[employeeId];
@@ -200,26 +202,31 @@ export default function StaffPortal({ open, onClose }) {
       if (isCashier) {
         setMode('opening_cash');
       } else {
-        clockInMutation.mutate({ employee: emp, openingCash: 0 });
+        clockInMutation.mutate({ employee: emp, openingCash: null });
       }
     }
   };
 
-  const handleClockIn = () => {
+  // Returns the typed amount, null when left empty, or false when invalid
+  const readOptionalCash = () => {
+    if (String(cashAmount).trim() === '') return null;
     const amount = parseFloat(cashAmount);
     if (isNaN(amount) || amount < 0) {
-      toast({ title: '⚠️ הזן סכום תקין', variant: 'destructive' });
-      return;
+      toast({ title: '⚠️ הזן סכום תקין או השאר ריק', variant: 'destructive' });
+      return false;
     }
+    return amount;
+  };
+
+  const handleClockIn = () => {
+    const amount = readOptionalCash();
+    if (amount === false) return;
     clockInMutation.mutate({ employee: foundEmployee, openingCash: amount });
   };
 
   const handleClockOut = () => {
-    const amount = parseFloat(cashAmount);
-    if (isNaN(amount) || amount < 0) {
-      toast({ title: '⚠️ הזן סכום תקין', variant: 'destructive' });
-      return;
-    }
+    const amount = readOptionalCash();
+    if (amount === false) return;
     if (foundEmployee && activeShiftForEmployee) {
       clockOutMutation.mutate({ employeeId: foundEmployee.id, logId: activeShiftForEmployee.logId, closingCash: amount });
     }
@@ -263,7 +270,7 @@ export default function StaffPortal({ open, onClose }) {
                 if (foundEmployee.role === 'קופאי') {
                   setMode('closing_cash');
                 } else {
-                  clockOutMutation.mutate({ employeeId: foundEmployee.id, logId: activeShiftForEmployee.logId, closingCash: 0 });
+                  clockOutMutation.mutate({ employeeId: foundEmployee.id, logId: activeShiftForEmployee.logId, closingCash: null });
                 }
               }}
               variant="outline"
@@ -327,10 +334,10 @@ export default function StaffPortal({ open, onClose }) {
             </div>
             <div>
               <Label className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" /> יתרת קופה פתיחה (₪)
+                <DollarSign className="w-4 h-4" /> יתרת קופה פתיחה (₪) — אופציונלי
               </Label>
               <Input type="number" value={cashAmount} onChange={e => setCashAmount(e.target.value)}
-                placeholder="הזן סכום" className="text-lg text-center mt-1" autoFocus />
+                placeholder="אפשר להשאיר ריק" className="text-lg text-center mt-1" autoFocus />
             </div>
             <Button onClick={handleClockIn} className="w-full bg-green-600 hover:bg-green-700 gap-2"
               disabled={clockInMutation.isPending}>
@@ -351,10 +358,10 @@ export default function StaffPortal({ open, onClose }) {
             </div>
             <div>
               <Label className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" /> יתרת קופה בסיום (₪)
+                <DollarSign className="w-4 h-4" /> יתרת קופה בסיום (₪) — אופציונלי
               </Label>
               <Input type="number" value={cashAmount} onChange={e => setCashAmount(e.target.value)}
-                placeholder="הזן סכום" className="text-lg text-center mt-1" autoFocus />
+                placeholder="אפשר להשאיר ריק" className="text-lg text-center mt-1" autoFocus />
             </div>
             <Button onClick={handleClockOut} className="w-full bg-orange-500 hover:bg-orange-600 gap-2"
               disabled={clockOutMutation.isPending}>

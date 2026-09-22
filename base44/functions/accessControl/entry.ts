@@ -1,17 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { verifyDevCode, getDevSettings } from '../../shared/devCode.ts';
-
-/** True when this email already used the system before the whitelist existed (existing customer). */
-async function isLegacyAccount(base44, email) {
-  const sr = base44.asServiceRole.entities;
-  const [logs, settings, ownBranches, stationBranches] = await Promise.all([
-    sr.UsageLog.filter({ user_email: email }, '-login_at', 1),
-    sr.AppSettings.filter({ created_by: email }, '-created_date', 1),
-    sr.Branch.filter({ tenant_email: email }, '-created_date', 1),
-    sr.Branch.filter({ station_email: email }, '-created_date', 1),
-  ]);
-  return logs.length > 0 || settings.length > 0 || ownBranches.length > 0 || stationBranches.length > 0;
-}
+import { guardDevCode, getDevSettings } from '../../shared/devCode.ts';
 
 async function setUserStatus(base44, email, status) {
   const users = await base44.asServiceRole.entities.User.filter({ email });
@@ -32,19 +20,13 @@ export default async function (req: Request): Promise<Response> {
 
     // ── Actions available to the signed-in account itself ───────────────
     if (action === 'status') {
-      let status = user.access_status || null;
+      // Access is decided ONLY by User.access_status (set by the developer).
+      // An account with no status is not approved.
+      const status = user.access_status || 'none';
 
-      if (!status) {
-        if (await isLegacyAccount(base44, user.email)) {
-          await setUserStatus(base44, user.email, 'approved');
-          status = 'approved';
-        }
-      }
-
+      // The request record is returned for display purposes only.
       const myRequests = await base44.asServiceRole.entities.AccessRequest.filter({ account_email: user.email }, '-created_date', 1);
       const request = myRequests[0] || null;
-
-      if (!status) status = request ? request.status : 'none';
 
       return Response.json({ ok: true, status, request, email: user.email, full_name: user.full_name || '' });
     }
@@ -83,9 +65,10 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ ok: true, status: 'pending', request });
     }
 
-    // ── Developer actions — require the developer code ──────────────────
-    const devRecord = await verifyDevCode(base44, code);
-    if (!devRecord) return Response.json({ error: 'קוד שגוי' }, { status: 403 });
+    // ── Developer actions — require the developer code (rate limited) ────
+    const guard = await guardDevCode(base44, user.email, code);
+    if (!guard.ok) return Response.json({ error: guard.message }, { status: guard.status });
+    const devRecord = guard.record;
 
     const sr = base44.asServiceRole.entities;
 

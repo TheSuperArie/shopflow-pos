@@ -61,19 +61,22 @@ export default function AdminCashReport() {
 
     const shiftCashSales = shiftSales.reduce((s, sale) => s + (sale.total || 0), 0);
     const shiftExp = shiftExpenses.reduce((s, e) => s + (e.amount || 0), 0);
-    const openingCash = log.opening_cash || 0;
-    const closingCash = log.closing_cash;
-    const expectedClosing = openingCash + shiftCashSales - shiftExp;
-    const discrepancy = closingCash !== undefined ? closingCash - expectedClosing : null;
+    // Cash amounts are optional — missing values are shown as "לא הוזן"
+    // and never produce a cash discrepancy.
+    const openingCash = log.opening_cash ?? null;
+    const closingCash = log.closing_cash ?? null;
+    const expectedClosing = (openingCash ?? 0) + shiftCashSales - shiftExp;
+    const discrepancy = (openingCash !== null && closingCash !== null) ? closingCash - expectedClosing : null;
 
     return { log, shiftCashSales, shiftExp, openingCash, closingCash, expectedClosing, discrepancy };
   });
 
   // Day totals
-  const totalOpeningCash = dayLogs.length > 0 ? (dayLogs[0].opening_cash || 0) : 0;
-  const totalClosingCash = dayLogs.length > 0 ? dayLogs[dayLogs.length - 1].closing_cash : undefined;
-  const expectedClosing = totalOpeningCash + totalCashSales - totalExpenses;
-  const dayDiscrepancy = totalClosingCash !== undefined ? totalClosingCash - expectedClosing : null;
+  const totalOpeningCash = dayLogs.find(l => l.opening_cash !== null && l.opening_cash !== undefined)?.opening_cash ?? null;
+  const lastClosingLog = [...dayLogs].reverse().find(l => l.closing_cash !== null && l.closing_cash !== undefined);
+  const totalClosingCash = lastClosingLog ? lastClosingLog.closing_cash : null;
+  const expectedClosing = (totalOpeningCash ?? 0) + totalCashSales - totalExpenses;
+  const dayDiscrepancy = (totalOpeningCash !== null && totalClosingCash !== null) ? totalClosingCash - expectedClosing : null;
 
   return (
     <div className="space-y-6">
@@ -97,7 +100,9 @@ export default function AdminCashReport() {
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-blue-600 font-medium">יתרת פתיחה</p>
-                <p className="text-2xl font-bold text-blue-800 mt-1">₪{totalOpeningCash.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-blue-800 mt-1">
+                  {totalOpeningCash !== null ? `₪${totalOpeningCash.toLocaleString()}` : <span className="text-base text-gray-400">לא הוזן</span>}
+                </p>
               </CardContent>
             </Card>
             <Card className="bg-green-50 border-green-200">
@@ -171,7 +176,9 @@ export default function AdminCashReport() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div className="bg-blue-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-blue-600">פתיחה</p>
-                        <p className="font-bold text-blue-800">₪{openingCash}</p>
+                        <p className={`font-bold ${openingCash !== null ? 'text-blue-800' : 'text-gray-400'}`}>
+                          {openingCash !== null ? `₪${openingCash}` : 'לא הוזן'}
+                        </p>
                       </div>
                       <div className="bg-green-50 p-2 rounded-lg text-center">
                         <p className="text-xs text-green-600">מכירות מזומן</p>
@@ -181,10 +188,10 @@ export default function AdminCashReport() {
                         <p className="text-xs text-purple-600">קופה צפויה</p>
                         <p className="font-bold text-purple-800">₪{expectedClosing.toFixed(0)}</p>
                       </div>
-                      <div className={`p-2 rounded-lg text-center ${closingCash !== undefined ? (Math.abs(discrepancy) < 1 ? 'bg-green-50' : 'bg-red-50') : 'bg-gray-50'}`}>
+                      <div className={`p-2 rounded-lg text-center ${discrepancy !== null ? (Math.abs(discrepancy) < 1 ? 'bg-green-50' : 'bg-red-50') : 'bg-gray-50'}`}>
                         <p className="text-xs text-gray-600">סגירה בפועל</p>
-                        <p className={`font-bold ${closingCash !== undefined ? (Math.abs(discrepancy) < 1 ? 'text-green-800' : 'text-red-800') : 'text-gray-400'}`}>
-                          {closingCash !== undefined ? `₪${closingCash}` : 'טרם נסגר'}
+                        <p className={`font-bold ${discrepancy !== null ? (Math.abs(discrepancy) < 1 ? 'text-green-800' : 'text-red-800') : 'text-gray-400'}`}>
+                          {closingCash !== null ? `₪${closingCash}` : (log.clock_out ? 'לא הוזן' : 'טרם נסגר')}
                         </p>
                         {discrepancy !== null && Math.abs(discrepancy) >= 1 && (
                           <p className={`text-xs font-medium ${discrepancy > 0 ? 'text-yellow-600' : 'text-red-600'}`}>

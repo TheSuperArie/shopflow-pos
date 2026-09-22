@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { verifyDevCode } from '../../shared/devCode.ts';
+import { guardDevCode } from '../../shared/devCode.ts';
 
 export default async function (req: Request): Promise<Response> {
   try {
@@ -10,8 +10,10 @@ export default async function (req: Request): Promise<Response> {
     const body = await req.json().catch(() => ({}));
     const { action = 'verify', code, new_code, dev_email } = body;
 
-    const record = await verifyDevCode(base44, code);
-    if (!record) return Response.json({ error: 'קוד שגוי' }, { status: 403 });
+    // Rate limited: 5 wrong codes from the same account = 15 minute block
+    const guard = await guardDevCode(base44, user.email, code);
+    if (!guard.ok) return Response.json({ error: guard.message }, { status: guard.status });
+    const record = guard.record;
 
     if (action === 'verify') {
       return Response.json({ ok: true, dev_email: record.dev_email || '' });

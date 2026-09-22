@@ -227,8 +227,8 @@ export default function AdminEmployees() {
                           <LogOut className="w-3 h-3 text-red-500" />
                           {log.clock_out ? format(parseISO(log.clock_out), 'HH:mm') : '-'}
                         </div>
-                        {log.opening_cash !== undefined && <div>פתיחה: ₪{log.opening_cash}</div>}
-                        {log.closing_cash !== undefined && <div>סגירה: ₪{log.closing_cash}</div>}
+                        <div>פתיחה: {(log.opening_cash ?? null) !== null ? `₪${log.opening_cash}` : 'לא הוזן'}</div>
+                        <div>סגירה: {(log.closing_cash ?? null) !== null ? `₪${log.closing_cash}` : 'לא הוזן'}</div>
                       </div>
                     </CardContent>
                   </Card>
