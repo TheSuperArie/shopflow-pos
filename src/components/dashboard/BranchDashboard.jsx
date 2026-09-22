@@ -7,7 +7,7 @@ import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2, Pa
 import { format, startOfMonth, subDays } from 'date-fns';
 import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
 import HourlySalesChart from '@/components/dashboard/HourlySalesChart';
-import { withoutNetworkOnly } from '@/lib/branchScope';
+import { withoutNetworkOnly, withoutNetworkLevel } from '@/lib/branchScope';
 import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 
 /**
@@ -70,7 +70,7 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
       ]);
       const all = [...branchExpenses, ...legacyExpenses];
       // Network-only expenses count for the network master, never for the branch itself.
-      return includeNetworkOnly ? all : withoutNetworkOnly(all);
+      return includeNetworkOnly ? withoutNetworkLevel(all) : withoutNetworkOnly(all);
     },
     enabled: !!tenantEmail,
     staleTime: 0,

@@ -12,6 +12,7 @@ import NetworkOrdersTab from '@/components/network/master/NetworkOrdersTab';
 import NetworkWarehouseOrdersTab from '@/components/network/master/NetworkWarehouseOrdersTab';
 import NotificationBell from '@/components/network/master/NotificationBell';
 import NetworkAdminDashboard from '@/components/network/master/NetworkAdminDashboard';
+import NetworkLevelExpensesTab from '@/components/network/master/NetworkLevelExpensesTab';
 
 export default function NetworkMasterDashboard() {
   // Returning from a branch insights page restores the tab (and branch) it was opened from
@@ -136,6 +137,7 @@ export default function NetworkMasterDashboard() {
               {activeTab === 'overview' && <NetworkAdminDashboard tenantEmail={tenantEmail} />}
               {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} networkName={networkName} initialBranchId={initialBranchId} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
+              {activeTab === 'network-expenses' && <NetworkLevelExpensesTab tenantEmail={tenantEmail} />}
               {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'warehouse' && <NetworkWarehouseOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'suppliers' && <NetworkSuppliersTab tenantEmail={tenantEmail} />}

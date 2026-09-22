@@ -12,11 +12,16 @@ export async function fetchBranchScoped(entity, branch, extra = {}, sort, limit)
   const merged = (await Promise.all(requests)).flat();
   const seen = new Set();
   return merged.filter(r => {
-    if (seen.has(r.id)) return false;
+    // Network-level expenses belong to no branch — even when the master is also a station
+    if (r.network_level === true || seen.has(r.id)) return false;
     seen.add(r.id);
     return true;
   });
 }
 
 /** Expenses the network master created for a branch are hidden from the branch itself. */
-export const withoutNetworkOnly = (list = []) => list.filter(r => r.network_only !== true);
+export const withoutNetworkOnly = (list = []) => list.filter(r => r.network_only !== true && r.network_level !== true);
+
+/** Network-level expenses (office, accountant, central warehouse...) — never part of any branch. */
+export const withoutNetworkLevel = (list = []) => list.filter(r => r.network_level !== true);
+export const isNetworkLevelOf = (tenantEmail) => (e) => e.network_level === true && e.tenant_email === tenantEmail;

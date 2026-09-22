@@ -28,6 +28,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Ba
 import moment from 'moment';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCategorySalesAnalytics } from '@/hooks/useCategorySalesAnalytics';
+import { withoutNetworkOnly } from '@/lib/branchScope';
 
 export default function AdminSales() {
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -57,7 +58,8 @@ export default function AdminSales() {
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses', user?.email],
-    queryFn: () => user ? base44.entities.Expense.filter({ created_by: user.email }) : [],
+    // Network-master expenses (network_only / network-level) never count on the branch side
+    queryFn: async () => user ? withoutNetworkOnly(await base44.entities.Expense.filter({ created_by: user.email })) : [],
     enabled: !!user,
   });
 

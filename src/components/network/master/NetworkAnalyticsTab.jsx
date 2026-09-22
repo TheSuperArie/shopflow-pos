@@ -9,6 +9,7 @@ import {
   CartesianGrid, Legend, LineChart, Line,
 } from 'recharts';
 import { format, subDays, startOfDay, parseISO, isWithinInterval } from 'date-fns';
+import { isNetworkLevelOf } from '@/lib/branchScope';
 
 const DATE_PRESETS = [
   { key: 'today', label: 'היום' },
@@ -100,7 +101,8 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
     const emailToBranch = {};
     branches.forEach(b => { emailToBranch[b.station_email] = b.id; });
 
-    allExpenses.filter(e => isInRange(e.date || e.created_date)).forEach(e => {
+    // Network-level expenses belong to no branch — counted separately below
+    allExpenses.filter(e => e.network_level !== true && isInRange(e.date || e.created_date)).forEach(e => {
       // Branch-stamped expenses first (incl. network-only ones), then legacy
       // expenses identified by the station account that created them.
       const bid = (e.branch_id && stats[e.branch_id]) ? e.branch_id : emailToBranch[e.created_by];
@@ -134,7 +136,7 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
     return Object.values(buckets);
   }, [branches, allSales, from, to, preset]);
 
-  const totals = branchStats.reduce(
+  const branchTotals = branchStats.reduce(
     (acc, b) => ({
       revenue: acc.revenue + b.revenue,
       expenses: acc.expenses + b.expenses,
@@ -142,6 +144,17 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
     }),
     { revenue: 0, expenses: 0, netProfit: 0 }
   );
+  // The network's own expenses (no branch) — added once, on top of the branch totals
+  const networkLevelExpenses = allExpenses
+    .filter(e => isNetworkLevelOf(tenantEmail)(e) && isInRange(e.date || e.created_date))
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const totals = {
+    revenue: branchTotals.revenue,
+    branchExpenses: branchTotals.expenses,
+    networkExpenses: networkLevelExpenses,
+    expenses: branchTotals.expenses + networkLevelExpenses,
+    netProfit: branchTotals.netProfit - networkLevelExpenses,
+  };
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -196,6 +209,9 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
               <span className="text-xs text-red-600 font-medium">סה"כ הוצאות רשת</span>
             </div>
             <p className="text-2xl font-bold text-red-700">₪{totals.expenses.toLocaleString()}</p>
+            <p className="text-xs text-red-600/80 mt-1">
+              סניפים ₪{totals.branchExpenses.toLocaleString()} · הוצאות רשת ₪{totals.networkExpenses.toLocaleString()}
+            </p>
           </CardContent>
         </Card>
         <Card className={`${totals.netProfit >= 0 ? 'border-green-100 bg-green-50' : 'border-red-100 bg-red-50'}`}>
@@ -305,6 +321,16 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
                     <td className="py-2.5 text-gray-500">{b.txCount}</td>
                   </tr>
                 ))}
+                {/* The network's own expenses — not part of any branch */}
+                <tr className="border-b bg-amber-50/60">
+                  <td className="py-2.5 pr-2 font-medium text-gray-800">הוצאות רשת כלליות</td>
+                  <td className="py-2.5 text-gray-400">—</td>
+                  <td className="py-2.5 text-gray-400">—</td>
+                  <td className="py-2.5 text-red-500">₪{totals.networkExpenses.toLocaleString()}</td>
+                  <td className="py-2.5 text-gray-400">—</td>
+                  <td className="py-2.5 font-bold text-red-600">-₪{totals.networkExpenses.toLocaleString()}</td>
+                  <td className="py-2.5 text-gray-400">—</td>
+                </tr>
                 {/* Totals row */}
                 <tr className="bg-gray-100 font-bold text-sm">
                   <td className="py-2.5 pr-2 text-gray-700">סה"כ רשת</td>

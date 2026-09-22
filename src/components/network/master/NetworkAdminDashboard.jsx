@@ -9,6 +9,7 @@ import {
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
+import { isNetworkLevelOf } from '@/lib/branchScope';
 
 const COLORS = [
   '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6',
@@ -61,15 +62,20 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
     staleTime: 120000,
   });
 
-  const totalExpenses = useMemo(() => rawExpenses
-    .filter(e => (branchIds.has(e.branch_id) || stationEmails.has(e.created_by) || e.created_by === tenantEmail))
-    .filter(e => {
+  // Branch expenses vs. the network's own expenses (no branch) — each counted exactly once
+  const { branchExpenses, networkExpenses } = useMemo(() => {
+    const dated = rawExpenses.filter(e => {
       const d = e.date || toLocalDate(e.created_date);
       return !!d && d >= range.from && d <= range.to;
-    })
-    .reduce((s, e) => s + (Number(e.amount) || 0), 0),
-    [rawExpenses, branchIds, stationEmails, tenantEmail, range.from, range.to]
-  );
+    });
+    const sum = (list) => list.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    return {
+      branchExpenses: sum(dated.filter(e => e.network_level !== true &&
+        (branchIds.has(e.branch_id) || stationEmails.has(e.created_by) || e.created_by === tenantEmail))),
+      networkExpenses: sum(dated.filter(isNetworkLevelOf(tenantEmail))),
+    };
+  }, [rawExpenses, branchIds, stationEmails, tenantEmail, range.from, range.to]);
+  const totalExpenses = branchExpenses + networkExpenses;
 
   // Fetch all tickets (orders)
   const { data: allTickets = [] } = useQuery({
@@ -197,11 +203,12 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: 'סה"כ הכנסות', value: fmt(totalRevenue), icon: TrendingUp, color: 'text-amber-500' },
-          { label: 'סה"כ הוצאות', value: fmt(totalExpenses), icon: TrendingDown, color: 'text-red-500' },
+          { label: 'סה"כ הוצאות', value: fmt(totalExpenses), icon: TrendingDown, color: 'text-red-500',
+            sub: `סניפים ${fmt(branchExpenses)} · רשת ${fmt(networkExpenses)}` },
           { label: 'הזמנות מסניפים', value: totalOrders, icon: ShoppingBag, color: 'text-blue-500' },
           { label: 'סניפים פעילים', value: activeBranches, icon: Store, color: 'text-green-500' },
           { label: 'פריטים שנמכרו', value: totalItems.toLocaleString(), icon: Package, color: 'text-purple-500' },
-        ].map(({ label, value, icon: Icon, color }) => (
+        ].map(({ label, value, icon: Icon, color, sub }) => (
           <Card key={label}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0`}>
@@ -210,6 +217,7 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
               <div>
                 <p className="text-xs text-gray-500">{label}</p>
                 <p className="text-xl font-bold text-gray-800">{value}</p>
+                {sub && <p className="text-[11px] text-gray-400 mt-0.5" data-testid="expense-split">{sub}</p>}
               </div>
             </CardContent>
           </Card>
