@@ -13,7 +13,11 @@ import { format } from 'date-fns';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 import { withoutNetworkOnly } from '@/lib/branchScope';
 
-const EXPENSE_CATEGORIES = ['שכר עובדים', 'הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
+import { EXPENSE_TYPES } from '@/lib/expenseGrouping';
+
+// "שכר עובדים" is intentionally excluded — employee expenses are recorded only via the
+// employees page or the staff portal, and always land in the "תשלומי עובדים" section.
+const EXPENSE_CATEGORIES = ['הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 
 export default function AdminExpenses() {
   const [showForm, setShowForm] = useState(false);
@@ -90,7 +94,7 @@ function ExpenseItem({ expense, queryClient, toast }) {
       <CardContent className="p-4 flex items-center justify-between">
         <div>
           <p className="font-semibold">{expense.description}</p>
-          <p className="text-sm text-gray-500">{displayCategory} • {expense.date}</p>
+          <p className="text-sm text-gray-500">{displayCategory} • {expense.expense_type || 'חד פעמית'} • {expense.date}</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-bold text-red-600">₪{expense.amount?.toFixed(0)}</span>
@@ -108,7 +112,7 @@ function ExpenseItem({ expense, queryClient, toast }) {
 
 function ExpenseFormModal({ open, onClose, queryClient, toast, branchId }) {
   const [form, setForm] = useState({
-    description: '', amount: 0, category: '', custom_category: '', date: format(new Date(), 'yyyy-MM-dd'),
+    description: '', amount: 0, category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd'),
   });
 
   const mutation = useMutation({
@@ -117,7 +121,7 @@ function ExpenseFormModal({ open, onClose, queryClient, toast, branchId }) {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       toast({ title: 'ההוצאה נוספה' });
       onClose();
-      setForm({ description: '', amount: 0, category: '', custom_category: '', date: format(new Date(), 'yyyy-MM-dd') });
+      setForm({ description: '', amount: 0, category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd') });
     },
   });
 
@@ -128,6 +132,15 @@ function ExpenseFormModal({ open, onClose, queryClient, toast, branchId }) {
         <div className="space-y-4">
           <div><Label>תיאור</Label><Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
           <div><Label>סכום</Label><Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} /></div>
+          <div>
+            <Label>סוג הוצאה</Label>
+            <Select value={form.expense_type} onValueChange={v => setForm({ ...form, expense_type: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {EXPENSE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label>קטגוריה</Label>
             <Select value={form.category} onValueChange={v => setForm({ ...form, category: v, custom_category: v === 'אחר' ? form.custom_category : '' })}>

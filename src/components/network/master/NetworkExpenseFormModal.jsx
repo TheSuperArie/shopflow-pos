@@ -14,7 +14,7 @@ const EXPENSE_CATEGORIES = ['הוצאות חוץ', 'פרסום', 'כיבוד/ע�
 
 /** Network-only expense for a branch — visible to the network master, hidden from the branch manager. */
 export default function NetworkExpenseFormModal({ open, onClose, branch, expense, onSaved, onError }) {
-  const [form, setForm] = useState({ description: '', amount: '', category: '', custom_category: '', date: format(new Date(), 'yyyy-MM-dd') });
+  const [form, setForm] = useState({ description: '', amount: '', category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd') });
 
   useEffect(() => {
     if (!open) return;
@@ -23,6 +23,7 @@ export default function NetworkExpenseFormModal({ open, onClose, branch, expense
       amount: expense?.amount ?? '',
       category: expense?.category || '',
       custom_category: expense?.custom_category || '',
+      expense_type: expense?.expense_type || 'חד פעמית',
       date: expense?.date || format(new Date(), 'yyyy-MM-dd'),
     });
   }, [open, expense]);
@@ -34,6 +35,7 @@ export default function NetworkExpenseFormModal({ open, onClose, branch, expense
         amount: parseFloat(data.amount),
         category: data.category,
         custom_category: data.category === 'אחר' ? data.custom_category : '',
+        expense_type: data.expense_type,
         date: data.date,
         branch_id: branch.id,
         network_only: true,
@@ -58,6 +60,15 @@ export default function NetworkExpenseFormModal({ open, onClose, branch, expense
           <div>
             <Label>סכום (₪)</Label>
             <Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="text-lg" />
+          </div>
+          <div>
+            <Label>סוג הוצאה</Label>
+            <Select value={form.expense_type} onValueChange={v => setForm({ ...form, expense_type: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {EXPENSE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>קטגוריה</Label>
