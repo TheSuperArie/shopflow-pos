@@ -125,6 +125,8 @@ export default function StaffPortal({ open, onClose }) {
         amount: data.amount,
         category: 'שכר עובדים',
         custom_category: data.category,
+        // A portal expense is a regular one-time branch expense — not an employee payment
+        expense_type: 'חד פעמית',
         date: format(new Date(), 'yyyy-MM-dd'),
         notes: `משמרת: ${activeShiftForEmployee?.logId || ''} | שיטת תשלום: ${data.payment_method}`,
         employee_id: foundEmployee?.id || null,
