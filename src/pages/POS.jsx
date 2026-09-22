@@ -21,6 +21,7 @@ import { useInventorySync } from '@/hooks/useInventorySync';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGlobalBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
@@ -144,10 +145,10 @@ export default function POS() {
   const queryEnabled = !!user && !offlineManager.isGlobalSyncLocked() && !offlineManager.isSyncInProgress();
 
   const { data: categories = [], error: categoriesError } = useQuery({
-    queryKey: ['categories', isOfflineMode, user?.email],
+    queryKey: ['categories', isOfflineMode, user?.email, activeBranch?.id],
     queryFn: async () => {
       const result = await fetchOrCache(
-        () => base44.entities.Category.filter({ created_by: user.email }, 'sort_order'),
+        () => fetchPosCatalogRecords(base44.entities.Category, user.email, activeBranch?.id, 'sort_order'),
         'categories'
       );
       console.log('[POS] categories loaded:', result?.length, 'user:', user?.email);
@@ -160,9 +161,10 @@ export default function POS() {
   });
 
   const { data: allGroups = [] } = useQuery({
-    queryKey: ['product-groups', isOfflineMode, user?.email],
+    queryKey: ['product-groups', isOfflineMode, user?.email, activeBranch?.id],
     queryFn: () => fetchOrCache(
-      () => base44.entities.ProductGroup.filter({ created_by: user.email }),
+      async () => (await fetchPosCatalogRecords(base44.entities.ProductGroup, user.email, activeBranch?.id))
+        .filter(g => g.is_active !== false),
       'groups'
     ),
     staleTime: isEffectivelyOffline ? Infinity : 30000,
@@ -172,9 +174,9 @@ export default function POS() {
   });
 
   const { data: allVariants = [] } = useQuery({
-    queryKey: ['product-variants', isOfflineMode, user?.email],
+    queryKey: ['product-variants', isOfflineMode, user?.email, activeBranch?.id],
     queryFn: () => fetchOrCache(
-      () => base44.entities.ProductVariant.filter({ created_by: user.email }),
+      () => fetchPosCatalogRecords(base44.entities.ProductVariant, user.email, activeBranch?.id),
       'variants'
     ),
     staleTime: isEffectivelyOffline ? Infinity : 30000,
