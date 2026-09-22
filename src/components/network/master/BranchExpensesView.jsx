@@ -4,11 +4,13 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Wallet, Plus, Repeat, Receipt, Users } from 'lucide-react';
+import { Loader2, Wallet, Plus } from 'lucide-react';
 import { fetchBranchScoped } from '@/lib/branchScope';
 import { groupExpenses, sumExpenses } from '@/lib/expenseGrouping';
 import NetworkExpenseFormModal from './NetworkExpenseFormModal';
-import BranchExpenseSection from './BranchExpenseSection';
+import ExpenseFolder from './ExpenseFolder';
+import ExpenseRow from './ExpenseRow';
+import EmployeeExpenseFolderContent from './EmployeeExpenseFolderContent';
 
 export default function BranchExpensesView({ branch, fromDate, toDate }) {
   const { toast } = useToast();
@@ -49,54 +51,39 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
 
   return (
     <div className="space-y-3" dir="rtl">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <Card className="flex-1 min-w-[260px]">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-                <Wallet className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">סה"כ הוצאות בסניף</p>
-                <p className="text-2xl font-bold text-red-600">₪{total.toFixed(0)}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t text-center">
-              <div>
-                <p className="text-xs text-gray-500">הוצאות קבועות</p>
-                <p className="font-bold text-indigo-600">₪{totals.fixed.toFixed(0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">הוצאות חד פעמיות</p>
-                <p className="font-bold text-orange-600">₪{totals.onetime.toFixed(0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">תשלומי עובדים</p>
-                <p className="font-bold text-blue-600">₪{totals.employee.toFixed(0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Button onClick={() => { setEditing(null); setShowForm(true); }} className="gap-2 bg-amber-500 hover:bg-amber-600">
-          <Plus className="w-4 h-4" /> הוספת הוצאה
-        </Button>
-      </div>
+      <Card>
+        <CardContent className="p-3 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-red-500" />
+            <span className="text-sm text-gray-500">סה"כ הוצאות</span>
+            <span className="text-lg font-bold text-red-600">₪{total.toFixed(0)}</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs flex-wrap">
+            <span className="text-gray-500">קבועות <b className="text-indigo-600">₪{totals.fixed.toFixed(0)}</b></span>
+            <span className="text-gray-500">חד פעמיות <b className="text-orange-600">₪{totals.onetime.toFixed(0)}</b></span>
+            <span className="text-gray-500">תשלומי עובדים <b className="text-blue-600">₪{totals.employee.toFixed(0)}</b></span>
+          </div>
+          <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }} className="ms-auto gap-1.5 bg-amber-500 hover:bg-amber-600">
+            <Plus className="w-3.5 h-3.5" /> הוספת הוצאה
+          </Button>
+        </CardContent>
+      </Card>
 
-      <BranchExpenseSection
-        title="הוצאות קבועות" icon={Repeat} color="text-indigo-600"
-        expenses={groups.fixed} total={totals.fixed}
-        emptyText="אין הוצאות קבועות" onEdit={handleEdit} onDelete={handleDelete}
-      />
-      <BranchExpenseSection
-        title="הוצאות חד פעמיות" icon={Receipt} color="text-orange-600"
-        expenses={groups.onetime} total={totals.onetime}
-        emptyText="אין הוצאות חד פעמיות" onEdit={handleEdit} onDelete={handleDelete}
-      />
-      <BranchExpenseSection
-        title="תשלומי עובדים" icon={Users} color="text-blue-600"
-        expenses={groups.employee} total={totals.employee}
-        emptyText="אין תשלומי עובדים" onEdit={handleEdit} onDelete={handleDelete}
-      />
+      <ExpenseFolder title="הוצאות קבועות" count={groups.fixed.length} total={totals.fixed} color="text-indigo-600">
+        {groups.fixed.length === 0
+          ? <p className="text-center text-sm text-gray-400 py-4">אין הוצאות קבועות</p>
+          : groups.fixed.map(exp => <ExpenseRow key={exp.id} exp={exp} onEdit={handleEdit} onDelete={handleDelete} />)}
+      </ExpenseFolder>
+
+      <ExpenseFolder title="הוצאות חד פעמיות" count={groups.onetime.length} total={totals.onetime} color="text-orange-600">
+        {groups.onetime.length === 0
+          ? <p className="text-center text-sm text-gray-400 py-4">אין הוצאות חד פעמיות</p>
+          : groups.onetime.map(exp => <ExpenseRow key={exp.id} exp={exp} onEdit={handleEdit} onDelete={handleDelete} />)}
+      </ExpenseFolder>
+
+      <ExpenseFolder title="תשלומי עובדים" count={groups.employee.length} total={totals.employee} color="text-blue-600">
+        <EmployeeExpenseFolderContent expenses={groups.employee} onEdit={handleEdit} onDelete={handleDelete} />
+      </ExpenseFolder>
 
       <NetworkExpenseFormModal
         open={showForm}
