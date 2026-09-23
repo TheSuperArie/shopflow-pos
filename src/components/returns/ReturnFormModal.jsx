@@ -26,15 +26,9 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
-  });
+  const { data: groups = [] } = usePosCatalogQuery('product-groups', 'ProductGroup');
 
-  const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
-  });
+  const { data: variants = [] } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
   const createReturnMutation = useMutation({
     mutationFn: async (data) => {
