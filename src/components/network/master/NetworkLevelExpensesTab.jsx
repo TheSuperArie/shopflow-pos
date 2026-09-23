@@ -4,10 +4,12 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Wallet, Plus, Landmark } from 'lucide-react';
+import { Loader2, Wallet, Plus, Landmark, Repeat } from 'lucide-react';
 import { groupExpenses, sumExpenses } from '@/lib/expenseGrouping';
+import { lastUsedByTemplate } from '@/lib/fixedExpenseTemplates';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
-import NetworkLevelExpenseFormModal from './NetworkLevelExpenseFormModal';
+import NetworkLevelExpenseFormModal, { NETWORK_EXPENSE_CATEGORIES } from './NetworkLevelExpenseFormModal';
+import FixedTemplatesDialog from '@/components/expenses/FixedTemplatesDialog';
 import ExpenseFolder from './ExpenseFolder';
 import ExpenseRow from './ExpenseRow';
 
@@ -25,6 +27,14 @@ export default function NetworkLevelExpensesTab({ tenantEmail }) {
     enabled: !!tenantEmail,
   });
   const expenses = all.filter(e => e.date >= range.from && e.date <= range.to);
+
+  const [showTemplates, setShowTemplates] = useState(false);
+  const { data: templates = [] } = useQuery({
+    queryKey: ['fixed-templates', 'network', tenantEmail],
+    queryFn: () => base44.entities.FixedExpenseTemplate.filter({ network_level: true, tenant_email: tenantEmail }, 'name', 500),
+    enabled: !!tenantEmail,
+  });
+  const lastUsed = lastUsedByTemplate(all);
 
   // Also refresh the network reports/dashboard so their expense totals are never stale
   const refresh = () => ['network-level-expenses', 'network-expenses', 'all-expenses-dashboard']
@@ -69,7 +79,10 @@ export default function NetworkLevelExpensesTab({ tenantEmail }) {
             <span className="text-gray-500">קבועות <b className="text-indigo-600">₪{fixed.toFixed(0)}</b></span>
             <span className="text-gray-500">חד פעמיות <b className="text-orange-600">₪{onetime.toFixed(0)}</b></span>
           </div>
-          <Button size="sm" onClick={() => setForm({ open: true, expense: null })} className="ms-auto gap-1.5 bg-amber-500 hover:bg-amber-600">
+          <Button size="sm" variant="outline" onClick={() => setShowTemplates(true)} className="ms-auto gap-1.5">
+            <Repeat className="w-3.5 h-3.5" /> הוצאות קבועות
+          </Button>
+          <Button size="sm" onClick={() => setForm({ open: true, expense: null })} className="gap-1.5 bg-amber-500 hover:bg-amber-600">
             <Plus className="w-3.5 h-3.5" /> הוספת הוצאה
           </Button>
         </CardContent>
@@ -92,9 +105,19 @@ export default function NetworkLevelExpensesTab({ tenantEmail }) {
         open={form.open}
         tenantEmail={tenantEmail}
         expense={form.expense}
+        templates={templates}
+        lastUsed={lastUsed}
         onClose={() => setForm({ open: false, expense: null })}
         onSaved={() => { refresh(); setForm({ open: false, expense: null }); toast({ title: '✅ ההוצאה נשמרה', duration: 2000 }); }}
         onError={onError}
+      />
+      <FixedTemplatesDialog
+        open={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        templates={templates}
+        lastUsed={lastUsed}
+        categories={NETWORK_EXPENSE_CATEGORIES}
+        scope={{ branch_id: null, network_level: true, tenant_email: tenantEmail }}
       />
     </div>
   );

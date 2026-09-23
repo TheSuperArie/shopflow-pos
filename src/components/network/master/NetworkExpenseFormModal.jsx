@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 
 import { EXPENSE_TYPES } from '@/lib/expenseGrouping';
+import TemplatePicker from '@/components/expenses/TemplatePicker';
+import { templateToExpense } from '@/lib/fixedExpenseTemplates';
 
 const EXPENSE_CATEGORIES = ['הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 
 /** Network-only expense for a branch — visible to the network master, hidden from the branch manager. */
-export default function NetworkExpenseFormModal({ open, onClose, branch, expense, onSaved, onError }) {
-  const [form, setForm] = useState({ description: '', amount: '', category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd') });
+export default function NetworkExpenseFormModal({ open, onClose, branch, expense, onSaved, onError, templates = [], lastUsed = {} }) {
+  const [form, setForm] = useState({ description: '', amount: '', category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd'), template_id: '' });
 
   useEffect(() => {
     if (!open) return;
@@ -25,6 +27,7 @@ export default function NetworkExpenseFormModal({ open, onClose, branch, expense
       custom_category: expense?.custom_category || '',
       expense_type: expense?.expense_type || 'חד פעמית',
       date: expense?.date || format(new Date(), 'yyyy-MM-dd'),
+      template_id: expense?.template_id || '',
     });
   }, [open, expense]);
 
@@ -39,6 +42,7 @@ export default function NetworkExpenseFormModal({ open, onClose, branch, expense
         date: data.date,
         branch_id: branch.id,
         network_only: true,
+        template_id: data.template_id || null,
       };
       return expense
         ? base44.entities.Expense.update(expense.id, payload)
@@ -57,6 +61,14 @@ export default function NetworkExpenseFormModal({ open, onClose, branch, expense
           <DialogTitle>{expense ? 'עריכת הוצאת רשת' : `הוצאת רשת ל${branch?.name || 'סניף'}`}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          {!expense && (
+            <TemplatePicker
+              templates={templates}
+              lastUsed={lastUsed}
+              value={form.template_id}
+              onPick={t => setForm(f => t ? { ...f, ...templateToExpense(t) } : { ...f, template_id: '' })}
+            />
+          )}
           <div>
             <Label>סכום (₪)</Label>
             <Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" className="text-lg" />

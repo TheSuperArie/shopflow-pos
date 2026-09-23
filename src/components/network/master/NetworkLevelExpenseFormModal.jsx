@@ -8,15 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { EXPENSE_TYPES } from '@/lib/expenseGrouping';
+import TemplatePicker from '@/components/expenses/TemplatePicker';
+import { templateToExpense } from '@/lib/fixedExpenseTemplates';
 
 export const NETWORK_EXPENSE_CATEGORIES = [
   'שכירות משרד', 'רואה חשבון/הנהלת חשבונות', 'פרסום ושיווק', 'מחסן מרכזי', 'תוכנה ומערכות', 'שכר הנהלה', 'אחר',
 ];
 
-const blank = () => ({ description: '', amount: '', category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd') });
+const blank = () => ({ description: '', amount: '', category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd'), template_id: '' });
 
 /** Expense of the network itself — no branch_id, so no branch ever sees or counts it. */
-export default function NetworkLevelExpenseFormModal({ open, onClose, tenantEmail, expense, onSaved, onError }) {
+export default function NetworkLevelExpenseFormModal({ open, onClose, tenantEmail, expense, onSaved, onError, templates = [], lastUsed = {} }) {
   const [form, setForm] = useState(blank());
   const set = (patch) => setForm(f => ({ ...f, ...patch }));
 
@@ -25,6 +27,7 @@ export default function NetworkLevelExpenseFormModal({ open, onClose, tenantEmai
     setForm(expense ? {
       description: expense.description || '', amount: expense.amount ?? '', category: expense.category || '',
       custom_category: expense.custom_category || '', expense_type: expense.expense_type || 'חד פעמית', date: expense.date,
+      template_id: expense.template_id || '',
     } : blank());
   }, [open, expense]);
 
@@ -41,6 +44,7 @@ export default function NetworkLevelExpenseFormModal({ open, onClose, tenantEmai
         network_only: true,
         network_level: true,
         tenant_email: tenantEmail,
+        template_id: data.template_id || null,
       };
       return expense ? base44.entities.Expense.update(expense.id, payload) : base44.entities.Expense.create(payload);
     },
@@ -55,6 +59,14 @@ export default function NetworkLevelExpenseFormModal({ open, onClose, tenantEmai
       <DialogContent dir="rtl" className="max-w-sm">
         <DialogHeader><DialogTitle>{expense ? 'עריכת הוצאת רשת' : 'הוצאת רשת חדשה'}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          {!expense && (
+            <TemplatePicker
+              templates={templates}
+              lastUsed={lastUsed}
+              value={form.template_id}
+              onPick={t => set(t ? templateToExpense(t) : { template_id: '' })}
+            />
+          )}
           <div><Label>סכום (₪)</Label><Input type="number" value={form.amount} onChange={e => set({ amount: e.target.value })} placeholder="0.00" className="text-lg" /></div>
           <div>
             <Label>סוג הוצאה</Label>

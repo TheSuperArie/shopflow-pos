@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Wallet, Plus } from 'lucide-react';
 import { fetchBranchScoped } from '@/lib/branchScope';
 import { groupExpenses, sumExpenses } from '@/lib/expenseGrouping';
+import { lastUsedByTemplate } from '@/lib/fixedExpenseTemplates';
 import NetworkExpenseFormModal from './NetworkExpenseFormModal';
 import ExpenseFolder from './ExpenseFolder';
 import ExpenseRow from './ExpenseRow';
@@ -22,6 +23,13 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
     queryKey: ['branch-expenses', branch.id],
     queryFn: () => fetchBranchScoped(base44.entities.Expense, branch, {}, '-date', 1000),
   });
+
+  // The branch's own fixed-expense templates (managed by the branch manager)
+  const { data: templates = [] } = useQuery({
+    queryKey: ['fixed-templates', 'branch-view', branch.id],
+    queryFn: () => fetchBranchScoped(base44.entities.FixedExpenseTemplate, branch, {}, 'name', 500),
+  });
+  const lastUsed = lastUsedByTemplate(allExpenses);
 
   const expenses = allExpenses.filter(e => (!fromDate || e.date >= fromDate) && (!toDate || e.date <= toDate));
 
@@ -89,6 +97,8 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
         open={showForm}
         branch={branch}
         expense={editing}
+        templates={templates}
+        lastUsed={lastUsed}
         onClose={() => setShowForm(false)}
         onSaved={() => { refresh(); setShowForm(false); toast({ title: '✅ ההוצאה נשמרה', duration: 2000 }); }}
         onError={onError}

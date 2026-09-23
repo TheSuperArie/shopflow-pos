@@ -8,7 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Trash2, Loader2, Wallet } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet, Repeat } from 'lucide-react';
+import TemplatePicker from '@/components/expenses/TemplatePicker';
+import FixedTemplatesDialog from '@/components/expenses/FixedTemplatesDialog';
+import { lastUsedByTemplate, templateToExpense } from '@/lib/fixedExpenseTemplates';
 import { format } from 'date-fns';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 import { withoutNetworkOnly } from '@/lib/branchScope';
@@ -32,6 +35,15 @@ export default function AdminExpenses() {
     enabled: !loadingBranch && !!user,
   });
 
+  const [showTemplates, setShowTemplates] = useState(false);
+  const { data: templates = [] } = useQuery({
+    queryKey: ['fixed-templates', 'branch', branchId, user?.email],
+    queryFn: async () => (await filterBranchScoped(base44.entities.FixedExpenseTemplate, branchId, user.email, {}, 'name', 500))
+      .filter(t => t.network_level !== true),
+    enabled: !loadingBranch && !!user,
+  });
+  const lastUsed = lastUsedByTemplate(expenses);
+
   const isLoading = loadingBranch || loadingExpenses;
 
   const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
@@ -40,9 +52,14 @@ export default function AdminExpenses() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
          <h1 className="text-2xl font-bold text-gray-800">הוצאות</h1>
-         <Button onClick={() => setShowForm(true)} className="gap-2 bg-amber-500 hover:bg-amber-600">
-           <Plus className="w-4 h-4" /> הוצאה חדשה
-         </Button>
+         <div className="flex gap-2">
+           <Button variant="outline" onClick={() => setShowTemplates(true)} className="gap-2">
+             <Repeat className="w-4 h-4" /> הוצאות קבועות
+           </Button>
+           <Button onClick={() => setShowForm(true)} className="gap-2 bg-amber-500 hover:bg-amber-600">
+             <Plus className="w-4 h-4" /> הוצאה חדשה
+           </Button>
+         </div>
        </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -73,7 +90,15 @@ export default function AdminExpenses() {
         </div>
       )}
 
-      <ExpenseFormModal open={showForm} onClose={() => setShowForm(false)} queryClient={queryClient} toast={toast} branchId={branchId} />
+      <ExpenseFormModal open={showForm} onClose={() => setShowForm(false)} queryClient={queryClient} toast={toast} branchId={branchId} templates={templates} lastUsed={lastUsed} />
+      <FixedTemplatesDialog
+        open={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        templates={templates}
+        lastUsed={lastUsed}
+        categories={EXPENSE_CATEGORIES}
+        scope={{ branch_id: branchId || null, network_level: false }}
+      />
     </div>
   );
 }
@@ -110,19 +135,20 @@ function ExpenseItem({ expense, queryClient, toast }) {
   );
 }
 
-function ExpenseFormModal({ open, onClose, queryClient, toast, branchId }) {
+function ExpenseFormModal({ open, onClose, queryClient, toast, branchId, templates, lastUsed }) {
   const [form, setForm] = useState({
-    description: '', amount: 0, category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd'),
+    description: '', amount: 0, category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd'), template_id: '',
   });
 
   const mutation = useMutation({
-    mutationFn: (data) => base44.entities.Expense.create({ ...data, branch_id: branchId || null }),
+    mutationFn: (data) => base44.entities.Expense.create({ ...data, template_id: data.template_id || null, branch_id: branchId || null }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       toast({ title: 'ההוצאה נוספה' });
       onClose();
-      setForm({ description: '', amount: 0, category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd') });
+      setForm({ description: '', amount: 0, category: '', custom_category: '', expense_type: 'חד פעמית', date: format(new Date(), 'yyyy-MM-dd'), template_id: '' });
     },
+    onError: (e) => toast({ title: '❌ השמירה נכשלה', description: e?.message || 'נסה שוב', variant: 'destructive' }),
   });
 
   return (
@@ -130,6 +156,12 @@ function ExpenseFormModal({ open, onClose, queryClient, toast, branchId }) {
       <DialogContent dir="rtl" className="max-w-sm">
         <DialogHeader><DialogTitle>הוצאה חדשה</DialogTitle></DialogHeader>
         <div className="space-y-4">
+          <TemplatePicker
+            templates={templates}
+            lastUsed={lastUsed}
+            value={form.template_id}
+            onPick={t => setForm(t ? { ...form, ...templateToExpense(t) } : { ...form, template_id: '' })}
+          />
           <div><Label>תיאור</Label><Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
           <div><Label>סכום</Label><Input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} /></div>
           <div>
