@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { fetchAllPages, createdDateBetween } from '@/lib/fetchAllPages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,9 +16,10 @@ export default function AdminDailyReport() {
   const user = useCurrentUser();
 
   const { data: sales = [] } = useQuery({
-    queryKey: ['sales', user?.email],
-    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date') : [],
+    queryKey: ['sales', user?.email, selectedDate, selectedDate],
+    queryFn: () => fetchAllPages(base44.entities.Sale, { created_by: user.email, created_date: createdDateBetween(selectedDate, selectedDate) }, '-created_date', { label: 'מכירות' }),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   // Own catalog + products the network master added for this branch (same scope as the POS)

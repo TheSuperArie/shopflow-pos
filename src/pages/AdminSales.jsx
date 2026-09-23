@@ -14,7 +14,8 @@ const formatIsraelTime = (dateString) => {
   });
 };
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { fetchAllPages, createdDateBetween, minDate, maxDate } from '@/lib/fetchAllPages';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,10 +42,14 @@ export default function AdminSales() {
   const queryClient = useQueryClient();
   const user = useCurrentUser();
 
+  // Load only the dates this page shows (history range + the daily-report day), every page
+  const salesFrom = minDate(dateFrom, selectedDate);
+  const salesTo = maxDate(dateTo, selectedDate);
   const { data: sales = [], isLoading } = useQuery({
-    queryKey: ['sales', user?.email],
-    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date') : [],
+    queryKey: ['sales', user?.email, salesFrom, salesTo],
+    queryFn: () => fetchAllPages(base44.entities.Sale, { created_by: user.email, created_date: createdDateBetween(salesFrom, salesTo) }, '-created_date', { label: 'מכירות' }),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const { data: categories = [] } = usePosCatalogQuery('categories-all', 'Category', { sort: 'sort_order', limit: 500 });
@@ -52,10 +57,11 @@ export default function AdminSales() {
   const { data: groups = [] } = usePosCatalogQuery('product-groups-all', 'ProductGroup', { sort: 'name', limit: 2000 });
 
   const { data: expenses = [] } = useQuery({
-    queryKey: ['expenses', user?.email],
+    queryKey: ['expenses', user?.email, dateFrom, dateTo],
     // Network-master expenses (network_only / network-level) never count on the branch side
-    queryFn: async () => user ? withoutNetworkOnly(await base44.entities.Expense.filter({ created_by: user.email })) : [],
+    queryFn: async () => withoutNetworkOnly(await fetchAllPages(base44.entities.Expense, { created_by: user.email, date: { $gte: dateFrom, $lte: dateTo } }, '-date', { label: 'הוצאות' })),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const filteredSales = sales.filter(s => {

@@ -17,8 +17,11 @@ const toLocalHour = (isoString) => {
   return parseInt(new Date(safe).toLocaleTimeString('en-IL', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' }), 10);
 };
 
-export default function HourlySalesChart({ sales = [] }) {
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+export default function HourlySalesChart({ sales = [], date, onDateChange }) {
+  const [innerDate, setInnerDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  // Optionally controlled by the parent, so it can load the chosen day's sales
+  const selectedDate = date ?? innerDate;
+  const setSelectedDate = onDateChange ?? setInnerDate;
 
   const daySales = sales.filter(s => toLocalDate(s.created_date) === selectedDate);
 

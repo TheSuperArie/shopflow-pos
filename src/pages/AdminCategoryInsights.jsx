@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { fetchAllPages, createdDateBetween } from '@/lib/fetchAllPages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,21 +63,25 @@ export default function AdminCategoryInsights() {
   }, [categories, loadingCategories, fetchingCategories]);
 
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['insights-sales', ownerEmail, legacyEmail, branchId],
+    queryKey: ['insights-sales', ownerEmail, legacyEmail, branchId, dateFrom, dateTo],
     queryFn: async () => {
+      // Only the selected range, every page — the exact date filter below is unchanged
+      const created_date = createdDateBetween(dateFrom, dateTo);
+      const load = (q) => fetchAllPages(base44.entities.Sale, { ...q, created_date }, '-created_date', { label: 'מכירות' });
       if (branchId) {
         // Branch sales are created by the branch station account — scope by branch_id only,
         // plus legacy records with no branch_id belonging to that account.
         const [branchSales, nullBranchSales] = await Promise.all([
-          base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 10000),
-          base44.entities.Sale.filter({ created_by: legacyEmail, branch_id: null }, '-created_date', 2000),
+          load({ branch_id: branchId }),
+          load({ created_by: legacyEmail, branch_id: null }),
         ]);
         return [...branchSales, ...nullBranchSales];
       }
-      return base44.entities.Sale.filter({ created_by: legacyEmail }, '-created_date', 10000);
+      return load({ created_by: legacyEmail });
     },
     enabled: !!ownerEmail,
     staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 
   const { data: groups = [] } = useQuery({

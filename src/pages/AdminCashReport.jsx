@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { fetchAllPages, createdDateBetween } from '@/lib/fetchAllPages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -14,22 +15,26 @@ export default function AdminCashReport() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const user = useCurrentUser();
 
+  // Only the selected day is loaded (every page); the exact day filter below is unchanged
   const { data: logs = [], isLoading: logsLoading } = useQuery({
-    queryKey: ['attendance-logs', user?.email],
-    queryFn: () => user ? base44.entities.AttendanceLog.filter({ created_by: user.email }, '-clock_in') : [],
+    queryKey: ['attendance-logs', user?.email, selectedDate],
+    queryFn: () => fetchAllPages(base44.entities.AttendanceLog, { created_by: user.email, date: selectedDate }, '-clock_in', { label: 'משמרות' }),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const { data: sales = [], isLoading: salesLoading } = useQuery({
-    queryKey: ['sales', user?.email],
-    queryFn: () => user ? base44.entities.Sale.filter({ created_by: user.email }, '-created_date') : [],
+    queryKey: ['sales', user?.email, selectedDate, selectedDate],
+    queryFn: () => fetchAllPages(base44.entities.Sale, { created_by: user.email, created_date: createdDateBetween(selectedDate, selectedDate) }, '-created_date', { label: 'מכירות' }),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
-    queryKey: ['expenses', user?.email],
-    queryFn: async () => user ? withoutNetworkOnly(await base44.entities.Expense.filter({ created_by: user.email }, '-date')) : [],
+    queryKey: ['expenses', user?.email, selectedDate, selectedDate],
+    queryFn: async () => withoutNetworkOnly(await fetchAllPages(base44.entities.Expense, { created_by: user.email, date: { $gte: selectedDate, $lte: selectedDate } }, '-date', { label: 'הוצאות' })),
     enabled: !!user,
+    placeholderData: keepPreviousData,
   });
 
   const isLoading = logsLoading || salesLoading || expensesLoading;

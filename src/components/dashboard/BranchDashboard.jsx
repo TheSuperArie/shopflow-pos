@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { fetchAllPages, createdDateBetween, minDate, maxDate } from '@/lib/fetchAllPages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2, Package } from 'lucide-react';
@@ -35,18 +36,24 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
   const handleDateFrom = (val) => { setDateFrom(val); try { sessionStorage.setItem(SESSION_KEY_FROM, val); } catch {} };
   const handleDateTo = (val) => { setDateTo(val); try { sessionStorage.setItem(SESSION_KEY_TO, val); } catch {} };
 
+  // The hourly chart's day is part of the loaded range, so any day it shows has its sales
+  const [hourlyDate, setHourlyDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const salesFrom = minDate(dateFrom, hourlyDate);
+  const salesTo = maxDate(dateTo, hourlyDate);
+
   const { data: sales = [], isLoading: loadingSales } = useQuery({
-    queryKey: ['branch-dashboard-sales', branchId, legacyEmail],
+    queryKey: ['branch-dashboard-sales', branchId, legacyEmail, salesFrom, salesTo],
     queryFn: async () => {
+      // Only the selected range, every page — the exact date filter below is unchanged.
+      const created_date = createdDateBetween(salesFrom, salesTo);
+      const load = (q) => fetchAllPages(base44.entities.Sale, { ...q, created_date }, '-created_date', { label: 'מכירות' });
       // Sales made at a branch are created by the branch's own station account
       // (not the tenant), so branch sales are scoped by branch_id ONLY — otherwise
       // they disappear from the network master's branch dashboard.
-      const nullBranchSalesPromise = base44.entities.Sale.filter(
-        { branch_id: null, created_by: legacyEmail }, '-created_date', 2000
-      );
+      const nullBranchSalesPromise = load({ branch_id: null, created_by: legacyEmail });
       if (!branchId) return await nullBranchSalesPromise; // single-store fallback (no branches yet)
       const [branchSales, nullBranchSales] = await Promise.all([
-        base44.entities.Sale.filter({ branch_id: branchId }, '-created_date', 2000),
+        load({ branch_id: branchId }),
         nullBranchSalesPromise,
       ]);
       return [...branchSales, ...nullBranchSales];
@@ -55,17 +62,20 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    placeholderData: keepPreviousData,
   });
 
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ['branch-dashboard-expenses', branchId, legacyEmail, includeNetworkOnly],
+    queryKey: ['branch-dashboard-expenses', branchId, legacyEmail, includeNetworkOnly, dateFrom, dateTo],
     queryFn: async () => {
       // Same scoping rule as sales: this branch's expenses + legacy records
-      // with no branch_id (backward compatible).
-      const legacyPromise = base44.entities.Expense.filter({ branch_id: null, created_by: legacyEmail }, '-date', 2000);
+      // with no branch_id (backward compatible). Only the selected dates, every page.
+      const date = { $gte: dateFrom, $lte: dateTo };
+      const load = (q) => fetchAllPages(base44.entities.Expense, { ...q, date }, '-date', { label: 'הוצאות' });
+      const legacyPromise = load({ branch_id: null, created_by: legacyEmail });
       if (!branchId) return withoutNetworkOnly(await legacyPromise);
       const [branchExpenses, legacyExpenses] = await Promise.all([
-        base44.entities.Expense.filter({ branch_id: branchId }, '-date', 2000),
+        load({ branch_id: branchId }),
         legacyPromise,
       ]);
       const all = [...branchExpenses, ...legacyExpenses];
@@ -74,6 +84,7 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
     },
     enabled: !!tenantEmail,
     staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 
   // Catalog: the owner's records + records the network master added for this branch (same scope as the POS)
@@ -224,7 +235,7 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
           </div>
 
           {/* Hourly Sales Chart */}
-          <HourlySalesChart sales={sales} />
+          <HourlySalesChart sales={sales} date={hourlyDate} onDateChange={setHourlyDate} />
 
           {/* Drill-Down Analytics */}
           <DrillDownAnalytics
