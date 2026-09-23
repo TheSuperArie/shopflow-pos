@@ -29,6 +29,7 @@ import moment from 'moment';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCategorySalesAnalytics } from '@/hooks/useCategorySalesAnalytics';
 import { withoutNetworkOnly } from '@/lib/branchScope';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
 export default function AdminSales() {
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
