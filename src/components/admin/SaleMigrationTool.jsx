@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, GitFork } from 'lucide-react';
 import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
+import { fetchAllPages } from '@/lib/fetchAllPages';
 
 // Mode: 'single' or 'split'
 function AssignmentRow({ baseName, count, sell_price, candidates, groups, onDone }) {
@@ -85,7 +86,7 @@ export default function SaleMigrationTool({ tenantEmail }) {
 
   const { data: allSales = [], isLoading: loadingSales } = useQuery({
     queryKey: ['migration-sales', tenantEmail],
-    queryFn: () => base44.entities.Sale.filter({ created_by: tenantEmail }, '-created_date', 10000),
+    queryFn: () => fetchAllPages(base44.entities.Sale, { created_by: tenantEmail }, '-created_date', { label: 'מכירות' }),
     enabled: !!tenantEmail,
     staleTime: 0,
     gcTime: 0,

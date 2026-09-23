@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { filterUpTo } from '@/lib/fetchAllPages';
 
 /**
  * Resolves the branch the current station account belongs to — the same
@@ -27,11 +28,11 @@ export function useCurrentBranch() {
  */
 export async function filterBranchScoped(entity, branchId, userEmail, extra = {}, sort, limit) {
   if (!branchId) {
-    return entity.filter({ ...extra, created_by: userEmail }, sort, limit);
+    return filterUpTo(entity, { ...extra, created_by: userEmail }, sort, limit);
   }
   const [branchRecords, legacyRecords] = await Promise.all([
-    entity.filter({ ...extra, branch_id: branchId }, sort, limit),
-    entity.filter({ ...extra, branch_id: null, created_by: userEmail }, sort, limit),
+    filterUpTo(entity, { ...extra, branch_id: branchId }, sort, limit),
+    filterUpTo(entity, { ...extra, branch_id: null, created_by: userEmail }, sort, limit),
   ]);
   return [...branchRecords, ...legacyRecords];
 }

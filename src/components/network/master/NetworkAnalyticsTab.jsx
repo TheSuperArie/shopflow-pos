@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { fetchAllPages } from '@/lib/fetchAllPages';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, LineChart, Line,
 } from 'recharts';
-import { format, subDays, startOfDay, parseISO, isWithinInterval } from 'date-fns';
+import { format, subDays, addDays, startOfDay, parseISO, isWithinInterval } from 'date-fns';
 import { isNetworkLevelOf } from '@/lib/branchScope';
 
 const DATE_PRESETS = [
@@ -47,24 +48,28 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
   // all-time rows. The client-side isInRange() filtering below is unchanged, so the
   // displayed numbers are identical — only fewer rows travel over the network.
   const fromIso = from.toISOString();
-  // Expenses are bucketed by their `date` field (which can differ from created_date),
-  // so they get a generous buffer to be safe against back-dated entries.
-  const expensesFromIso = useMemo(() => subDays(from, 90).toISOString(), [from]);
+  const toIso = to.toISOString();
+  // Expenses are bucketed by their `date` field — query that field directly, with a
+  // one-day margin on each side (the exact in-range check below is unchanged).
+  const expFrom = format(subDays(from, 1), 'yyyy-MM-dd');
+  const expTo = format(addDays(to, 1), 'yyyy-MM-dd');
 
-  // All sales in range — scoped below to this network's branches (branch_id) + the master's own sales.
+  // All sales in range (every page) — scoped below to this network's branches (branch_id) + the master's own sales.
   // Branch sales are created by the branch's own account, so they can't be fetched by tenant filter.
   const { data: allSales = [] } = useQuery({
-    queryKey: ['network-sales', tenantEmail, fromIso],
-    queryFn: () => base44.entities.Sale.filter({ created_date: { $gte: fromIso } }, '-created_date', 5000),
+    queryKey: ['network-sales', tenantEmail, fromIso, toIso],
+    queryFn: () => fetchAllPages(base44.entities.Sale, { created_date: { $gte: fromIso, $lte: toIso } }, '-created_date', { label: 'מכירות' }),
     enabled: !!tenantEmail,
     staleTime: 60000,
+    placeholderData: keepPreviousData,
   });
 
   const { data: allExpenses = [] } = useQuery({
-    queryKey: ['network-expenses', tenantEmail, expensesFromIso],
-    queryFn: () => base44.entities.Expense.filter({ created_date: { $gte: expensesFromIso } }, '-created_date', 5000),
+    queryKey: ['network-expenses', tenantEmail, expFrom, expTo],
+    queryFn: () => fetchAllPages(base44.entities.Expense, { date: { $gte: expFrom, $lte: expTo } }, '-date', { label: 'הוצאות' }),
     enabled: !!tenantEmail,
     staleTime: 60000,
+    placeholderData: keepPreviousData,
   });
 
   const isInRange = (dateStr) => {

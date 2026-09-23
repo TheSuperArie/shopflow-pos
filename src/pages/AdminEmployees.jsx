@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Plus, Pencil, Trash2, Loader2, Users, Clock, LogIn, LogOut, Calendar, Wallet, ClipboardEdit } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
+import { ALL } from '@/lib/fetchAllPages';
 import EmployeePaymentPanel from '@/components/admin/EmployeePaymentPanel';
 import ShiftEditModal from '@/components/admin/ShiftEditModal';
 
@@ -36,7 +37,7 @@ export default function AdminEmployees() {
 
   const { data: logs = [] } = useQuery({
     queryKey: ['attendance-logs', branchId, user?.email],
-    queryFn: () => filterBranchScoped(base44.entities.AttendanceLog, branchId, user.email, {}, '-clock_in', 2000),
+    queryFn: () => filterBranchScoped(base44.entities.AttendanceLog, branchId, user.email, {}, '-clock_in', ALL),
     enabled: !loadingBranch && !!user,
   });
 

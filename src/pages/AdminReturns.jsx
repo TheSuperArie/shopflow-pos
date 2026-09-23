@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import ReturnDetailsModal from '@/components/returns/ReturnDetailsModal';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
+import { ALL } from '@/lib/fetchAllPages';
 
 export default function AdminReturns() {
   const [showForm, setShowForm] = useState(false);
@@ -21,7 +22,7 @@ export default function AdminReturns() {
 
   const { data: returns = [], isLoading: loadingReturns } = useQuery({
     queryKey: ['returns', branchId, user?.email],
-    queryFn: () => filterBranchScoped(base44.entities.Return, branchId, user.email, {}, '-created_date', 2000),
+    queryFn: () => filterBranchScoped(base44.entities.Return, branchId, user.email, {}, '-created_date', ALL),
     enabled: !loadingBranch && !!user,
   });
 

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { fetchAllPages, createdDateBetween } from '@/lib/fetchAllPages';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -39,12 +40,12 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
   // Fetch all sales, then scope to this network: the master's own sales
   // + sales stamped with one of the network's branch ids (branch accounts)
-  const { data: rawSales = [], isLoading: salesLoading } = useQuery({
-    queryKey: ['all-sales-dashboard', tenantEmail],
-    queryFn: () => base44.entities.Sale.list('-created_date', 5000),
-    // This dashboard's KPIs are all-time (no date filter in the UI), so the fetch
-    // can't be narrowed without changing the numbers — cached instead.
+  // Only the selected range is loaded (all pages); exact filtering stays below
+  const { data: rawSales = [] } = useQuery({
+    queryKey: ['all-sales-dashboard', tenantEmail, range.from, range.to],
+    queryFn: () => fetchAllPages(base44.entities.Sale, { created_date: createdDateBetween(range.from, range.to) }, '-created_date', { label: 'מכירות' }),
     staleTime: 120000,
+    placeholderData: keepPreviousData,
   });
 
   const branchIds = useMemo(() => new Set(branches.map(b => b.id)), [branches]);
@@ -57,9 +58,10 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   // Network expenses in range — branch expenses (incl. legacy ones created by a station
   // account) + the master's own, and network-only expenses the master added for a branch.
   const { data: rawExpenses = [] } = useQuery({
-    queryKey: ['all-expenses-dashboard', tenantEmail],
-    queryFn: () => base44.entities.Expense.list('-date', 5000),
+    queryKey: ['all-expenses-dashboard', tenantEmail, range.from, range.to],
+    queryFn: () => fetchAllPages(base44.entities.Expense, { date: { $gte: range.from, $lte: range.to } }, '-date', { label: 'הוצאות' }),
     staleTime: 120000,
+    placeholderData: keepPreviousData,
   });
 
   // Branch expenses vs. the network's own expenses (no branch) — each counted exactly once

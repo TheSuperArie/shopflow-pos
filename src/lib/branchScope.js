@@ -1,3 +1,5 @@
+import { filterUpTo } from '@/lib/fetchAllPages';
+
 /**
  * Network-side branch scoping — the master's mirror of filterBranchScoped():
  * records stamped with this branch's id + legacy records with no branch_id
@@ -5,9 +7,9 @@
  */
 export async function fetchBranchScoped(entity, branch, extra = {}, sort, limit) {
   if (!branch?.id) return [];
-  const requests = [entity.filter({ ...extra, branch_id: branch.id }, sort, limit)];
+  const requests = [filterUpTo(entity, { ...extra, branch_id: branch.id }, sort, limit)];
   if (branch.station_email) {
-    requests.push(entity.filter({ ...extra, branch_id: null, created_by: branch.station_email }, sort, limit));
+    requests.push(filterUpTo(entity, { ...extra, branch_id: null, created_by: branch.station_email }, sort, limit));
   }
   const merged = (await Promise.all(requests)).flat();
   const seen = new Set();

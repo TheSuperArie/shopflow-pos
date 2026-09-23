@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertTriangle, Loader2, Trash2, PackageX, ArchiveX } from 'lucide-react';
+import { fetchAllPages } from '@/lib/fetchAllPages';
 
 const ACTIONS = [
   {
@@ -84,7 +85,7 @@ export default function DangerZone({ user }) {
 
       if (activeAction.id === 'clear_sales') {
         // Step 1: Fetch all sales and restore their stock back to variants
-        const sales = await base44.entities.Sale.filter({ created_by: email });
+        const sales = await fetchAllPages(base44.entities.Sale, { created_by: email }, '-created_date', { label: 'מכירות' });
         const variants = await base44.entities.ProductVariant.filter({ created_by: email });
 
         // Build a stock-delta map: variant_id → total quantity to restore
@@ -114,7 +115,7 @@ export default function DangerZone({ user }) {
           (id) => base44.entities.Receipt.delete(id)
         );
         await batchDelete(
-          () => base44.entities.Return.filter({ created_by: email }),
+          () => fetchAllPages(base44.entities.Return, { created_by: email }, '-created_date', { label: 'החזרות' }),
           (id) => base44.entities.Return.delete(id)
         );
         await batchDelete(

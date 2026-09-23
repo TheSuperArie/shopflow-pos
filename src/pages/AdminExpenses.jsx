@@ -15,6 +15,7 @@ import { lastUsedByTemplate, templateToExpense } from '@/lib/fixedExpenseTemplat
 import { format } from 'date-fns';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 import { withoutNetworkOnly } from '@/lib/branchScope';
+import { ALL } from '@/lib/fetchAllPages';
 
 import { EXPENSE_TYPES } from '@/lib/expenseGrouping';
 
@@ -31,7 +32,7 @@ export default function AdminExpenses() {
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
     queryKey: ['expenses', branchId, user?.email],
     // Network-master expenses (network_only) are never shown to the branch manager.
-    queryFn: async () => withoutNetworkOnly(await filterBranchScoped(base44.entities.Expense, branchId, user.email, {}, '-date', 2000)),
+    queryFn: async () => withoutNetworkOnly(await filterBranchScoped(base44.entities.Expense, branchId, user.email, {}, '-date', ALL)),
     enabled: !loadingBranch && !!user,
   });
 

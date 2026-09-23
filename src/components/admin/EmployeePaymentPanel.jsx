@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Plus, Wallet, Banknote, Clock, Scale, Receipt, Pencil, Trash2 } from 'lucide-react';
 import { parseISO, differenceInMinutes } from 'date-fns';
 import EmployeeExpensesPanel from '@/components/admin/EmployeeExpensesPanel';
+import { fetchAllPages } from '@/lib/fetchAllPages';
 
 const METHOD_COLORS = {
   'מזומן': 'bg-green-100 text-green-700',
@@ -35,13 +36,13 @@ export default function EmployeePaymentPanel({ employee, attendanceLogs = [], br
 
   const { data: payments = [] } = useQuery({
     queryKey: ['employee-payments', employee?.id],
-    queryFn: () => base44.entities.EmployeePayment.filter({ employee_id: employee.id }, '-payment_date'),
+    queryFn: () => fetchAllPages(base44.entities.EmployeePayment, { employee_id: employee.id }, '-payment_date', { label: 'תשלומים' }),
     enabled: !!employee,
   });
 
   const { data: employeeExpenses = [] } = useQuery({
     queryKey: ['employee-expenses', employee?.id],
-    queryFn: () => base44.entities.Expense.filter({ employee_id: employee.id }, '-date'),
+    queryFn: () => fetchAllPages(base44.entities.Expense, { employee_id: employee.id }, '-date', { label: 'הוצאות' }),
     enabled: !!employee,
   });
 

@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Wallet, Plus, Landmark, Repeat } from 'lucide-react';
 import { groupExpenses, sumExpenses } from '@/lib/expenseGrouping';
 import { lastUsedByTemplate } from '@/lib/fixedExpenseTemplates';
+import { fetchAllPages } from '@/lib/fetchAllPages';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import NetworkLevelExpenseFormModal, { NETWORK_EXPENSE_CATEGORIES } from './NetworkLevelExpenseFormModal';
 import FixedTemplatesDialog from '@/components/expenses/FixedTemplatesDialog';
@@ -23,7 +24,7 @@ export default function NetworkLevelExpensesTab({ tenantEmail }) {
   const queryKey = ['network-level-expenses', tenantEmail];
   const { data: all = [], isLoading } = useQuery({
     queryKey,
-    queryFn: () => base44.entities.Expense.filter({ network_level: true, tenant_email: tenantEmail }, '-date', 2000),
+    queryFn: () => fetchAllPages(base44.entities.Expense, { network_level: true, tenant_email: tenantEmail }, '-date', { label: 'הוצאות' }),
     enabled: !!tenantEmail,
   });
   const expenses = all.filter(e => e.date >= range.from && e.date <= range.to);

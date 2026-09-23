@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Wallet, Plus } from 'lucide-react';
 import { fetchBranchScoped } from '@/lib/branchScope';
+import { ALL } from '@/lib/fetchAllPages';
 import { groupExpenses, sumExpenses } from '@/lib/expenseGrouping';
 import { lastUsedByTemplate } from '@/lib/fixedExpenseTemplates';
 import NetworkExpenseFormModal from './NetworkExpenseFormModal';
@@ -21,7 +22,7 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
 
   const { data: allExpenses = [], isLoading } = useQuery({
     queryKey: ['branch-expenses', branch.id],
-    queryFn: () => fetchBranchScoped(base44.entities.Expense, branch, {}, '-date', 1000),
+    queryFn: () => fetchBranchScoped(base44.entities.Expense, branch, {}, '-date', ALL),
   });
 
   // The branch's own fixed-expense templates (managed by the branch manager)
