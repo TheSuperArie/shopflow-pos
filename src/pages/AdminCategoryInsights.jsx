@@ -94,8 +94,9 @@ export default function AdminCategoryInsights() {
   });
 
   const { data: flexibleVariants = [] } = useQuery({
-    queryKey: ['insights-flexible-variants'],
-    queryFn: () => base44.entities.FlexibleVariant.list('-created_date', 5000),
+    queryKey: ['insights-flexible-variants', ownerEmail, branchId],
+    queryFn: () => fetchPosCatalogRecords(base44.entities.FlexibleVariant, ownerEmail, branchId, '-created_date', 5000),
+    enabled: !!ownerEmail,
     staleTime: 0,
   });
 
