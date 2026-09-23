@@ -71,8 +71,8 @@ export default function AdminDailyReport() {
   const avgTransaction = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
 
   // Peak hours
-  const peakHour = hourlyData.sort((a, b) => b.revenue - a.revenue)[0];
-  const busiestHour = hourlyData.sort((a, b) => b.count - a.count)[0];
+  const peakHour = [...hourlyData].sort((a, b) => b.revenue - a.revenue)[0];
+  const busiestHour = [...hourlyData].sort((a, b) => b.count - a.count)[0];
 
   return (
     <div className="space-y-6">
