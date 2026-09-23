@@ -13,7 +13,7 @@ export default function FixedTemplateRow({ t, lastUsed, onEdit, onToggle, onDele
         <LastUsedBadge date={lastUsed} />
       </div>
       <span className="font-bold text-indigo-600 shrink-0">₪{Number(t.default_amount || 0).toFixed(0)}</span>
-      <Switch checked={t.is_active !== false} onCheckedChange={onToggle} title="פעילה" />
+      <Switch dir="ltr" checked={t.is_active !== false} onCheckedChange={onToggle} title="פעילה" className="shrink-0" />
       <button onClick={onEdit} className="p-1.5 rounded-md hover:bg-gray-100" title="עריכת תבנית">
         <Pencil className="w-3.5 h-3.5 text-gray-500" />
       </button>
