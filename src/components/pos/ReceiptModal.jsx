@@ -14,10 +14,17 @@ export default function ReceiptModal({ open, sale, onClose }) {
   const [customerEmail, setCustomerEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
 
+  const { data: user } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => base44.auth.me(),
+    staleTime: 300000,
+  });
+
   const { data: settings } = useQuery({
-    queryKey: ['app-settings'],
+    queryKey: ['app-settings', user?.email],
+    enabled: !!user?.email,
     queryFn: async () => {
-      const list = await base44.entities.AppSettings.list();
+      const list = await base44.entities.AppSettings.filter({ created_by: user.email });
       return list[0] || { store_name: 'החנות שלי' };
     },
   });
