@@ -22,21 +22,18 @@ export default function BatchShipmentEntry() {
   const [removingItem, setRemovingItem] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const user = useCurrentUser();
+
   const { data: suppliers = [] } = useQuery({
-    queryKey: ['suppliers'],
-    queryFn: () => base44.entities.Supplier.list(),
+    queryKey: ['suppliers', user?.email],
+    queryFn: () => user ? base44.entities.Supplier.filter({ created_by: user.email }) : [],
+    enabled: !!user,
   });
 
-  const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups'],
-    queryFn: () => base44.entities.ProductGroup.list(),
-  });
+  const { data: groups = [] } = usePosCatalogQuery('product-groups', 'ProductGroup');
 
   // Fetch all variants to get database cost prices
-  const { data: allVariants = [] } = useQuery({
-    queryKey: ['product-variants'],
-    queryFn: () => base44.entities.ProductVariant.list(),
-  });
+  const { data: allVariants = [] } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
   // Build item cost map: fetch actual database cost prices for each selected item
   const itemCosts = selectedItems.map(item => {
