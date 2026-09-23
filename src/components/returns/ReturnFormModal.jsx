@@ -9,6 +9,7 @@ import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
 export default function ReturnFormModal({ open, onClose, branchId = null }) {
   const [form, setForm] = useState({
