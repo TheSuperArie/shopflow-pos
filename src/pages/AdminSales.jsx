@@ -46,15 +46,9 @@ export default function AdminSales() {
     enabled: !!user,
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories-all'],
-    queryFn: () => base44.entities.Category.list('sort_order', 500),
-  });
+  const { data: categories = [] } = usePosCatalogQuery('categories-all', 'Category', { sort: 'sort_order', limit: 500 });
 
-  const { data: groups = [] } = useQuery({
-    queryKey: ['product-groups-all'],
-    queryFn: () => base44.entities.ProductGroup.list('name', 2000),
-  });
+  const { data: groups = [] } = usePosCatalogQuery('product-groups-all', 'ProductGroup', { sort: 'name', limit: 2000 });
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses', user?.email],
@@ -91,10 +85,7 @@ export default function AdminSales() {
     { name: 'אשראי', value: creditTotal, count: creditSales.length },
   ].filter(d => d.value > 0);
 
-  const { data: variants = [] } = useQuery({
-    queryKey: ['product-variants-all'],
-    queryFn: () => base44.entities.ProductVariant.list('id', 5000),
-  });
+  const { data: variants = [] } = usePosCatalogQuery('product-variants-all', 'ProductVariant', { sort: 'id', limit: 5000 });
 
   // Shared hierarchical category analytics
   const { parentCategoryData, flatCategoryData, COLORS } = useCategorySalesAnalytics({
