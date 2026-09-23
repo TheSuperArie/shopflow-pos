@@ -29,9 +29,10 @@ export default function AdminLowStock() {
   }, [queryClient]);
 
   const { data: settings } = useQuery({
-    queryKey: ['app-settings'],
+    queryKey: ['app-settings', user?.email],
+    enabled: !!user?.email,
     queryFn: async () => {
-      const list = await base44.entities.AppSettings.list();
+      const list = await base44.entities.AppSettings.filter({ created_by: user.email });
       return list[0] || { low_stock_threshold: 5 };
     },
   });
