@@ -18,10 +18,13 @@ function parseVariantLabel(label = '') {
 }
 
 async function exportTicketToCSV(ticket, lineItems) {
-  // Fetch branch info and all variants in parallel
+  // Fetch branch info and only the variants this ticket refers to
+  const variantIds = [...new Set((lineItems || []).map(li => li.variant_id).filter(Boolean))];
   const [branches, allVariants] = await Promise.all([
     base44.entities.Branch.filter({ id: ticket.branch_id }),
-    base44.entities.FlexibleVariant.list('id', 5000),
+    variantIds.length
+      ? base44.entities.FlexibleVariant.filter({ id: { $in: variantIds } }, 'id', variantIds.length)
+      : Promise.resolve([]),
   ]);
   const branch = branches[0] || {};
   const variantMap = Object.fromEntries(allVariants.map(v => [String(v.id), v]));
