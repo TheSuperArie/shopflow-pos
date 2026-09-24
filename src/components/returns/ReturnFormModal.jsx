@@ -52,8 +52,15 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
       });
 
       // Update inventory: returned items go back to stock
+      const touchedIds = [
+        ...selectedItems.map(i => i.variant_id),
+        ...exchangeItems.map(i => i.variant_id),
+      ].filter(Boolean);
       const variantsById = new Map(
-        (await base44.entities.ProductVariant.list()).map(v => [v.id, v])
+        (touchedIds.length
+          ? await base44.entities.ProductVariant.filter({ id: { $in: touchedIds } })
+          : []
+        ).map(v => [v.id, v])
       );
       for (const item of selectedItems) {
         const variant = variantsById.get(item.variant_id);
