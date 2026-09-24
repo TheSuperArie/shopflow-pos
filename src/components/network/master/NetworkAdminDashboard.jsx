@@ -85,16 +85,23 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
     queryFn: () => base44.entities.OrderTicket.filter({ tenant_email: tenantEmail }),
   });
 
-  // Fetch product groups for category names
+  // Fetch product groups for category names (network scope only)
+  const catalogOwners = useMemo(
+    () => [tenantEmail, ...branches.map(b => b.station_email).filter(Boolean)].filter(Boolean),
+    [tenantEmail, branches]
+  );
+
   const { data: productGroups = [] } = useQuery({
-    queryKey: ['product-groups-dashboard'],
-    queryFn: () => base44.entities.ProductGroup.list(),
+    queryKey: ['product-groups-dashboard', tenantEmail, catalogOwners.length],
+    queryFn: () => base44.entities.ProductGroup.filter({ created_by: { $in: catalogOwners } }, '-created_date', 5000),
+    enabled: catalogOwners.length > 0,
     staleTime: 120000,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories-dashboard'],
-    queryFn: () => base44.entities.Category.list(),
+    queryKey: ['categories-dashboard', tenantEmail, catalogOwners.length],
+    queryFn: () => base44.entities.Category.filter({ created_by: { $in: catalogOwners } }, 'sort_order', 2000),
+    enabled: catalogOwners.length > 0,
     staleTime: 120000,
   });
 
