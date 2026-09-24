@@ -42,7 +42,10 @@ export default function AdminReturns() {
         processed_by: 'admin',
       });
 
-      const variants = await base44.entities.ProductVariant.list();
+      const variantIds = returnData.items.map(i => i.variant_id).filter(Boolean);
+      const variants = variantIds.length
+        ? await base44.entities.ProductVariant.filter({ id: { $in: variantIds } })
+        : [];
       for (const item of returnData.items) {
         const variant = variants.find(v => v.id === item.variant_id);
         if (variant) {
