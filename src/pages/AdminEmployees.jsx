@@ -15,6 +15,7 @@ import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 import { ALL } from '@/lib/fetchAllPages';
 import EmployeePaymentPanel from '@/components/admin/EmployeePaymentPanel';
 import ShiftEditModal from '@/components/admin/ShiftEditModal';
+import { ownershipFields } from '@/lib/ownershipFields';
 
 export default function AdminEmployees() {
   const [showForm, setShowForm] = useState(false);
@@ -27,7 +28,8 @@ export default function AdminEmployees() {
   const [endDate, setEndDate] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, branchId, isLoading: loadingBranch } = useCurrentBranch();
+  const { user, branch, branchId, isLoading: loadingBranch } = useCurrentBranch();
+  const ownership = (employee) => ownershipFields(branch, user?.email, employee);
 
   const { data: employees = [], isLoading: loadingEmployees } = useQuery({
     queryKey: ['employees', branchId, user?.email],
@@ -255,6 +257,7 @@ export default function AdminEmployees() {
         queryClient={queryClient}
         toast={toast}
         branchId={branchId}
+        ownership={ownership}
       />
 
       <ShiftEditModal
@@ -270,12 +273,13 @@ export default function AdminEmployees() {
         queryClient={queryClient}
         toast={toast}
         branchId={branchId}
+        ownership={ownership}
       />
     </div>
   );
 }
 
-function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchId }) {
+function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchId, ownership }) {
   const today = format(new Date(), 'yyyy-MM-dd');
   const [form, setForm] = useState({ date: today, start_time: '', end_time: '', notes: '' });
 
@@ -296,6 +300,7 @@ function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchI
         notes: data.notes || 'הזנה ידנית',
         manually_edited: true,
         branch_id: employee?.branch_id || branchId || null,
+        ...ownership(employee),
       });
     },
     onSuccess: () => {
@@ -373,7 +378,7 @@ function ManualHoursModal({ open, employee, onClose, queryClient, toast, branchI
   );
 }
 
-function EmployeeFormModal({ open, employee, onClose, queryClient, toast, branchId }) {
+function EmployeeFormModal({ open, employee, onClose, queryClient, toast, branchId, ownership }) {
   const [form, setForm] = useState({ name: '', pin: '', phone: '', role: 'קופאי', hourly_rate: '', is_active: true });
 
   React.useEffect(() => {
@@ -389,7 +394,7 @@ function EmployeeFormModal({ open, employee, onClose, queryClient, toast, branch
       const payload = { ...data, hourly_rate: data.hourly_rate === '' ? null : Number(data.hourly_rate) };
       return employee
         ? base44.entities.Employee.update(employee.id, payload)
-        : base44.entities.Employee.create({ ...payload, branch_id: branchId || null });
+        : base44.entities.Employee.create({ ...payload, branch_id: branchId || null, ...ownership() });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });

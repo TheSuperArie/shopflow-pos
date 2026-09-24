@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { ownershipFields } from '@/lib/ownershipFields';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +27,7 @@ export default function NetworkEmployeeFormModal({ open, onClose, branch, onSave
       hourly_rate: data.hourly_rate ? parseFloat(data.hourly_rate) : undefined,
       is_active: true,
       branch_id: branch.id,
+      ...ownershipFields(branch),
     }),
     onSuccess: onSaved,
     onError,

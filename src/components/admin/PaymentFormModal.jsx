@@ -56,6 +56,10 @@ export default function PaymentFormModal({ open, employee, branchId, payment, on
         employee_id: employee.id,
         employee_name: employee.name,
         amount,
+        // Ownership follows the employee's own stamp
+        branch_id: employee.branch_id || branchId || null,
+        station_email: employee.station_email || null,
+        tenant_email: employee.tenant_email || null,
       });
       // Mirror the payment as a branch expense so it shows in expense reports
       await base44.entities.Expense.create({

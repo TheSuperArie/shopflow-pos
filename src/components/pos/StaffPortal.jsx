@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, LogIn, LogOut, Clock, DollarSign, Delete, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
+import { ownershipFields } from '@/lib/ownershipFields';
 
 const ACTIVE_SHIFTS_KEY = 'active_shifts'; // Maps employee_id -> shift data
 
@@ -38,7 +39,7 @@ export default function StaffPortal({ open, onClose }) {
   const [expenseForm, setExpenseForm] = useState({ amount: '', description: '', category: 'other', payment_method: 'מזומן' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, branchId, isLoading: loadingBranch } = useCurrentBranch();
+  const { user, branch, branchId, isLoading: loadingBranch } = useCurrentBranch();
 
   const { data: employees = [] } = useQuery({
     queryKey: ['employees', branchId, user?.email, 'active'],
@@ -64,6 +65,7 @@ export default function StaffPortal({ open, onClose }) {
         clock_in: now,
         date: format(new Date(), 'yyyy-MM-dd'),
         branch_id: employee?.branch_id || branchId || null,
+        ...ownershipFields(branch, user?.email, employee),
       };
       // Cash amount is optional — an empty field stays unset (not 0)
       if (openingCash !== null && openingCash !== undefined) payload.opening_cash = openingCash;
