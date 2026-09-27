@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X, CheckCircle, XCircle, Package, MessageSquare, ClipboardList, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 import TicketChatPanel from './TicketChatPanel';
 
 // variant_label format: "שם מוצר — ווריאציה" (e.g. "גופיות — S")
@@ -34,7 +35,7 @@ async function exportTicketToCSV(ticket, lineItems) {
     ['כתובת:', branch.address || ''],
     ['מנהל:', branch.manager_name || ''],
     ['טלפון:', branch.manager_phone || ''],
-    ['תאריך:', ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yyyy HH:mm') : ''],
+    ['תאריך:', ticket.created_date ? format(parseServerDate(ticket.created_date), 'dd/MM/yyyy HH:mm') : ''],
     [],
     ['מק"ט', 'שם מוצר', 'ווריאציה', 'כמות מבוקשת'],
   ];
@@ -170,7 +171,7 @@ export default function TicketDetailPanel({ ticket, onClose, viewerRole, tenantE
             <div>
               <p className="font-bold text-gray-800 text-sm">{ticket.branch_name || 'הזמנה'}</p>
               <p className="text-xs text-gray-400">
-                {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy HH:mm') : ''}
+                {ticket.created_date ? format(parseServerDate(ticket.created_date), 'dd/MM/yy HH:mm') : ''}
               </p>
             </div>
             <span className={`mr-2 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
