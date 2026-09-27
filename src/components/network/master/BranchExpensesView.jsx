@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { format, startOfMonth, endOfMonth, startOfWeek, subMonths } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Wallet, Plus } from 'lucide-react';
 import { fetchBranchScoped } from '@/lib/branchScope';
@@ -13,6 +15,14 @@ import NetworkExpenseFormModal from './NetworkExpenseFormModal';
 import ExpenseFolder from './ExpenseFolder';
 import ExpenseRow from './ExpenseRow';
 import EmployeeExpenseFolderContent from './EmployeeExpenseFolderContent';
+
+const d = (x) => format(x, 'yyyy-MM-dd');
+const RANGE_SHORTCUTS = [
+  { label: 'היום', get: () => ({ from: d(new Date()), to: d(new Date()) }) },
+  { label: 'השבוע', get: () => ({ from: d(startOfWeek(new Date(), { weekStartsOn: 0 })), to: d(new Date()) }) },
+  { label: 'החודש', get: () => ({ from: d(startOfMonth(new Date())), to: d(new Date()) }) },
+  { label: 'חודש קודם', get: () => ({ from: d(startOfMonth(subMonths(new Date(), 1))), to: d(endOfMonth(subMonths(new Date(), 1))) }) },
+];
 
 export default function BranchExpensesView({ branch, fromDate, toDate }) {
   const { toast } = useToast();
