@@ -29,6 +29,7 @@ export default function AdminCategoryInsights() {
   const legacyEmail = searchParams.get('legacy') || ownerEmail;
   const returnTo = searchParams.get('returnTo') || '/AdminDashboard';
   const [selectedDimension, setSelectedDimension] = useState('__auto__');
+  const [pinVersion, setPinVersion] = useState(0); // bumped on pin/unpin so the button re-renders
   const [level0GroupBy, setLevel0GroupBy] = useState('subcat'); // 'subcat' | 'dimension'
 
   // On category change: restore pinned global dimension + groupBy (if any)
