@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { RotateCcw, Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import ReturnDetailsModal from '@/components/returns/ReturnDetailsModal';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
@@ -181,7 +182,7 @@ export default function AdminReturns() {
                     <p className="font-semibold text-gray-800">{returnItem.customer_name || 'לקוח'}</p>
                     <p className="text-sm text-gray-500">{returnItem.items?.length || 0} פריטים • ₪{returnItem.total_amount?.toFixed(2)}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {returnItem.created_date && format(new Date(returnItem.created_date), 'dd/MM/yyyy HH:mm')}
+                      {returnItem.created_date && format(parseServerDate(returnItem.created_date), 'dd/MM/yyyy HH:mm')}
                     </p>
                     {returnItem.reason && (
                       <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded"><strong>סיבה:</strong> {returnItem.reason}</p>
