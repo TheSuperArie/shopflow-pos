@@ -32,6 +32,7 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   // Date range — defaults to the current month
   const [range, setRange] = useState(() => ({ ...DATE_PRESETS[2].range(), preset: 'month' }));
   const [expenseSide, setExpenseSide] = useState(null); // 'importer' | 'private' | null
+  const [withdrawn, setWithdrawn] = useState(0); // owner withdrawals in range, reported by the salary banner
   const inRange = (iso) => {
     const d = toLocalDate(iso);
     return !!d && d >= range.from && d <= range.to;
@@ -231,8 +232,9 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
       <NetworkDateRangeFilter from={range.from} to={range.to} preset={range.preset} onChange={setRange} />
 
-      <ProfitSplitBanners split={split} onShowExpenses={setExpenseSide}
-        extra={branches.some(isOwnStock) ? <NetworkSalaryBanner branches={branches} from={range.from} to={range.to} /> : null} />
+      <ProfitSplitBanners split={split} onShowExpenses={setExpenseSide} withdrawn={withdrawn}
+        extra={branches.some(isOwnStock) ? <NetworkSalaryBanner branches={branches} from={range.from} to={range.to}
+          privateProfit={split.priv} onTotal={setWithdrawn} /> : null} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
