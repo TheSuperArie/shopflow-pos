@@ -5,7 +5,7 @@
  */
 export const isOwnStock = (branch) => branch?.business_model === 'OWN_STOCK';
 
-const saleCost = (sale) =>
+export const saleCost = (sale) =>
   (sale.items || []).reduce((s, i) => s + (Number(i.cost_price) || 0) * (Number(i.quantity) || 1), 0);
 
 /** Which side an expense is charged to: { side: 'importer'|'private'|null, branch, networkLevel }. */

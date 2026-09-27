@@ -7,7 +7,7 @@ export const STAMPED_ENTITIES = new Set([
   'Sale', 'Expense', 'Return', 'Credit', 'Category', 'ProductGroup', 'ProductVariant',
   'FlexibleVariant', 'VariantDimension', 'Supplier', 'SupplierOrder', 'SupplierPayment',
   'OrderTicket', 'StockRequest', 'StockUpdate', 'Receipt', 'CashCount', 'Product',
-  'AppSettings', 'FixedExpenseTemplate', 'BranchVariantStock',
+  'AppSettings', 'FixedExpenseTemplate', 'BranchVariantStock', 'OwnerWithdrawal',
 ]);
 
 const isActive = (b) => !b.status || b.status === 'ACTIVE';

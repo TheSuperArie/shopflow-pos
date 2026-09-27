@@ -11,7 +11,8 @@ import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import { isNetworkLevelOf } from '@/lib/branchScope';
-import { splitByBusinessModel } from '@/lib/businessModelSplit';
+import { splitByBusinessModel, isOwnStock } from '@/lib/businessModelSplit';
+import NetworkSalaryBanner from '@/components/withdrawals/NetworkSalaryBanner';
 import ProfitSplitBanners from './ProfitSplitBanners';
 import NetworkSideExpensesView from './NetworkSideExpensesView';
 
@@ -230,7 +231,8 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
       <NetworkDateRangeFilter from={range.from} to={range.to} preset={range.preset} onChange={setRange} />
 
-      <ProfitSplitBanners split={split} onShowExpenses={setExpenseSide} />
+      <ProfitSplitBanners split={split} onShowExpenses={setExpenseSide}
+        extra={branches.some(isOwnStock) ? <NetworkSalaryBanner branches={branches} from={range.from} to={range.to} /> : null} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

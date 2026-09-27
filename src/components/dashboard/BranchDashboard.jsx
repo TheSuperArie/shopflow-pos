@@ -10,6 +10,8 @@ import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
 import HourlySalesChart from '@/components/dashboard/HourlySalesChart';
 import { withoutNetworkOnly, withoutNetworkLevel } from '@/lib/branchScope';
 import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
+import { isOwnStock, saleCost } from '@/lib/businessModelSplit';
+import BranchSalaryBanner from '@/components/withdrawals/BranchSalaryBanner';
 
 /**
  * BranchDashboard – reusable dashboard scoped to a specific branch + tenant.
@@ -163,6 +165,16 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
 
   const isLoading = loadingSales || loadingExpenses;
 
+  // "משכורת" banner — only for OWN_STOCK branches; private profit = sale − line cost (same as the network split)
+  const { data: branchRec } = useQuery({
+    queryKey: ['branch-record', branchId],
+    queryFn: () => base44.entities.Branch.get(branchId),
+    enabled: !!branchId,
+    staleTime: 300000,
+  });
+  const ownStock = isOwnStock(branchRec);
+  const privateProfit = filteredSales.reduce((s, sale) => s + (Number(sale.total) || 0) - saleCost(sale), 0);
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* Date range filter */}
@@ -202,6 +214,10 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
               bg={netProfit >= 0 ? 'bg-green-50' : 'bg-red-50'}
             />
           </div>
+
+          {ownStock && (
+            <BranchSalaryBanner branchId={branchId} dateFrom={dateFrom} dateTo={dateTo} privateProfit={privateProfit} />
+          )}
 
           {/* Expense toggle */}
           <div className="flex items-center gap-2 justify-end">
