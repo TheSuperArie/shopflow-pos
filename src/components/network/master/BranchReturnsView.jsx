@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 import { fetchBranchScoped } from '@/lib/branchScope';
 import { ALL } from '@/lib/fetchAllPages';
 
@@ -46,7 +47,7 @@ export default function BranchReturnsView({ branch }) {
               {r.items?.length || 0} פריטים • ₪{Number(r.total_amount || 0).toFixed(2)}
             </p>
             {r.created_date && (
-              <p className="text-xs text-gray-400 mt-1">{format(new Date(r.created_date), 'dd/MM/yyyy HH:mm')}</p>
+              <p className="text-xs text-gray-400 mt-1">{format(parseServerDate(r.created_date), 'dd/MM/yyyy HH:mm')}</p>
             )}
             {r.reason && <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">סיבה: {r.reason}</p>}
           </CardContent>
