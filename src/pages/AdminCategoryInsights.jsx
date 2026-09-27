@@ -546,9 +546,11 @@ export default function AdminCategoryInsights() {
   }, [drillBucket?.bucketId]);
 
   const dimLabel = selectedDimension === '__auto__' ? (bucketDimensionNames[0] || 'ממד') : selectedDimension;
+  // Dimension actually used for level-0 grouping: the pinned/selected one, else the first available
+  const effectiveLevel0Dim = selectedDimension === '__auto__' ? (availableDimensionNames[0] || null) : selectedDimension;
   // Level 0: if has sub-cats WITH data → "תת-קטגוריות", else → dimension name
   const level0Label = hasSubCats ? 'תת-קטגוריות' : 'מוצרים';
-  const level0DisplayLabel = (!drillBucket && level0GroupBy === 'dimension') ? (availableDimensionNames[0] || 'ממד') : level0Label;
+  const level0DisplayLabel = (!drillBucket && level0GroupBy === 'dimension') ? (effectiveLevel0Dim || 'ממד') : level0Label;
   const currentLabel = !drillBucket ? level0DisplayLabel : dimLabel;
   const topLevelLabel = level0Label;
   const canDrill = !drillBucket && !(level0GroupBy === 'dimension');
@@ -593,7 +595,7 @@ export default function AdminCategoryInsights() {
                 onClick={() => { setLevel0GroupBy('dimension'); localStorage.setItem(`insights_groupby_${categoryId}`, 'dimension'); }}
                 className={`px-3 py-1.5 transition-colors ${level0GroupBy === 'dimension' ? 'bg-amber-500 text-white font-medium' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
-                {availableDimensionNames[0] || 'ממד'}
+                {effectiveLevel0Dim || 'ממד'}
               </button>
             </div>
           )}
