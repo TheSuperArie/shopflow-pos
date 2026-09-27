@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, Warehouse } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 
 /** Log of the warehouse orders that were already sent — what was ordered and when. */
 export default function WarehouseOrderHistory({ orders = [], isLoading }) {
@@ -40,7 +41,7 @@ export default function WarehouseOrderHistory({ orders = [], isLoading }) {
                     <div className="flex items-center gap-3 shrink-0">
                       <Badge className="bg-green-100 text-green-800">{order.status || 'הוזמן'}</Badge>
                       <span className="text-xs text-gray-400">
-                        {order.order_date || (order.created_date ? format(new Date(order.created_date), 'dd/MM/yy') : '')}
+                        {order.order_date || (order.created_date ? format(parseServerDate(order.created_date), 'dd/MM/yy') : '')}
                       </span>
                       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                     </div>
