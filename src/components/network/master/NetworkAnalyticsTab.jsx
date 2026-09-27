@@ -10,6 +10,7 @@ import {
   CartesianGrid, Legend, LineChart, Line,
 } from 'recharts';
 import { format, subDays, addDays, startOfDay, parseISO, isWithinInterval } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 import { isNetworkLevelOf } from '@/lib/branchScope';
 
 const DATE_PRESETS = [
@@ -74,7 +75,8 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
 
   const isInRange = (dateStr) => {
     try {
-      const d = new Date(dateStr);
+      const d = parseServerDate(dateStr);
+      if (!d) return false;
       return isWithinInterval(d, { start: from, end: to });
     } catch { return false; }
   };
@@ -134,7 +136,7 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
       buckets[d] = entry;
     }
     allSales.filter(s => s.branch_id && isInRange(s.created_date)).forEach(s => {
-      const d = format(new Date(s.created_date), 'dd/MM');
+      const d = format(parseServerDate(s.created_date), 'dd/MM');
       const bname = branchMap[s.branch_id]?.name;
       if (buckets[d] && bname) buckets[d][bname] = (buckets[d][bname] || 0) + (s.total || 0);
     });
