@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Plus, Package, Clock, CheckCircle, XCircle, Truck, MessageSquare, Bell, MessagesSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 import MultiItemOrderModal from '@/components/orders/MultiItemOrderModal';
 import TicketDetailPanel from '@/components/orders/TicketDetailPanel';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
