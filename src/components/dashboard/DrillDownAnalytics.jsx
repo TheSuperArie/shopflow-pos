@@ -291,44 +291,14 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
       {chartData.length === 0 ? (
         <p className="text-center text-gray-400 py-8">אין נתונים לתצוגה</p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pie (desktop only — on mobile the list with its bars is clearer) */}
-          <Card className="hidden lg:block">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">{levelLabel}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    dataKey="revenue"
-                    labelLine={false}
-                    label={({ name, percent }) => percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
-                    onClick={(entry) => canDrillRow(entry) && handleDrillDown(entry)}
-                    style={{ cursor: canDrill ? 'pointer' : 'default' }}
-                  >
-                    {chartData.map((_, i) => (
-                      <Cell key={i} fill={ANALYTICS_COLORS[i % ANALYTICS_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => `₪${v.toLocaleString()}`} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* List */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* List with proportional bars (replaces the pie) */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500">פירוט — {levelLabel}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-72 overflow-y-auto">
+              <div className="space-y-2">
                 {chartData.map((row, idx) => {
                   const share = totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0;
                   const color = ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length];
@@ -353,8 +323,8 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                         <p className="text-xs text-gray-400">{Math.round(row.quantity)} יח׳ • {share.toFixed(1)}%</p>
                       </div>
                     </button>
-                    {/* Link to full insights page for P1 categories */}
-                    {currentLevel === 0 && !row.id.startsWith('__') && (
+                    {/* Link to full insights page for P1 categories (spacer keeps rows aligned) */}
+                    {currentLevel === 0 && !row.id.startsWith('__') ? (
                       <button
                         onClick={() => openInsights(row.id)}
                         className="mr-2 p-1.5 rounded-lg hover:bg-amber-100 transition-colors"
@@ -362,6 +332,8 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                       >
                         <BarChart2 className="w-4 h-4 text-amber-500" />
                       </button>
+                    ) : (
+                      <span className="mr-2 p-1.5 w-7 h-7 shrink-0" aria-hidden="true" />
                     )}
                   </div>
                   );
