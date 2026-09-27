@@ -132,8 +132,8 @@ export default function DangerZone({ user }) {
 
       if (activeAction.id === 'clear_sales') {
         // Step 1: Fetch all sales and restore their stock back to variants
-        const sales = await fetchAllPages(base44.entities.Sale, { created_by: email }, '-created_date', { label: 'מכירות' });
-        const variants = await base44.entities.ProductVariant.filter({ created_by: email });
+        const sales = await fetchAllPages(base44.entities.Sale, branchId ? { branch_id: branchId } : { created_by: email }, '-created_date', { label: 'מכירות' });
+        const variants = await collectScoped(base44.entities.ProductVariant, email, branchId);
 
         // Build a stock-delta map: variant_id → total quantity to restore
         const stockDelta = {};
@@ -146,58 +146,66 @@ export default function DangerZone({ user }) {
         }
 
         // Apply restorations
-        const restorePromises = Object.entries(stockDelta).map(([variantId, qty]) => {
+        const restoreEntries = Object.entries(stockDelta);
+        await updateInChunks(restoreEntries, ([variantId, qty]) => {
           const variant = variants.find(v => v.id === variantId);
           if (!variant) return Promise.resolve();
           return base44.entities.ProductVariant.update(variantId, {
             stock: (variant.stock || 0) + qty,
           });
         });
-        await Promise.all(restorePromises);
 
-        // Step 2: Delete all sales, receipts, returns, credits
-        await Promise.all(sales.map(s => base44.entities.Sale.delete(s.id)));
+        // Step 2: Delete all sales, receipts, returns, credits (chunked)
+        const salesRes = await deleteInChunks(sales, (id) => base44.entities.Sale.delete(id));
         await batchDelete(
-          () => base44.entities.Receipt.filter({ created_by: email }),
+          () => collectScoped(base44.entities.Receipt, email, branchId),
           (id) => base44.entities.Receipt.delete(id)
         );
         await batchDelete(
-          () => fetchAllPages(base44.entities.Return, { created_by: email }, '-created_date', { label: 'החזרות' }),
+          () => collectScoped(base44.entities.Return, email, branchId, '-created_date'),
           (id) => base44.entities.Return.delete(id)
         );
         await batchDelete(
-          () => base44.entities.Credit.filter({ created_by: email }),
+          () => collectScoped(base44.entities.Credit, email, branchId),
           (id) => base44.entities.Credit.delete(id)
         );
 
         invalidateAll();
-        toast({ title: '✅ היסטוריית המכירות נמחקה והמלאי שוחזר', duration: 3000, className: 'bg-green-500 text-white' });
+        toast({
+          title: salesRes.failed
+            ? `⚠️ נמחקו ${salesRes.done} מתוך ${salesRes.total} מכירות — נסה שוב להשלמת השאר`
+            : `✅ נמחקו ${salesRes.done} מכירות והמלאי שוחזר`,
+          duration: 4000,
+          className: salesRes.failed ? undefined : 'bg-green-500 text-white',
+          variant: salesRes.failed ? 'destructive' : undefined,
+        });
       }
 
       if (activeAction.id === 'clear_catalog') {
         // Delete in dependency order: variants → flexible variants → groups → dimensions → categories
-        await batchDelete(
-          () => base44.entities.ProductVariant.filter({ created_by: email }),
-          (id) => base44.entities.ProductVariant.delete(id)
-        );
-        await batchDelete(
-          () => base44.entities.FlexibleVariant.filter({ created_by: email }),
-          (id) => base44.entities.FlexibleVariant.delete(id)
-        );
-        await batchDelete(
-          () => base44.entities.ProductGroup.filter({ created_by: email }),
-          (id) => base44.entities.ProductGroup.delete(id)
-        );
-        await batchDelete(
-          () => base44.entities.VariantDimension.filter({ created_by: email }),
-          (id) => base44.entities.VariantDimension.delete(id)
-        );
-        await batchDelete(
-          () => base44.entities.Category.filter({ created_by: email }),
-          (id) => base44.entities.Category.delete(id)
-        );
+        let failedTotal = 0;
+        const step = async (entity) => {
+          const res = await batchDelete(
+            () => collectScoped(entity, email, branchId),
+            (id) => entity.delete(id)
+          );
+          failedTotal += res.failed;
+          return res;
+        };
+        await step(base44.entities.ProductVariant);
+        await step(base44.entities.FlexibleVariant);
+        await step(base44.entities.ProductGroup);
+        await step(base44.entities.VariantDimension);
+        await step(base44.entities.Category);
         invalidateAll();
-        toast({ title: '✅ הקטלוג נמחק בהצלחה', duration: 3000, className: 'bg-green-500 text-white' });
+        toast({
+          title: failedTotal
+            ? `⚠️ הקטלוג נמחק חלקית (${failedTotal} פריטים נכשלו) — נסה שוב`
+            : '✅ הקטלוג נמחק בהצלחה',
+          duration: 4000,
+          className: failedTotal ? undefined : 'bg-green-500 text-white',
+          variant: failedTotal ? 'destructive' : undefined,
+        });
       }
 
       handleClose();
