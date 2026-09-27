@@ -114,12 +114,20 @@ export default function DangerZone({ user }) {
     setLoading(true);
     try {
       const email = user.email;
+      // The branch this station belongs to (null for a standalone store)
+      let branchId = null;
+      try {
+        const branches = await base44.entities.Branch.filter({ station_email: email });
+        branchId = branches[0]?.id || null;
+      } catch {
+        branchId = null;
+      }
 
       if (activeAction.id === 'reset_inventory') {
-        const variants = await base44.entities.ProductVariant.filter({ created_by: email });
-        await Promise.all(variants.map(v => base44.entities.ProductVariant.update(v.id, { stock: 0 })));
+        const variants = await collectScoped(base44.entities.ProductVariant, email, branchId);
+        await updateInChunks(variants, v => base44.entities.ProductVariant.update(v.id, { stock: 0 }));
         invalidateAll();
-        toast({ title: '✅ המלאי אופס בהצלחה', duration: 3000, className: 'bg-green-500 text-white' });
+        toast({ title: `✅ המלאי אופס (${variants.length} פריטים)`, duration: 3000, className: 'bg-green-500 text-white' });
       }
 
       if (activeAction.id === 'clear_sales') {
