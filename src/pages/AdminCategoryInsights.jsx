@@ -654,8 +654,8 @@ export default function AdminCategoryInsights() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pie Chart */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* Breakdown list with proportional bars (replaces the unreadable pie) */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
@@ -666,60 +666,41 @@ export default function AdminCategoryInsights() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    dataKey="revenue"
-                    labelLine={false}
-                    label={({ name, percent }) => percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
-                    onClick={(entry) => handleDrillDown(entry)}
-                    style={{ cursor: canDrill ? 'pointer' : 'default' }}
-                  >
-                    {chartData.map((_, i) => (
-                      <Cell key={i} fill={ANALYTICS_COLORS[i % ANALYTICS_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => `₪${value.toLocaleString()}`} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Breakdown List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">פירוט — {currentLabel}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {chartData.map((row, idx) => (
+              <div className="space-y-2">
+                {chartData.map((row, idx) => {
+                  const share = totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0;
+                  const maxRevenue = chartData[0]?.revenue || 0;
+                  const barWidth = maxRevenue > 0 ? (row.revenue / maxRevenue) * 100 : 0;
+                  const color = ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length];
+                  return (
                   <button
                     key={row.id}
                     onClick={() => canDrill && handleDrillDown(row)}
-                    className={`w-full text-right p-3 rounded-xl border transition-all ${
-                      canDrill ? 'hover:border-amber-400 hover:bg-amber-50 cursor-pointer' : 'cursor-default'
+                    className={`relative overflow-hidden w-full text-right p-3 rounded-xl border transition-all ${
+                      canDrill ? 'hover:border-amber-400 cursor-pointer' : 'cursor-default'
                     } bg-white border-gray-100`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-y-0 right-0 pointer-events-none"
+                      style={{ width: `${Math.max(barWidth, 1.5)}%`, backgroundColor: color, opacity: 0.18 }}
+                    />
+                    <div className="relative flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length] }} />
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
                         <span className="font-semibold text-sm">{row.name}</span>
                         {canDrill && <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                       </div>
                       <div className="text-left">
                         <p className="text-sm font-bold text-amber-600">₪{row.revenue.toLocaleString()}</p>
                         <p className="text-xs text-gray-400">
-                          {Math.round(row.quantity)} יח׳ • {totalRevenue > 0 ? ((row.revenue / totalRevenue) * 100).toFixed(1) : 0}%
+                          {Math.round(row.quantity)} יח׳ • {share.toFixed(1)}%
                         </p>
                       </div>
                     </div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
