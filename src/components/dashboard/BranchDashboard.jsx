@@ -250,7 +250,14 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
           />
 
           {/* Hourly Sales Chart */}
-          <HourlySalesChart sales={sales} date={hourlyDate} onDateChange={setHourlyDate} />
+          <HourlySalesChart
+            sales={sales}
+            date={hourlyDate}
+            onDateChange={setHourlyDate}
+            rangeSales={filteredSales}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+          />
         </>
       )}
     </div>
