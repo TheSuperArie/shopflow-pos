@@ -234,9 +234,6 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
             </div>
           </div>
 
-          {/* Hourly Sales Chart */}
-          <HourlySalesChart sales={sales} date={hourlyDate} onDateChange={setHourlyDate} />
-
           {/* Drill-Down Analytics */}
           <DrillDownAnalytics
             sales={filteredSales}
@@ -251,6 +248,9 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
             dateTo={dateTo}
             branchId={branchId}
           />
+
+          {/* Hourly Sales Chart */}
+          <HourlySalesChart sales={sales} date={hourlyDate} onDateChange={setHourlyDate} />
         </>
       )}
     </div>
