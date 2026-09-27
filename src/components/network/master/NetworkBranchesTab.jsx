@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import BranchForm from '../BranchForm';
 import BranchCommandCenter from './BranchCommandCenter';
 import CatalogShareModal from './CatalogShareModal';
+import BusinessModelSelect from './BusinessModelSelect';
 
 export default function NetworkBranchesTab({ tenantEmail, networkName, initialBranchId = null }) {
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -178,6 +179,7 @@ export default function NetworkBranchesTab({ tenantEmail, networkName, initialBr
                   החנות המקורית — מקור הקטלוג של הרשת
                 </p>
               )}
+              <BusinessModelSelect branch={branch} />
               {branch.catalog_share?.shared_at && (
                 <p className="text-[11px] text-indigo-500 mt-1">
                   {branch.catalog_share.pulled_at ? 'קטלוג שותף ונקלט בסניף' : 'קטלוג שותף — ממתין לקליטת הסניף'}

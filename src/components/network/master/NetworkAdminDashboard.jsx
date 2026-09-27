@@ -11,6 +11,8 @@ import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import { isNetworkLevelOf } from '@/lib/branchScope';
+import { splitByBusinessModel } from '@/lib/businessModelSplit';
+import ProfitSplitBanners from './ProfitSplitBanners';
 
 const COLORS = [
   '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6',
@@ -78,6 +80,17 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
     };
   }, [rawExpenses, branchIds, stationEmails, tenantEmail, range.from, range.to]);
   const totalExpenses = branchExpenses + networkExpenses;
+
+  // Business-model split: importer vs. private profit (sale-line level)
+  const split = useMemo(() => splitByBusinessModel({
+    sales: allSales,
+    expenses: rawExpenses.filter(e => {
+      const d = e.date || toLocalDate(e.created_date);
+      return !!d && d >= range.from && d <= range.to;
+    }),
+    branches,
+    tenantEmail,
+  }), [allSales, rawExpenses, branches, tenantEmail, range.from, range.to]);
 
   // Fetch all tickets (orders)
   const { data: allTickets = [] } = useQuery({
@@ -208,10 +221,11 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
       <NetworkDateRangeFilter from={range.from} to={range.to} preset={range.preset} onChange={setRange} />
 
+      <ProfitSplitBanners split={split} />
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'סה"כ הכנסות', value: fmt(totalRevenue), icon: TrendingUp, color: 'text-amber-500' },
           { label: 'סה"כ הוצאות', value: fmt(totalExpenses), icon: TrendingDown, color: 'text-red-500',
             sub: `סניפים ${fmt(branchExpenses)} · רשת ${fmt(networkExpenses)}` },
           { label: 'הזמנות מסניפים', value: totalOrders, icon: ShoppingBag, color: 'text-blue-500' },
