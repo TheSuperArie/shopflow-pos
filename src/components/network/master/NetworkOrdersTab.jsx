@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Clock, Package, Filter, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 import TicketDetailPanel from '@/components/orders/TicketDetailPanel';
 
 const STATUS_CONFIG = {
@@ -47,8 +48,8 @@ export default function NetworkOrdersTab({ tenantEmail }) {
   const filtered = tickets.filter(t => {
     if (filterBranch && !t.branch_name?.includes(filterBranch)) return false;
     if (filterStatus && t.status !== filterStatus) return false;
-    if (filterFrom && new Date(t.created_date) < new Date(filterFrom)) return false;
-    if (filterTo && new Date(t.created_date) > new Date(filterTo + 'T23:59:59')) return false;
+    if (filterFrom && parseServerDate(t.created_date) < new Date(filterFrom)) return false;
+    if (filterTo && parseServerDate(t.created_date) > new Date(filterTo + 'T23:59:59')) return false;
     return true;
   });
 
@@ -135,7 +136,7 @@ export default function NetworkOrdersTab({ tenantEmail }) {
                     <div className="flex items-center gap-3 shrink-0">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
                       <span className="text-xs text-gray-400">
-                        {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy HH:mm') : ''}
+                        {ticket.created_date ? format(parseServerDate(ticket.created_date), 'dd/MM/yy HH:mm') : ''}
                       </span>
                       <span className="text-gray-300">←</span>
                     </div>
