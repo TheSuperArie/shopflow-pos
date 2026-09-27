@@ -32,9 +32,9 @@ export default function AdminCategoryInsights() {
   const [pinVersion, setPinVersion] = useState(0); // bumped on pin/unpin so the button re-renders
   const [level0GroupBy, setLevel0GroupBy] = useState('subcat'); // 'subcat' | 'dimension'
 
-  // On category change: restore pinned global dimension + groupBy (if any)
+  // On category change: restore pinned dimension (category pin, else app-wide pin) + groupBy
   useEffect(() => {
-    const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
+    const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`) || localStorage.getItem('insights_dim_pin_ALL');
     const savedGroupBy = localStorage.getItem(`insights_groupby_${categoryId}`);
     setSelectedDimension(globalPin || '__auto__');
     setLevel0GroupBy(savedGroupBy || 'subcat');
@@ -515,33 +515,40 @@ export default function AdminCategoryInsights() {
   // Pinned dimension per product-bucket (stored as insights_pin_<categoryId>_<bucketId>)
   const pinnedDimKey = drillBucket ? `insights_pin_${categoryId}_${drillBucket.bucketId}` : null;
   const globalPinKey = `insights_dim_pin_${categoryId}`;
-  const globalPinnedDim = pinVersion >= 0 ? (localStorage.getItem(globalPinKey) || null) : null;
+  const allPinKey = 'insights_dim_pin_ALL'; // fallback pin that applies to every category/product
+  const globalPinnedDim = pinVersion >= 0
+    ? (localStorage.getItem(globalPinKey) || localStorage.getItem(allPinKey) || null)
+    : null;
   const pinnedDim = pinnedDimKey ? (localStorage.getItem(pinnedDimKey) || globalPinnedDim) : globalPinnedDim;
 
   const handlePinDimension = () => {
     const current = selectedDimension === '__auto__' ? (bucketDimensionNames[0] || null) : selectedDimension;
     if (!current) return;
     if (pinnedDim === current) {
-      // Unpin: global pin + every bucket-level pin of this category
+      // Unpin: global pin + every bucket-level pin of this category + the app-wide fallback
       localStorage.removeItem(globalPinKey);
+      localStorage.removeItem(allPinKey);
       const bucketPrefix = `insights_pin_${categoryId}_`;
       Object.keys(localStorage)
         .filter(k => k.startsWith(bucketPrefix))
         .forEach(k => localStorage.removeItem(k));
     } else {
-      // Pin globally for this category (applies on every entry)
+      // Pin for this category, for the current product bucket, and as the app-wide default
       localStorage.setItem(globalPinKey, current);
+      localStorage.setItem(allPinKey, current);
       if (pinnedDimKey) localStorage.setItem(pinnedDimKey, current);
     }
     setPinVersion(v => v + 1); // re-render so the pin button reflects the new state
   };
 
-  // When drilling into a bucket, apply pinned bucket-level dimension, else global pin, else __auto__
+  // When drilling into a bucket (a product), apply the pinned dimension:
+  // bucket pin → this category's pin → the app-wide pin → auto
   useEffect(() => {
     if (drillBucket) {
       const bucketPin = pinnedDimKey ? localStorage.getItem(pinnedDimKey) : null;
       const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
-      setSelectedDimension(bucketPin || globalPin || '__auto__');
+      const allPin = localStorage.getItem('insights_dim_pin_ALL');
+      setSelectedDimension(bucketPin || globalPin || allPin || '__auto__');
     }
   }, [drillBucket?.bucketId]);
 
@@ -563,7 +570,7 @@ export default function AdminCategoryInsights() {
 
   const handleBack = () => {
     setDrillPath([]);
-    const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`);
+    const globalPin = localStorage.getItem(`insights_dim_pin_${categoryId}`) || localStorage.getItem('insights_dim_pin_ALL');
     setSelectedDimension(globalPin || '__auto__');
   };
 
