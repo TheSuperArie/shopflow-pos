@@ -364,7 +364,8 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                       </button>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
