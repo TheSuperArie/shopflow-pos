@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronRight, BarChart2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
 
 /**
