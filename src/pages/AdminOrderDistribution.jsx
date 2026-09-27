@@ -74,14 +74,10 @@ export default function AdminOrderDistribution() {
 
   // Aggregate sales within the date range, per variant
   const stats = useMemo(() => {
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-
+    // Compare Israel calendar days (server timestamps are UTC without a "Z")
     const inRange = sales.filter(s => {
-      const d = new Date(s.created_date);
-      return d >= start && d <= end;
+      const d = israelDateKey(s.created_date);
+      return !!d && d >= startDate && d <= endDate;
     });
 
     const groupById = {};
