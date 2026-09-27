@@ -621,7 +621,7 @@ export default function AdminCategoryInsights() {
                 onClick={handlePinDimension}
                 className={pinnedDim ? 'text-amber-500' : 'text-gray-400'}
               >
-                <Pin className="w-4 h-4" />
+                {pinnedDim ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
               </Button>
             </div>
           )}
