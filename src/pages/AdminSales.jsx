@@ -25,6 +25,8 @@ import { Loader2, Banknote, CreditCard, Clock, TrendingUp, TrendingDown, DollarS
 import ReceiptModal from '@/components/pos/ReceiptModal';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { israelDateKey, israelHour } from '@/lib/serverDate';
+import { cashPortion, creditPortion } from '@/lib/paymentSplit';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import moment from 'moment';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -65,7 +67,7 @@ export default function AdminSales() {
   });
 
   const filteredSales = sales.filter(s => {
-    const d = s.created_date?.split('T')[0];
+    const d = israelDateKey(s.created_date);
     return d >= dateFrom && d <= dateTo;
   });
 
@@ -81,11 +83,11 @@ export default function AdminSales() {
   const totalProfit = totalRevenue - totalCost - totalExpenses;
   const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100) : 0;
 
-  // Payment method breakdown
-  const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן');
-  const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי');
-  const cashTotal = cashSales.reduce((s, sale) => s + (sale.total || 0), 0);
-  const creditTotal = creditSales.reduce((s, sale) => s + (sale.total || 0), 0);
+  // Payment method breakdown — a split sale counts toward both methods by its portions
+  const cashSales = filteredSales.filter(s => cashPortion(s) > 0);
+  const creditSales = filteredSales.filter(s => creditPortion(s) > 0);
+  const cashTotal = cashSales.reduce((s, sale) => s + cashPortion(sale), 0);
+  const creditTotal = creditSales.reduce((s, sale) => s + creditPortion(sale), 0);
 
   const paymentData = [
     { name: 'מזומן', value: cashTotal, count: cashSales.length },
@@ -123,14 +125,11 @@ export default function AdminSales() {
 
   // Daily Report Data
   const daySales = sales.filter(sale =>
-    sale.created_date?.split('T')[0] === selectedDate
+    israelDateKey(sale.created_date) === selectedDate
   );
 
   const hourlyData = Array.from({ length: 24 }, (_, hour) => {
-    const hourSales = daySales.filter(sale => {
-      const d = new Date(sale.created_date);
-      return d.getHours() === hour;
-    });
+    const hourSales = daySales.filter(sale => israelHour(sale.created_date) === hour);
     const revenue = hourSales.reduce((sum, sale) => sum + sale.total, 0);
     const count = hourSales.length;
     
