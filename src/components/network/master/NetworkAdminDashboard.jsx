@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
@@ -157,44 +157,52 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
       .slice(0, 8);
   }, [allSales, branches]);
 
-  // ── 3. Sales by product group + category
-  const productPieData = useMemo(() => {
-    const groupMap = {};
+  // ── 3. Sales by product + category
+  // Every branch keeps its own copy of the catalog, so the same product exists under
+  // several group ids. Aggregate by product name + category name to merge branches.
+  const groupById = useMemo(() => new Map(productGroups.map(g => [g.id, g])), [productGroups]);
+  const catById = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories]);
+
+  const productRows = useMemo(() => {
+    const map = {};
     allSales.forEach(sale => {
       (sale.items || []).forEach(item => {
-        const gid = item.group_id || item.product_id;
-        if (!gid) return;
-        if (!groupMap[gid]) groupMap[gid] = { qty: 0, revenue: 0 };
-        groupMap[gid].qty += (item.quantity || 1);
-        groupMap[gid].revenue += (item.sell_price || 0) * (item.quantity || 1);
+        const group = groupById.get(item.group_id) || groupById.get(item.product_id);
+        const name = (group?.name || item.product_name || 'אחר').trim();
+        const category = (catById.get(group?.category_id)?.name || '').trim();
+        const key = `${name}|${category}`;
+        const qty = item.quantity || 1;
+        if (!map[key]) map[key] = { name, category, qty: 0, revenue: 0 };
+        map[key].qty += qty;
+        map[key].revenue += (item.sell_price || 0) * qty;
       });
     });
+    return Object.values(map)
+      .filter(r => r.revenue > 0)
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [allSales, groupById, catById]);
 
-    return Object.entries(groupMap)
-      .map(([gid, data]) => {
-        const group = productGroups.find(g => g.id === gid);
-        return { name: group?.name || 'אחר', value: data.revenue, qty: data.qty };
-      })
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 12);
-  }, [allSales, productGroups]);
+  const productTotal = productRows.reduce((s, r) => s + r.revenue, 0);
+  const topProducts = productRows.slice(0, 12);
 
   const categoryPieData = useMemo(() => {
     const catMap = {};
     allSales.forEach(sale => {
       (sale.items || []).forEach(item => {
-        const group = productGroups.find(g => g.id === item.group_id || g.id === item.product_id);
-        const catId = group?.category_id || 'unknown';
-        const cat = categories.find(c => c.id === catId);
-        const catName = cat?.name || 'אחר';
+        const group = groupById.get(item.group_id) || groupById.get(item.product_id);
+        const catName = (catById.get(group?.category_id)?.name || 'אחר').trim();
         if (!catMap[catName]) catMap[catName] = 0;
         catMap[catName] += (item.sell_price || 0) * (item.quantity || 1);
       });
     });
     return Object.entries(catMap)
       .map(([name, value]) => ({ name, value }))
+      .filter(c => c.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [allSales, productGroups, categories]);
+  }, [allSales, groupById, catById]);
+
+  const categoryTotal = categoryPieData.reduce((s, c) => s + c.value, 0);
+  const categoryColor = Object.fromEntries(categoryPieData.map((c, i) => [c.name, COLORS[i % COLORS.length]]));
 
   // ── KPI totals
   const totalRevenue = allSales.reduce((s, sale) => s + (sale.total || 0), 0);
@@ -213,8 +221,6 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
       </div>
     );
   };
-
-  const renderLabel = ({ name, percent }) => percent > 0.04 ? `${(percent * 100).toFixed(0)}%` : '';
 
   if (expenseSide) {
     return (
@@ -325,61 +331,85 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
             {categoryPieData.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm">אין נתונים</p>
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={categoryPieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={95}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={renderLabel}
-                    labelLine={false}
-                  >
-                    {categoryPieData.map((_, idx) => (
-                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => fmt(v)} />
-                  <Legend iconType="circle" iconSize={10} formatter={(v) => <span className="text-xs text-gray-700">{v}</span>} />
-                </PieChart>
-              </ResponsiveContainer>
+              <>
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={categoryPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={62}
+                        outerRadius={95}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {categoryPieData.map((_, idx) => (
+                          <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v, n, p) => [fmt(v), p.payload.name]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[11px] text-gray-400">סה"כ</span>
+                    <span className="text-base font-bold text-gray-800">{fmt(categoryTotal)}</span>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-1.5">
+                  {categoryPieData.map((c, idx) => (
+                    <div key={c.name} className="flex items-center gap-2 text-sm">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                      <span className="flex-1 min-w-0 truncate text-gray-700">{c.name}</span>
+                      <span className="text-xs text-gray-400 shrink-0 w-10 text-left">
+                        {categoryTotal > 0 ? ((c.value / categoryTotal) * 100).toFixed(0) : 0}%
+                      </span>
+                      <span className="font-semibold text-gray-800 shrink-0">{fmt(c.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
 
-        {/* By Product Group */}
+        {/* Top products (merged across branches) */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-gray-700">הכנסות לפי מוצר (Top 12)</CardTitle>
+            <CardTitle className="text-base font-semibold text-gray-700">מוצרים מובילים לפי הכנסות</CardTitle>
+            <p className="text-xs text-gray-400">מאוחד מכל הסניפים · צבע הפס לפי הקטגוריה</p>
           </CardHeader>
-          <CardContent>
-            {productPieData.length === 0 ? (
+          <CardContent className="p-0">
+            {topProducts.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm">אין נתונים</p>
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={productPieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={95}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={renderLabel}
-                    labelLine={false}
-                  >
-                    {productPieData.map((_, idx) => (
-                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v, n, p) => [fmt(v), p.payload.name]} />
-                  <Legend iconType="circle" iconSize={10} formatter={(v) => <span className="text-xs text-gray-700">{v}</span>} />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="divide-y">
+                {topProducts.map((p, i) => {
+                  const max = topProducts[0].revenue || 1;
+                  const share = productTotal > 0 ? (p.revenue / productTotal) * 100 : 0;
+                  return (
+                    <div key={`${p.name}|${p.category}`} className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="text-sm font-bold text-gray-400 w-5 shrink-0">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                          {p.category && <span className="text-[11px] text-gray-400 truncate">{p.category}</span>}
+                        </div>
+                        <div className="mt-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${(p.revenue / max) * 100}%`, backgroundColor: categoryColor[p.category] || '#3b82f6' }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-left shrink-0">
+                        <p className="text-sm font-bold text-gray-700">{fmt(p.revenue)}</p>
+                        <p className="text-xs text-gray-400">{p.qty} יח' · {share.toFixed(0)}%</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
