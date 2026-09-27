@@ -329,18 +329,6 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                         <p className="text-xs text-gray-400">{Math.round(row.quantity)} יח׳ • {share.toFixed(1)}%</p>
                       </div>
                     </button>
-                    {/* Link to full insights page for P1 categories (spacer keeps rows aligned) */}
-                    {currentLevel === 0 && !row.id.startsWith('__') ? (
-                      <button
-                        onClick={() => openInsights(row.id)}
-                        className="mr-2 p-1.5 rounded-lg hover:bg-amber-100 transition-colors"
-                        title="ניתוח מפורט"
-                      >
-                        <BarChart2 className="w-4 h-4 text-amber-500" />
-                      </button>
-                    ) : (
-                      <span className="mr-2 p-1.5 w-7 h-7 shrink-0" aria-hidden="true" />
-                    )}
                   </div>
                   );
                 })}
