@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Clock, Package } from 'lucide-react';
 import moment from 'moment';
+import { israelDateKey, israelHour } from '@/lib/serverDate';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 
@@ -27,13 +28,13 @@ export default function AdminDailyReport() {
 
   // Filter sales for selected date
   const daySales = sales.filter(sale => 
-    moment(sale.created_date).format('YYYY-MM-DD') === selectedDate
+    israelDateKey(sale.created_date) === selectedDate
   );
 
   // Group sales by hour
   const hourlyData = Array.from({ length: 24 }, (_, hour) => {
     const hourSales = daySales.filter(sale => 
-      moment(sale.created_date).hour() === hour
+      israelHour(sale.created_date) === hour
     );
     const revenue = hourSales.reduce((sum, sale) => sum + sale.total, 0);
     const count = hourSales.length;
