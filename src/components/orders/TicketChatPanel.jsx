@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Check, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 
 // senderRole: 'BRANCH' | 'HQ'  — the current viewer's role
 export default function TicketChatPanel({ ticketId, senderRole }) {
@@ -101,7 +102,7 @@ export default function TicketChatPanel({ ticketId, senderRole }) {
                 <p className="leading-snug">{msg.message_text}</p>
                 <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <span className={`text-[10px] ${isMine ? 'text-amber-100' : 'text-gray-400'}`}>
-                    {msg.created_date ? format(new Date(msg.created_date), 'HH:mm') : ''}
+                    {msg.created_date ? format(parseServerDate(msg.created_date), 'HH:mm') : ''}
                   </span>
                   {isMine && (
                     isRead
