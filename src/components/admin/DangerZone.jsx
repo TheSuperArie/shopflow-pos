@@ -41,8 +41,47 @@ const ACTIONS = [
 
 async function batchDelete(fetchFn, deleteFn) {
   const items = await fetchFn();
-  await Promise.all(items.map(item => deleteFn(item.id)));
-  return items.length;
+  return deleteInChunks(items, deleteFn);
+}
+
+// Delete in small chunks instead of all at once — mass parallel deletes get
+// rate-limited by the server and fail halfway through.
+async function deleteInChunks(items, deleteFn, chunkSize = 5) {
+  let done = 0;
+  let failed = 0;
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    const results = await Promise.allSettled(chunk.map(item => deleteFn(item.id ?? item)));
+    done += results.filter(r => r.status === 'fulfilled').length;
+    failed += results.filter(r => r.status === 'rejected').length;
+    if (i + chunkSize < items.length) await new Promise(r => setTimeout(r, 120));
+  }
+  return { done, failed, total: items.length };
+}
+
+async function updateInChunks(entries, updateFn, chunkSize = 5) {
+  for (let i = 0; i < entries.length; i += chunkSize) {
+    const chunk = entries.slice(i, i + chunkSize);
+    await Promise.allSettled(chunk.map(updateFn));
+    if (i + chunkSize < entries.length) await new Promise(r => setTimeout(r, 120));
+  }
+}
+
+// Everything that belongs to this store: records it created + records tagged to
+// its branch (e.g. products the network master added for this branch), so a reset
+// also clears the data the network owner sees for this branch.
+async function collectScoped(entity, email, branchId, sort) {
+  const byCreator = await entity.filter({ created_by: email }, sort);
+  if (!branchId) return byCreator;
+  let byBranch = [];
+  try {
+    byBranch = await entity.filter({ branch_id: branchId }, sort);
+  } catch {
+    byBranch = [];
+  }
+  const seen = new Map();
+  [...byCreator, ...byBranch].forEach(r => seen.set(r.id, r));
+  return [...seen.values()];
 }
 
 export default function DangerZone({ user }) {
