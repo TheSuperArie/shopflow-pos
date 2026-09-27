@@ -19,6 +19,9 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  // Local date range for this tab (defaults to whatever the page passed in)
+  const [from, setFrom] = useState(fromDate || '');
+  const [to, setTo] = useState(toDate || '');
 
   const { data: allExpenses = [], isLoading } = useQuery({
     queryKey: ['branch-expenses', branch.id],
@@ -32,7 +35,7 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
   });
   const lastUsed = lastUsedByTemplate(allExpenses);
 
-  const expenses = allExpenses.filter(e => (!fromDate || e.date >= fromDate) && (!toDate || e.date <= toDate));
+  const expenses = allExpenses.filter(e => (!from || e.date >= from) && (!to || e.date <= to));
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['branch-expenses', branch.id] });
   const onError = (error) => toast({ title: '❌ הפעולה נכשלה', description: error?.message || 'נסה שוב', variant: 'destructive' });
@@ -60,6 +63,27 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
 
   return (
     <div className="space-y-3" dir="rtl">
+      <Card>
+        <CardContent className="p-3 flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-500">מתאריך</span>
+          <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 w-36 text-sm" />
+          <span className="text-xs text-gray-500">עד</span>
+          <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 w-36 text-sm" />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {RANGE_SHORTCUTS.map(s => (
+              <Button key={s.label} size="sm" variant="outline" className="h-8 text-xs"
+                onClick={() => { const r = s.get(); setFrom(r.from); setTo(r.to); }}>
+                {s.label}
+              </Button>
+            ))}
+            <Button size="sm" variant="ghost" className="h-8 text-xs text-gray-500"
+              onClick={() => { setFrom(''); setTo(''); }}>
+              הכל
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent className="p-3 flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
