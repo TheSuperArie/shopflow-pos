@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 
 export default function ReturnDetailsModal({ open, returnData, onClose }) {
   if (!returnData) return null;
@@ -23,7 +24,7 @@ export default function ReturnDetailsModal({ open, returnData, onClose }) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">תאריך יצירה:</span>
               <span className="font-medium">
-                {returnData.created_date && format(new Date(returnData.created_date), 'dd/MM/yyyy HH:mm')}
+                {returnData.created_date && format(parseServerDate(returnData.created_date), 'dd/MM/yyyy HH:mm')}
               </span>
             </div>
           </div>
