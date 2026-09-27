@@ -292,8 +292,8 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
         <p className="text-center text-gray-400 py-8">אין נתונים לתצוגה</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pie */}
-          <Card>
+          {/* Pie (desktop only — on mobile the list with its bars is clearer) */}
+          <Card className="hidden lg:block">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500">{levelLabel}</CardTitle>
             </CardHeader>
@@ -329,20 +329,28 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-72 overflow-y-auto">
-                {chartData.map((row, idx) => (
+                {chartData.map((row, idx) => {
+                  const share = totalRevenue > 0 ? (row.revenue / totalRevenue) * 100 : 0;
+                  const color = ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length];
+                  return (
                   <div key={row.id} className="flex items-center justify-between">
                     <button
                       onClick={() => canDrillRow(row) && handleDrillDown(row)}
-                      className={`flex-1 flex items-center gap-2 p-2.5 rounded-xl border text-right transition-all ${
+                      className={`relative overflow-hidden flex-1 flex items-center gap-2 p-2.5 rounded-xl border text-right transition-all ${
                         canDrillRow(row) ? 'hover:border-amber-400 hover:bg-amber-50 cursor-pointer border-gray-100' : 'cursor-default border-transparent'
                       }`}
                     >
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: ANALYTICS_COLORS[idx % ANALYTICS_COLORS.length] }} />
-                      <span className="font-semibold text-sm flex-1">{row.name}</span>
-                      {canDrill && <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
-                      <div className="text-left shrink-0">
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-y-0 right-0 rounded-xl pointer-events-none"
+                        style={{ width: `${Math.max(share, 1.5)}%`, backgroundColor: color, opacity: 0.16 }}
+                      />
+                      <div className="w-3 h-3 rounded-full shrink-0 relative" style={{ backgroundColor: color }} />
+                      <span className="font-semibold text-sm flex-1 relative">{row.name}</span>
+                      {canDrill && <ChevronRight className="w-3.5 h-3.5 text-gray-400 relative" />}
+                      <div className="text-left shrink-0 relative">
                         <p className="text-sm font-bold text-amber-600">₪{row.revenue.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">{Math.round(row.quantity)} יח׳ • {totalRevenue > 0 ? ((row.revenue / totalRevenue) * 100).toFixed(1) : 0}%</p>
+                        <p className="text-xs text-gray-400">{Math.round(row.quantity)} יח׳ • {share.toFixed(1)}%</p>
                       </div>
                     </button>
                     {/* Link to full insights page for P1 categories */}
