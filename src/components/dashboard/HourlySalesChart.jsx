@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { format } from 'date-fns';
-import { BarChart2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BarChart2, CalendarRange } from 'lucide-react';
 
 const toLocalDate = (isoString) => {
   if (!isoString) return null;
@@ -17,13 +18,23 @@ const toLocalHour = (isoString) => {
   return parseInt(new Date(safe).toLocaleTimeString('en-IL', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' }), 10);
 };
 
-export default function HourlySalesChart({ sales = [], date, onDateChange }) {
+export default function HourlySalesChart({ sales = [], date, onDateChange, rangeSales = null, dateFrom = null, dateTo = null }) {
   const [innerDate, setInnerDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [useRange, setUseRange] = useState(false);
   // Optionally controlled by the parent, so it can load the chosen day's sales
   const selectedDate = date ?? innerDate;
   const setSelectedDate = onDateChange ?? setInnerDate;
 
-  const daySales = sales.filter(s => toLocalDate(s.created_date) === selectedDate);
+  // The chart normally shows ONE day. When the parent supplies the filtered range
+  // (same range as the category breakdown), the user can switch to the whole range.
+  const canUseRange = Array.isArray(rangeSales) && !!dateFrom && !!dateTo;
+  const showingRange = canUseRange && useRange;
+  const daySales = showingRange
+    ? rangeSales
+    : sales.filter(s => toLocalDate(s.created_date) === selectedDate);
+  const rangeDayCount = showingRange
+    ? new Set(rangeSales.map(s => toLocalDate(s.created_date))).size
+    : 0;
 
   // Build 24 hourly buckets
   const hourly = Array.from({ length: 24 }, (_, h) => ({
@@ -48,15 +59,36 @@ export default function HourlySalesChart({ sales = [], date, onDateChange }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <BarChart2 className="w-5 h-5 text-amber-500" />
-            <CardTitle className="text-base">מכירות לפי שעה</CardTitle>
+            <div>
+              <CardTitle className="text-base">מכירות לפי שעה</CardTitle>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {showingRange
+                  ? `כל הטווח: ${dateFrom} — ${dateTo}${rangeDayCount ? ` (${rangeDayCount} ימים)` : ''}`
+                  : 'יום בודד — לא לפי טווח התאריכים שלמעלה'}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
-              className="w-40 h-8 text-sm"
-            />
+            {canUseRange && (
+              <Button
+                variant={showingRange ? 'default' : 'outline'}
+                size="sm"
+                className="h-8 text-xs gap-1"
+                onClick={() => setUseRange(v => !v)}
+                title={showingRange ? 'חזרה ליום בודד' : 'הצג את כל טווח התאריכים של הפילוח'}
+              >
+                <CalendarRange className="w-3.5 h-3.5" />
+                {showingRange ? 'חזרה ליום בודד' : 'כל הטווח'}
+              </Button>
+            )}
+            {!showingRange && (
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="w-40 h-8 text-sm"
+              />
+            )}
             <span className="text-sm text-gray-500 whitespace-nowrap">
               סה"כ: <span className="font-bold text-gray-800">₪{totalDay.toFixed(0)}</span>
             </span>
@@ -67,7 +99,7 @@ export default function HourlySalesChart({ sales = [], date, onDateChange }) {
         {daySales.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-gray-400">
             <BarChart2 className="w-10 h-10 mb-2 opacity-30" />
-            <p className="text-sm">אין מכירות ביום זה</p>
+            <p className="text-sm">{showingRange ? 'אין מכירות בטווח זה' : 'אין מכירות ביום זה'}</p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
