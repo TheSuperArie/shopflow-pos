@@ -48,7 +48,7 @@ export default function NetworkOrdersTab({ tenantEmail }) {
   const filtered = tickets.filter(t => {
     if (filterBranch && !t.branch_name?.includes(filterBranch)) return false;
     if (filterStatus && t.status !== filterStatus) return false;
-    if (filterFrom && parseServerDate(t.created_date) < new Date(filterFrom)) return false;
+    if (filterFrom && parseServerDate(t.created_date) < new Date(filterFrom + 'T00:00:00')) return false;
     if (filterTo && parseServerDate(t.created_date) > new Date(filterTo + 'T23:59:59')) return false;
     return true;
   });
