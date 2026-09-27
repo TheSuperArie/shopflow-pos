@@ -8,6 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Calendar, Package, TrendingUp, Calculator, CheckCheck, Eraser } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
+import { format } from 'date-fns';
+import { israelDateKey } from '@/lib/serverDate';
+
+// Local calendar day 'YYYY-MM-DD' (toISOString() would give the UTC day)
+const localDay = (d) => format(d, 'yyyy-MM-dd');
 
 const PRESETS = [
   { label: '7 ימים', days: 7 },
@@ -54,9 +59,9 @@ export default function AdminOrderDistribution() {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
+    return localDay(d);
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => localDay(new Date()));
   const [totalToOrder, setTotalToOrder] = useState(1000);
   // null = all groups selected; otherwise a Set of selected group ids
   const [selectedGroupIds, setSelectedGroupIds] = useState(null);
@@ -192,8 +197,8 @@ export default function AdminOrderDistribution() {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
+    setStartDate(localDay(start));
+    setEndDate(localDay(end));
   };
 
   const suggestedTotal = distribution.reduce((s, g) => s + g.groupQty, 0);
