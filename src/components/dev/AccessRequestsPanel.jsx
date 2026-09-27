@@ -1,4 +1,5 @@
 import React from 'react';
+import { parseServerDate } from '@/lib/serverDate';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, UserPlus } from 'lucide-react';
@@ -26,7 +27,7 @@ export default function AccessRequestsPanel({ requests, onDecide, isPending }) {
             <p className="font-bold text-gray-900">{r.full_name}</p>
             <p className="text-gray-600">{r.phone} · {r.email}</p>
             <p className="text-gray-400 text-xs mt-0.5">
-              חשבון: {r.account_email} · {new Date(r.created_date).toLocaleString('he-IL')}
+              חשבון: {r.account_email} · {parseServerDate(r.created_date)?.toLocaleString('he-IL')}
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
