@@ -8,6 +8,7 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import { isNetworkLevelOf } from '@/lib/branchScope';
@@ -141,8 +142,8 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
       const start = startOfMonth(d);
       const end = endOfMonth(d);
       const count = allTickets.filter(t => {
-        const created = new Date(t.created_date);
-        return created >= start && created <= end;
+        const created = parseServerDate(t.created_date);
+        return !!created && created >= start && created <= end;
       }).length;
       months.push({ month: format(d, 'MM/yy'), count });
     }
