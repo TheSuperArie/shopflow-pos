@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
+import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
@@ -44,7 +45,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
         items: selectedItems,
         total_amount: totalAmount,
         status: 'אושר',
-        approval_date: new Date().toISOString().split('T')[0],
+        approval_date: format(new Date(), 'yyyy-MM-dd'),
         processed_by: 'system',
         ...(data.refund_method === 'החלפה' && exchangeItems.length > 0
           ? { exchange_items: exchangeItems }
@@ -97,7 +98,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           amount: totalAmount,
           balance: totalAmount,
           return_id: returnRecord.id,
-          expiry_date: expiryDate.toISOString().split('T')[0],
+          expiry_date: format(expiryDate, 'yyyy-MM-dd'),
           status: 'פעיל',
         });
       }
@@ -109,7 +110,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           amount: totalAmount,
           category: 'אחר',
           custom_category: 'החזרות מוצרים',
-          date: new Date().toISOString().split('T')[0],
+          date: format(new Date(), 'yyyy-MM-dd'),
           branch_id: branchId || null,
         });
       }
