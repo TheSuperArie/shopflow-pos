@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, DollarSign, TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { israelDateKey, parseServerDate } from '@/lib/serverDate';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { withoutNetworkOnly } from '@/lib/branchScope';
 
@@ -41,7 +42,7 @@ export default function AdminCashReport() {
 
   // Filter by selected date
   const dayLogs = logs.filter(l => l.date === selectedDate);
-  const daySales = sales.filter(s => s.created_date?.startsWith(selectedDate));
+  const daySales = sales.filter(s => israelDateKey(s.created_date) === selectedDate);
   const dayExpenses = expenses.filter(e => e.date === selectedDate);
 
   // How much of a sale actually entered the cash drawer:
@@ -61,7 +62,8 @@ export default function AdminCashReport() {
     // Sales during this shift
     const shiftSales = cashSales.filter(s => {
       if (!s.created_date) return false;
-      const saleTime = new Date(s.created_date);
+      const saleTime = parseServerDate(s.created_date);
+      if (!saleTime) return false;
       const clockIn = new Date(log.clock_in);
       const clockOut = log.clock_out ? new Date(log.clock_out) : new Date();
       return saleTime >= clockIn && saleTime <= clockOut;
