@@ -704,12 +704,13 @@ export default function AdminCategoryInsights() {
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
                         <span className="font-semibold text-sm">{row.name}</span>
+                        <span className="text-xs font-bold shrink-0" style={{ color }}>{share.toFixed(1)}%</span>
                         {canDrill && <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                       </div>
                       <div className="text-left">
                         <p className="text-sm font-bold text-amber-600">₪{row.revenue.toLocaleString()}</p>
                         <p className="text-xs text-gray-400">
-                          {Math.round(row.quantity)} יח׳ • {share.toFixed(1)}%
+                          {Math.round(row.quantity)} יח׳
                         </p>
                       </div>
                     </div>
