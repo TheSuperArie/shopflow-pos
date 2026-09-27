@@ -22,6 +22,17 @@ const COLORS = [
   '#34d399', '#60a5fa', '#a78bfa', '#fbbf24', '#4ade80'
 ];
 
+const toLocalHour = (iso) => {
+  if (!iso) return null;
+  const safe = typeof iso === 'string' && iso.length > 10 && !iso.endsWith('Z') ? `${iso}Z` : iso;
+  try {
+    const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', hourCycle: 'h23' }).format(new Date(safe)));
+    return Number.isInteger(h) && h >= 0 && h <= 23 ? h : null;
+  } catch { return null; }
+};
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
 const toLocalDate = (iso) => {
   if (!iso) return null;
   const safe = typeof iso === 'string' && iso.length > 10 && !iso.endsWith('Z') ? `${iso}Z` : iso;
@@ -163,27 +174,29 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   const groupById = useMemo(() => new Map(productGroups.map(g => [g.id, g])), [productGroups]);
   const catById = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories]);
 
-  const productRows = useMemo(() => {
-    const map = {};
+  // ── Top 7 selling hours (share of revenue, Israel time)
+  const topHours = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, revenue: 0, count: 0 }));
     allSales.forEach(sale => {
-      (sale.items || []).forEach(item => {
-        const group = groupById.get(item.group_id) || groupById.get(item.product_id);
-        const name = (group?.name || item.product_name || 'אחר').trim();
-        const category = (catById.get(group?.category_id)?.name || '').trim();
-        const key = `${name}|${category}`;
-        const qty = item.quantity || 1;
-        if (!map[key]) map[key] = { name, category, qty: 0, revenue: 0 };
-        map[key].qty += qty;
-        map[key].revenue += (item.sell_price || 0) * qty;
-      });
+      const h = toLocalHour(sale.created_date);
+      if (h === null) return;
+      hours[h].revenue += sale.total || 0;
+      hours[h].count += 1;
     });
-    return Object.values(map)
-      .filter(r => r.revenue > 0)
-      .sort((a, b) => b.revenue - a.revenue);
-  }, [allSales, groupById, catById]);
-
-  const productTotal = productRows.reduce((s, r) => s + r.revenue, 0);
-  const topProducts = productRows.slice(0, 12);
+    const total = hours.reduce((s, h) => s + h.revenue, 0);
+    if (total <= 0) return { rows: [], best: null, topShare: 0 };
+    // copy before sorting — never sort the source array in place
+    const ranked = [...hours]
+      .filter(h => h.revenue > 0)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 7)
+      .map(h => ({ ...h, pct: (h.revenue / total) * 100 }));
+    return {
+      rows: [...ranked].sort((a, b) => a.hour - b.hour),
+      best: ranked[0],
+      topShare: ranked.reduce((s, h) => s + h.pct, 0),
+    };
+  }, [allSales]);
 
   const categoryPieData = useMemo(() => {
     const catMap = {};
@@ -202,7 +215,6 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   }, [allSales, groupById, catById]);
 
   const categoryTotal = categoryPieData.reduce((s, c) => s + c.value, 0);
-  const categoryColor = Object.fromEntries(categoryPieData.map((c, i) => [c.name, COLORS[i % COLORS.length]]));
 
   // ── KPI totals
   const totalRevenue = allSales.reduce((s, sale) => s + (sale.total || 0), 0);
@@ -373,44 +385,68 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
           </CardContent>
         </Card>
 
-        {/* Top products (merged across branches) */}
+        {/* Top 7 selling hours */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-gray-700">מוצרים מובילים לפי הכנסות</CardTitle>
-            <p className="text-xs text-gray-400">מאוחד מכל הסניפים · צבע הפס לפי הקטגוריה</p>
+            <CardTitle className="text-base font-semibold text-gray-700">שעות השיא של הרשת</CardTitle>
+            <p className="text-xs text-gray-400">7 השעות עם הכי הרבה הכנסות · אחוז מסך ההכנסות בטווח הנבחר</p>
           </CardHeader>
-          <CardContent className="p-0">
-            {topProducts.length === 0 ? (
+          <CardContent>
+            {topHours.rows.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm">אין נתונים</p>
-            ) : (
-              <div className="divide-y">
-                {topProducts.map((p, i) => {
-                  const max = topProducts[0].revenue || 1;
-                  const share = productTotal > 0 ? (p.revenue / productTotal) * 100 : 0;
-                  return (
-                    <div key={`${p.name}|${p.category}`} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="text-sm font-bold text-gray-400 w-5 shrink-0">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline gap-2 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                          {p.category && <span className="text-[11px] text-gray-400 truncate">{p.category}</span>}
-                        </div>
-                        <div className="mt-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${(p.revenue / max) * 100}%`, backgroundColor: categoryColor[p.category] || '#3b82f6' }}
-                          />
-                        </div>
-                      </div>
-                      <div className="text-left shrink-0">
-                        <p className="text-sm font-bold text-gray-700">{fmt(p.revenue)}</p>
-                        <p className="text-xs text-gray-400">{p.qty} יח' · {share.toFixed(0)}%</p>
-                      </div>
+            ) : (() => {
+              const maxPct = topHours.best.pct || 1;
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 rounded-xl bg-gradient-to-l from-orange-50 to-amber-50 border border-orange-100 px-4 py-3">
+                    <span className="text-2xl">🔥</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-gray-800">
+                        השעה הכי חזקה: {pad2(topHours.best.hour)}:00–{pad2((topHours.best.hour + 1) % 24)}:00
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {topHours.best.pct.toFixed(0)}% מההכנסות · {topHours.best.count} עסקאות · 7 השעות המובילות = {topHours.topShare.toFixed(0)}% מהמכירות
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+
+                  <div dir="ltr">
+                    <div className="flex items-stretch justify-between gap-2 h-48">
+                      {topHours.rows.map(h => {
+                        const isBest = h.hour === topHours.best.hour;
+                        return (
+                          <div key={h.hour} className="flex-1 flex flex-col items-center h-full"
+                            title={`${pad2(h.hour)}:00 · ${fmt(h.revenue)} · ${h.count} עסקאות`}>
+                            <span className={`text-xs font-bold mb-1 ${isBest ? 'text-orange-600' : 'text-gray-600'}`}>
+                              {h.pct.toFixed(0)}%
+                            </span>
+                            <div className="w-full flex-1 flex items-end justify-center">
+                              <div
+                                className="w-full max-w-[44px] rounded-t-lg transition-all duration-700 hover:opacity-80"
+                                style={{
+                                  height: `${Math.max(6, (h.pct / maxPct) * 100)}%`,
+                                  background: isBest
+                                    ? 'linear-gradient(to top, #ea580c, #fbbf24)'
+                                    : 'linear-gradient(to top, #f59e0b, #fde68a)',
+                                  boxShadow: isBest ? '0 4px 14px rgba(234, 88, 12, 0.35)' : 'none',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between gap-2 mt-2 border-t pt-2">
+                      {topHours.rows.map(h => (
+                        <span key={h.hour} className={`flex-1 text-center text-xs ${h.hour === topHours.best.hour ? 'font-bold text-orange-600' : 'text-gray-500'}`}>
+                          {pad2(h.hour)}:00
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
