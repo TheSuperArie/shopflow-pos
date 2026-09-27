@@ -322,11 +322,13 @@ export default function DrillDownAnalytics({ sales, categories, groups, variants
                         style={{ width: `${Math.max(share, 1.5)}%`, backgroundColor: color, opacity: 0.16 }}
                       />
                       <div className="w-3 h-3 rounded-full shrink-0 relative" style={{ backgroundColor: color }} />
-                      <span className="font-semibold text-sm flex-1 relative">{row.name}</span>
+                      <span className="font-semibold text-sm relative">{row.name}</span>
+                      <span className="text-xs font-bold relative shrink-0" style={{ color }}>{share.toFixed(1)}%</span>
+                      <span className="flex-1" />
                       {isClickable && <ChevronRight className="w-3.5 h-3.5 text-gray-400 relative" />}
                       <div className="text-left shrink-0 relative">
                         <p className="text-sm font-bold text-amber-600">₪{row.revenue.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">{Math.round(row.quantity)} יח׳ • {share.toFixed(1)}%</p>
+                        <p className="text-xs text-gray-400">{Math.round(row.quantity)} יח׳</p>
                       </div>
                     </button>
                   </div>
