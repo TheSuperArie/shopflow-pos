@@ -8,6 +8,20 @@ export const isOwnStock = (branch) => branch?.business_model === 'OWN_STOCK';
 const saleCost = (sale) =>
   (sale.items || []).reduce((s, i) => s + (Number(i.cost_price) || 0) * (Number(i.quantity) || 1), 0);
 
+/** Which side an expense is charged to: { side: 'importer'|'private'|null, branch, networkLevel }. */
+export function makeExpenseSide(branches, tenantEmail) {
+  const byId = Object.fromEntries(branches.map(b => [b.id, b]));
+  const byStation = Object.fromEntries(branches.map(b => [b.station_email, b]));
+  return (e) => {
+    if (e.network_level === true) {
+      return { side: e.tenant_email === tenantEmail ? 'importer' : null, branch: null, networkLevel: true };
+    }
+    const b = byId[e.branch_id] || byStation[e.created_by] || null;
+    if (!b && e.created_by !== tenantEmail) return { side: null, branch: null };
+    return { side: isOwnStock(b) ? 'private' : 'importer', branch: b };
+  };
+}
+
 export function splitByBusinessModel({ sales, expenses, branches, tenantEmail }) {
   const byId = Object.fromEntries(branches.map(b => [b.id, b]));
   const byStation = Object.fromEntries(branches.map(b => [b.station_email, b]));
@@ -28,12 +42,11 @@ export function splitByBusinessModel({ sales, expenses, branches, tenantEmail })
   });
 
   let importerExp = 0, privateExp = 0;
+  const sideOf = makeExpenseSide(branches, tenantEmail);
   expenses.forEach(e => {
     const amt = Number(e.amount) || 0;
-    if (e.network_level === true) { if (e.tenant_email === tenantEmail) importerExp += amt; return; }
-    const b = branchOf(e, e.created_by);
-    if (!b && e.created_by !== tenantEmail) return;
-    if (isOwnStock(b)) privateExp += amt; else importerExp += amt;
+    const { side } = sideOf(e);
+    if (side === 'private') privateExp += amt; else if (side === 'importer') importerExp += amt;
   });
 
   return { total, importer, priv, importerExp, privateExp, missingCost };

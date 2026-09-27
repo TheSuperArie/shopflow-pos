@@ -13,6 +13,7 @@ import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import { isNetworkLevelOf } from '@/lib/branchScope';
 import { splitByBusinessModel } from '@/lib/businessModelSplit';
 import ProfitSplitBanners from './ProfitSplitBanners';
+import NetworkSideExpensesView from './NetworkSideExpensesView';
 
 const COLORS = [
   '#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6',
@@ -29,6 +30,7 @@ const toLocalDate = (iso) => {
 export default function NetworkAdminDashboard({ tenantEmail }) {
   // Date range — defaults to the current month
   const [range, setRange] = useState(() => ({ ...DATE_PRESETS[2].range(), preset: 'month' }));
+  const [expenseSide, setExpenseSide] = useState(null); // 'importer' | 'private' | null
   const inRange = (iso) => {
     const d = toLocalDate(iso);
     return !!d && d >= range.from && d <= range.to;
@@ -212,6 +214,13 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
   const renderLabel = ({ name, percent }) => percent > 0.04 ? `${(percent * 100).toFixed(0)}%` : '';
 
+  if (expenseSide) {
+    return (
+      <NetworkSideExpensesView side={expenseSide} tenantEmail={tenantEmail} branches={branches}
+        initialRange={range} onBack={() => setExpenseSide(null)} />
+    );
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       <div>
@@ -221,7 +230,7 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
       <NetworkDateRangeFilter from={range.from} to={range.to} preset={range.preset} onChange={setRange} />
 
-      <ProfitSplitBanners split={split} />
+      <ProfitSplitBanners split={split} onShowExpenses={setExpenseSide} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
