@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, GitBranch, ShoppingBag, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseServerDate } from '@/lib/serverDate';
 
 export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNavigateToBranches }) {
   const [open, setOpen] = useState(false);
@@ -157,7 +158,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
                       <p className="text-sm font-semibold text-gray-800">{alert.title}</p>
                       <p className="text-xs text-gray-600 mt-0.5">{alert.body}</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {alert.created_date ? format(new Date(alert.created_date), 'dd/MM/yy HH:mm') : ''}
+                        {alert.created_date ? format(parseServerDate(alert.created_date), 'dd/MM/yy HH:mm') : ''}
                       </p>
                     </div>
                   </div>
@@ -186,7 +187,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
                         {ticket.branch_name || 'סניף'} — {ticket.total_items} פריטים
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy HH:mm') : ''}
+                        {ticket.created_date ? format(parseServerDate(ticket.created_date), 'dd/MM/yy HH:mm') : ''}
                         {ticket.notes ? ` • ${ticket.notes}` : ''}
                       </p>
                     </div>
