@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { TrendingUp, TrendingDown, DollarSign, Banknote, CreditCard, Loader2, Package } from 'lucide-react';
 import { format, startOfMonth, subDays } from 'date-fns';
+import { cashPortion, creditPortion } from '@/lib/paymentSplit';
 import DrillDownAnalytics from '@/components/dashboard/DrillDownAnalytics';
 import HourlySalesChart from '@/components/dashboard/HourlySalesChart';
 import { withoutNetworkOnly, withoutNetworkLevel } from '@/lib/branchScope';
@@ -160,8 +161,9 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
     0
   );
 
-  const cashSales = filteredSales.filter(s => s.payment_method === 'מזומן').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
-  const creditSales = filteredSales.filter(s => s.payment_method === 'אשראי').reduce((s, sale) => s + (Number(sale.total) || 0), 0);
+  // A split sale (cash + credit) counts toward both by its real portions
+  const cashSales = filteredSales.reduce((s, sale) => s + cashPortion(sale), 0);
+  const creditSales = filteredSales.reduce((s, sale) => s + creditPortion(sale), 0);
 
   const isLoading = loadingSales || loadingExpenses;
 
