@@ -192,7 +192,7 @@ export default function BranchNetworkOrders() {
                         <div className="flex items-center gap-3 shrink-0">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
                           <span className="text-xs text-gray-400">
-                            {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy') : ''}
+                            {ticket.created_date ? format(parseServerDate(ticket.created_date), 'dd/MM/yy') : ''}
                           </span>
                           <span className="text-gray-300">←</span>
                         </div>
@@ -236,7 +236,7 @@ export default function BranchNetworkOrders() {
                             {unreadByTicket[ticket.id]} הודעות חדשות ממטה הרשת
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            {ticket.created_date ? format(new Date(ticket.created_date), 'dd/MM/yy') : ''}
+                            {ticket.created_date ? format(parseServerDate(ticket.created_date), 'dd/MM/yy') : ''}
                             {ticket.notes ? ` • ${ticket.notes}` : ''}
                           </p>
                         </div>
