@@ -1,4 +1,5 @@
 import React from 'react';
+import { parseServerDate } from '@/lib/serverDate';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, GitBranch } from 'lucide-react';
@@ -24,7 +25,7 @@ export default function PendingInvitesPanel({ invites, onDecide, isPending }) {
             <p className="font-bold text-gray-900">הצעת הצטרפות לרשת {b.network_name || ''}</p>
             <p className="text-gray-600">סניף: {b.name} · {b.station_email}</p>
             <p className="text-gray-400 text-xs mt-0.5">
-              רשת: {b.tenant_email} · {new Date(b.created_date).toLocaleString('he-IL')}
+              רשת: {b.tenant_email} · {parseServerDate(b.created_date)?.toLocaleString('he-IL')}
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
