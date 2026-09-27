@@ -240,12 +240,15 @@ export default function AdminCategoryInsights() {
     return items;
   }, [dateSales, groupById, categoryById, treeCategoryIds, subCatById, variantById, loadingCategories, settledCategories]);
 
-  // When no sub-cats exist but dimensions do — auto-switch to dimension view at level 0
+  // When no sub-cats exist but dimensions do — auto-switch to dimension view at level 0,
+  // but never override an explicit choice the user saved for this category.
   useEffect(() => {
+    const savedGroupBy = localStorage.getItem(`insights_groupby_${categoryId}`);
+    if (savedGroupBy) return;
     if (subCategories.length === 0 && availableDimensionNames.length > 0) {
       setLevel0GroupBy('dimension');
     }
-  }, [subCategories.length, availableDimensionNames.length]);
+  }, [subCategories.length, availableDimensionNames.length, categoryId]);
 
   // ── Drill state ──────────────────────────────────────────────────
   // drillBucket stores { bucketId (subCatId or '__direct__'), bucketName }
