@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, ArrowRight, ChevronRight, Pin, PinOff } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { ANALYTICS_COLORS } from '@/hooks/useCategorySalesAnalytics';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { format, startOfMonth } from 'date-fns';
