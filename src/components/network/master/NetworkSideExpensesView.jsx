@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { fetchAllPages } from '@/lib/fetchAllPages';
+import { fetchNetworkExpenses } from '@/lib/networkScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2, Wallet } from 'lucide-react';
@@ -25,9 +25,19 @@ const toLocalDate = (iso) => {
 export default function NetworkSideExpensesView({ side, tenantEmail, branches, initialRange, onBack }) {
   const [range, setRange] = useState(initialRange);
 
+  // Same server-scoped query (and cache key) as the dashboard — only this network's expenses
+  const branchIdList = useMemo(() => (branches || []).map(b => b.id).sort(), [branches]);
+  const stationEmailList = useMemo(() => (branches || []).map(b => b.station_email).filter(Boolean).sort(), [branches]);
+
   const { data: raw = [], isLoading } = useQuery({
-    queryKey: ['all-expenses-dashboard', tenantEmail, range.from, range.to],
-    queryFn: () => fetchAllPages(base44.entities.Expense, { date: { $gte: range.from, $lte: range.to } }, '-date', { label: 'הוצאות' }),
+    queryKey: ['all-expenses-dashboard', tenantEmail, branchIdList.join(','), stationEmailList.join(','), range.from, range.to],
+    queryFn: () => fetchNetworkExpenses({
+      branchIds: branchIdList,
+      stationEmails: stationEmailList,
+      tenantEmail,
+      dateQuery: { date: { $gte: range.from, $lte: range.to } },
+    }),
+    enabled: !!tenantEmail,
     staleTime: 120000,
     placeholderData: keepPreviousData,
   });
