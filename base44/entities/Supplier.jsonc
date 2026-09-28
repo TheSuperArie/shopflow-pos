@@ -1,52 +1,51 @@
 {
   "name": "Supplier",
-  "type": "object",
   "properties": {
-    "name": {
-      "type": "string",
-      "description": "שם הספק"
-    },
-    "contact_person": {
-      "type": "string",
-      "description": "איש קשר"
-    },
-    "phone": {
-      "type": "string",
-      "description": "טלפון"
-    },
-    "email": {
-      "type": "string",
-      "description": "אימייל"
-    },
     "address": {
-      "type": "string",
-      "description": "כתובת"
-    },
-    "notes": {
-      "type": "string",
-      "description": "הערות"
-    },
-    "total_debt": {
-      "type": "number",
-      "default": 0,
-      "description": "סך חוב נוכחי"
-    },
-    "is_active": {
-      "type": "boolean",
-      "default": true,
-      "description": "ספק פעיל"
+      "description": "\u05db\u05ea\u05d5\u05d1\u05ea",
+      "type": "string"
     },
     "branch_id": {
-      "type": "string",
-      "description": "מזהה הסניף (FK to Branch)"
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)",
+      "type": "string"
+    },
+    "contact_person": {
+      "description": "\u05d0\u05d9\u05e9 \u05e7\u05e9\u05e8",
+      "type": "string"
+    },
+    "email": {
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc",
+      "type": "string"
+    },
+    "is_active": {
+      "default": true,
+      "description": "\u05e1\u05e4\u05e7 \u05e4\u05e2\u05d9\u05dc",
+      "type": "boolean"
+    },
+    "name": {
+      "description": "\u05e9\u05dd \u05d4\u05e1\u05e4\u05e7",
+      "type": "string"
+    },
+    "notes": {
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea",
+      "type": "string"
+    },
+    "phone": {
+      "description": "\u05d8\u05dc\u05e4\u05d5\u05df",
+      "type": "string"
     },
     "station_email": {
-      "type": "string",
-      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
     },
     "tenant_email": {
-      "type": "string",
-      "description": "אימייל בעל הרשת. ריק = חנות יחידה — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "total_debt": {
+      "default": 0,
+      "description": "\u05e1\u05da \u05d7\u05d5\u05d1 \u05e0\u05d5\u05db\u05d7\u05d9",
+      "type": "number"
     }
   },
   "required": [
@@ -57,6 +56,19 @@
       "user_condition": {
         "id": "{{user.id}}"
       }
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
     },
     "read": {
       "$or": [
@@ -83,19 +95,7 @@
           "data.tenant_email": "{{user.email}}"
         }
       ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "data.station_email": "{{user.email}}"
-        },
-        {
-          "data.tenant_email": "{{user.email}}"
-        }
-      ]
     }
-  }
+  },
+  "type": "object"
 }
