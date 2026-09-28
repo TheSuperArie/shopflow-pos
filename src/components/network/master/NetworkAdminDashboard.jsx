@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
+import { fetchNetworkSales, fetchNetworkExpenses } from '@/lib/networkScope';
 import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import { isNetworkLevelOf } from '@/lib/branchScope';
@@ -51,17 +52,24 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   };
 
   // Fetch branches
-  const { data: branches = [] } = useQuery({
+  const { data: branches = [], isSuccess: branchesLoaded } = useQuery({
     queryKey: ['branches-dashboard', tenantEmail],
     queryFn: () => base44.entities.Branch.filter({ tenant_email: tenantEmail }),
   });
 
-  // Fetch all sales, then scope to this network: the master's own sales
-  // + sales stamped with one of the network's branch ids (branch accounts)
-  // Only the selected range is loaded (all pages); exact filtering stays below
+  const branchIdList = useMemo(() => branches.map(b => b.id).sort(), [branches]);
+  const stationEmailList = useMemo(() => branches.map(b => b.station_email).filter(Boolean).sort(), [branches]);
+
+  // This network's sales only, filtered on the server: sales stamped with one of the
+  // network's branch ids + the master's own sales. Exact range filtering stays below.
   const { data: rawSales = [] } = useQuery({
-    queryKey: ['all-sales-dashboard', tenantEmail, range.from, range.to],
-    queryFn: () => fetchAllPages(base44.entities.Sale, { created_date: createdDateBetween(range.from, range.to) }, '-created_date', { label: 'מכירות' }),
+    queryKey: ['all-sales-dashboard', tenantEmail, branchIdList.join(','), range.from, range.to],
+    queryFn: () => fetchNetworkSales({
+      branchIds: branchIdList,
+      tenantEmail,
+      dateQuery: { created_date: createdDateBetween(range.from, range.to) },
+    }),
+    enabled: !!tenantEmail && branchesLoaded,
     staleTime: 120000,
     placeholderData: keepPreviousData,
   });
@@ -76,8 +84,14 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
   // Network expenses in range — branch expenses (incl. legacy ones created by a station
   // account) + the master's own, and network-only expenses the master added for a branch.
   const { data: rawExpenses = [] } = useQuery({
-    queryKey: ['all-expenses-dashboard', tenantEmail, range.from, range.to],
-    queryFn: () => fetchAllPages(base44.entities.Expense, { date: { $gte: range.from, $lte: range.to } }, '-date', { label: 'הוצאות' }),
+    queryKey: ['all-expenses-dashboard', tenantEmail, branchIdList.join(','), stationEmailList.join(','), range.from, range.to],
+    queryFn: () => fetchNetworkExpenses({
+      branchIds: branchIdList,
+      stationEmails: stationEmailList,
+      tenantEmail,
+      dateQuery: { date: { $gte: range.from, $lte: range.to } },
+    }),
+    enabled: !!tenantEmail && branchesLoaded,
     staleTime: 120000,
     placeholderData: keepPreviousData,
   });
