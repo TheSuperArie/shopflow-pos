@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { fetchAllPages } from '@/lib/fetchAllPages';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,7 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, LineChart, Line,
 } from 'recharts';
-import { format, subDays, addDays, startOfDay, parseISO, isWithinInterval } from 'date-fns';
+import { format, subDays, addDays, startOfDay, isWithinInterval } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
 import { fetchNetworkSales, fetchNetworkExpenses } from '@/lib/networkScope';
 import { isNetworkLevelOf } from '@/lib/branchScope';

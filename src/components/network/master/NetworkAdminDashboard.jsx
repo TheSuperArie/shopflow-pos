@@ -1,16 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { fetchAllPages, createdDateBetween } from '@/lib/fetchAllPages';
+import { createdDateBetween } from '@/lib/fetchAllPages';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
 import { fetchNetworkSales, fetchNetworkExpenses } from '@/lib/networkScope';
-import { TrendingUp, TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
+import { TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import { isNetworkLevelOf } from '@/lib/branchScope';
 import { splitByBusinessModel, isOwnStock } from '@/lib/businessModelSplit';

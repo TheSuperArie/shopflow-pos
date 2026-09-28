@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
 import { fetchNetworkExpenses } from '@/lib/networkScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
