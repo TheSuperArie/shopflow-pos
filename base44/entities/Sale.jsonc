@@ -1,22 +1,42 @@
 {
   "name": "Sale",
-  "type": "object",
   "properties": {
+    "branch_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d1\u05d5 \u05d1\u05d5\u05e6\u05e2\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4 (FK to Branch). null = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 / \u05d2\u05dc\u05d5\u05d1\u05dc\u05d9 \u2014 \u05ea\u05d5\u05d0\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8 \u05de\u05dc\u05d0\u05d4",
+      "type": "string"
+    },
+    "cash_amount": {
+      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05de\u05d6\u05d5\u05de\u05df \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc",
+      "type": "number"
+    },
+    "cash_change": {
+      "description": "\u05e2\u05d5\u05d3\u05e3 \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8",
+      "type": "number"
+    },
+    "cash_received": {
+      "description": "\u05e1\u05db\u05d5\u05dd \u05e9\u05d4\u05ea\u05e7\u05d1\u05dc \u05d1\u05de\u05d6\u05d5\u05de\u05df",
+      "type": "number"
+    },
+    "client_sale_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u05e9\u05d4\u05e7\u05d5\u05e4\u05d4 \u05d9\u05d5\u05e6\u05e8\u05ea \u05dc\u05db\u05dc \u05de\u05db\u05d9\u05e8\u05d4 \u2014 \u05de\u05d5\u05e0\u05e2 \u05db\u05e4\u05d9\u05dc\u05d5\u05ea \u05db\u05e9\u05de\u05e0\u05e1\u05d9\u05dd \u05e9\u05d5\u05d1 \u05d0\u05d7\u05e8\u05d9 \u05e9\u05d2\u05d9\u05d0\u05d4",
+      "type": "string"
+    },
+    "credit_amount": {
+      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05d0\u05e9\u05e8\u05d0\u05d9 \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc",
+      "type": "number"
+    },
     "items": {
-      "type": "array",
       "items": {
-        "type": "object",
         "properties": {
-          "product_id": {
-            "type": "string"
-          },
-          "variant_id": {
-            "type": "string",
-            "description": "FK to ProductVariant"
+          "cost_price": {
+            "type": "number"
           },
           "group_id": {
-            "type": "string",
-            "description": "FK to ProductGroup"
+            "description": "FK to ProductGroup",
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
           },
           "product_name": {
             "type": "string"
@@ -27,41 +47,22 @@
           "sell_price": {
             "type": "number"
           },
-          "cost_price": {
-            "type": "number"
+          "variant_id": {
+            "description": "FK to ProductVariant",
+            "type": "string"
           }
-        }
-      }
-    },
-    "total": {
-      "type": "number"
-    },
-    "total_cost": {
-      "type": "number"
+        },
+        "type": "object"
+      },
+      "type": "array"
     },
     "payment_method": {
-      "type": "string",
       "enum": [
         "\u05de\u05d6\u05d5\u05de\u05df",
         "\u05d0\u05e9\u05e8\u05d0\u05d9",
         "\u05de\u05d6\u05d5\u05de\u05df + \u05d0\u05e9\u05e8\u05d0\u05d9"
-      ]
-    },
-    "cash_amount": {
-      "type": "number",
-      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05de\u05d6\u05d5\u05de\u05df \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc"
-    },
-    "credit_amount": {
-      "type": "number",
-      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05d0\u05e9\u05e8\u05d0\u05d9 \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc"
-    },
-    "cash_received": {
-      "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05e9\u05d4\u05ea\u05e7\u05d1\u05dc \u05d1\u05de\u05d6\u05d5\u05de\u05df"
-    },
-    "cash_change": {
-      "type": "number",
-      "description": "\u05e2\u05d5\u05d3\u05e3 \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8"
+      ],
+      "type": "string"
     },
     "seller_email": {
       "type": "string"
@@ -69,22 +70,25 @@
     "seller_name": {
       "type": "string"
     },
-    "branch_id": {
-      "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d1\u05d5 \u05d1\u05d5\u05e6\u05e2\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4 (FK to Branch). null = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 / \u05d2\u05dc\u05d5\u05d1\u05dc\u05d9 \u2014 \u05ea\u05d5\u05d0\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8 \u05de\u05dc\u05d0\u05d4"
-    },
     "station_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
     },
     "tenant_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "total": {
+      "type": "number"
+    },
+    "total_cost": {
+      "type": "number"
     }
   },
   "required": [
     "items",
     "total",
     "payment_method"
-  ]
+  ],
+  "type": "object"
 }
