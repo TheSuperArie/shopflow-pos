@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { format, subDays, addDays, startOfDay, parseISO, isWithinInterval } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
+import { fetchNetworkSales, fetchNetworkExpenses } from '@/lib/networkScope';
 import { isNetworkLevelOf } from '@/lib/branchScope';
 
 const DATE_PRESETS = [
@@ -27,7 +28,7 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
-  const { data: branches = [] } = useQuery({
+  const { data: branches = [], isSuccess: branchesLoaded } = useQuery({
     queryKey: ['branches', tenantEmail],
     queryFn: () => base44.entities.Branch.filter({ tenant_email: tenantEmail }),
     enabled: !!tenantEmail,
@@ -57,18 +58,32 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
 
   // All sales in range (every page) — scoped below to this network's branches (branch_id) + the master's own sales.
   // Branch sales are created by the branch's own account, so they can't be fetched by tenant filter.
+  // This network's branch sales only — filtered on the server by branch id
+  const branchIdList = useMemo(() => branches.map(b => b.id).sort(), [branches]);
+  const stationEmailList = useMemo(() => branches.map(b => b.station_email).filter(Boolean).sort(), [branches]);
+
   const { data: allSales = [] } = useQuery({
-    queryKey: ['network-sales', tenantEmail, fromIso, toIso],
-    queryFn: () => fetchAllPages(base44.entities.Sale, { created_date: { $gte: fromIso, $lte: toIso } }, '-created_date', { label: 'מכירות' }),
-    enabled: !!tenantEmail,
+    queryKey: ['network-sales', tenantEmail, branchIdList.join(','), fromIso, toIso],
+    queryFn: () => fetchNetworkSales({
+      branchIds: branchIdList,
+      tenantEmail,
+      includeOwn: false, // this tab only reports per-branch sales
+      dateQuery: { created_date: { $gte: fromIso, $lte: toIso } },
+    }),
+    enabled: !!tenantEmail && branchesLoaded,
     staleTime: 60000,
     placeholderData: keepPreviousData,
   });
 
   const { data: allExpenses = [] } = useQuery({
-    queryKey: ['network-expenses', tenantEmail, expFrom, expTo],
-    queryFn: () => fetchAllPages(base44.entities.Expense, { date: { $gte: expFrom, $lte: expTo } }, '-date', { label: 'הוצאות' }),
-    enabled: !!tenantEmail,
+    queryKey: ['network-expenses', tenantEmail, branchIdList.join(','), stationEmailList.join(','), expFrom, expTo],
+    queryFn: () => fetchNetworkExpenses({
+      branchIds: branchIdList,
+      stationEmails: stationEmailList,
+      tenantEmail,
+      dateQuery: { date: { $gte: expFrom, $lte: expTo } },
+    }),
+    enabled: !!tenantEmail && branchesLoaded,
     staleTime: 60000,
     placeholderData: keepPreviousData,
   });
