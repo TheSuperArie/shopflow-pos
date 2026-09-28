@@ -56,8 +56,6 @@ export default function NetworkAnalyticsTab({ tenantEmail }) {
   const expFrom = format(subDays(from, 1), 'yyyy-MM-dd');
   const expTo = format(addDays(to, 1), 'yyyy-MM-dd');
 
-  // All sales in range (every page) — scoped below to this network's branches (branch_id) + the master's own sales.
-  // Branch sales are created by the branch's own account, so they can't be fetched by tenant filter.
   // This network's branch sales only — filtered on the server by branch id
   const branchIdList = useMemo(() => branches.map(b => b.id).sort(), [branches]);
   const stationEmailList = useMemo(() => branches.map(b => b.station_email).filter(Boolean).sort(), [branches]);
