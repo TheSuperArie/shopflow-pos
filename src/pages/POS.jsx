@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ShoppingCart, RotateCcw, Users } from 'lucide-react';
+import { Settings, ShoppingCart, RotateCcw, Users, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import ProductGrid from '@/components/pos/ProductGrid';
@@ -10,19 +10,24 @@ import DynamicVariantSelector from '@/components/pos/DynamicVariantSelector';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
-import OnlineStatus from '@/components/pos/OnlineStatus';
-import OfflineSyncStatus from '@/components/pos/OfflineSyncStatus';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
 import BranchInvitationBanner from '@/components/dashboard/BranchInvitationBanner';
 import CatalogShareBanner from '@/components/dashboard/CatalogShareBanner';
 import { useInventorySync } from '@/hooks/useInventorySync';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGlobalBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 import { usePosBranch } from '@/hooks/usePosCatalog';
+
+// Offline selling is disabled: a sale is recorded ONLY when it reaches the server.
+// (The offline code in offlineManager / OnlineStatus / useOfflineSync is kept but no longer wired in.)
+const NO_INTERNET = 'NO_INTERNET';
+const newClientSaleId = () =>
+  (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 
 export default function POS() {
   // ── All hooks declared unconditionally at top level ──────────────
@@ -36,7 +41,15 @@ export default function POS() {
   const [lastSale, setLastSale] = useState(null);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
-  const [isOfflineMode, setIsOfflineMode] = useState(() => offlineManager.isOfflineMode());
+  // Offline mode is off for good — a device that had it switched on is reset on load (see effect below)
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [networkOnline, setNetworkOnline] = useState(() => navigator.onLine);
+  // Sales left on this device by the old offline mode, waiting to be sent to the server
+  const [unsentSales, setUnsentSales] = useState([]);
+  const [sendingUnsent, setSendingUnsent] = useState(false);
+  // Id of the sale currently being checked out — kept across retries of the same cart,
+  // so a retry after an unclear failure never records the sale twice
+  const pendingSaleIdRef = useRef(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -92,20 +105,44 @@ export default function POS() {
   const stockModeEnabled = appSettingsList[0]?.stock_mode_enabled !== false;
 
   useInventorySync();
-  const { syncToServer, syncStatus, failedCount, processedCount, retryFailedSync } = useOfflineSync();
 
   // ── Derived values (not hooks) ───────────────────────────────────
   const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
 
   // ── Effects ──────────────────────────────────────────────────────
+  // Clear leftovers of the old offline mode on this device
   useEffect(() => {
-    const handleOnline = async () => {
-      console.log('[POS] Connection restored, initiating manual sync...');
-      await syncToServer();
+    offlineManager.setOfflineMode(false);
+    offlineManager.setSyncInProgress(false);
+    offlineManager.setGlobalSyncLock(false);
+  }, []);
+
+  // Live network indicator
+  useEffect(() => {
+    const onOnline = () => setNetworkOnline(true);
+    const onOffline = () => setNetworkOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
     };
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [syncToServer]);
+  }, []);
+
+  const refreshUnsentSales = useCallback(async () => {
+    setUnsentSales(await offlineManager.getPendingSales());
+  }, []);
+
+  useEffect(() => {
+    refreshUnsentSales();
+    const timer = setInterval(refreshUnsentSales, 30000);
+    return () => clearInterval(timer);
+  }, [refreshUnsentSales]);
+
+  // A changed cart is a new sale — it gets a new id on the next checkout
+  useEffect(() => {
+    pendingSaleIdRef.current = null;
+  }, [cartItems]);
 
   // ── Query functions ───────────────────────────────────────────────
   // Simple rule: if online → fetch from server; if offline or sync locked → use cache
