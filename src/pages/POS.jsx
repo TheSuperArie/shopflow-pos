@@ -280,23 +280,25 @@ export default function POS() {
         branch_id: activeBranch?.id || null,
       };
 
-      const saveOffline = async () => {
-        await offlineManager.addPendingSale(saleData);
-        if (stockModeEnabled) {
-          const updatedVariants = await offlineManager.deductLocalStock(saleItems);
-          queryClient.setQueryData(['product-variants', isOfflineMode, user?.email], updatedVariants);
-        }
-        return { ...saleData, id: 'offline_' + Date.now(), _savedOffline: true };
-      };
+      // No internet → no sale. Nothing is stored on the device; the cart stays for a retry.
+      if (!navigator.onLine) throw new Error(NO_INTERNET);
 
-      if (isEffectivelyOffline || !navigator.onLine) {
-        return saveOffline();
+      // Same cart retried after a failure keeps its id — if the server already got it, reuse it
+      const isRetry = !!pendingSaleIdRef.current;
+      if (!pendingSaleIdRef.current) pendingSaleIdRef.current = newClientSaleId();
+      const clientSaleId = pendingSaleIdRef.current;
+
+      if (isRetry) {
+        const existing = await base44.entities.Sale.filter({ client_sale_id: clientSaleId }, '-created_date', 1);
+        if (existing.length > 0) return { ...existing[0], _recovered: true };
       }
 
-      // Online path — auto-fallback to offline on any network failure
-      try {
-        const sale = await base44.entities.Sale.create(saleData);
-        if (stockModeEnabled) {
+      const sale = await base44.entities.Sale.create({ ...saleData, client_sale_id: clientSaleId });
+
+      // The sale is saved — a stock-update failure must not turn it into an error (and a retry)
+      let stockWarning = false;
+      if (stockModeEnabled) {
+        try {
           for (const item of saleItems) {
             if (!item.variant_id) continue;
             const variant = allVariants.find(v => v.id === item.variant_id);
@@ -306,32 +308,85 @@ export default function POS() {
               });
             }
           }
+        } catch (err) {
+          console.warn('[POS] Sale saved but stock update failed:', err?.message);
+          stockWarning = true;
         }
-        return sale;
-      } catch (err) {
-        // Network failure — save offline silently so the button never gets stuck
-        console.warn('[POS] Online save failed, falling back to offline:', err.message);
-        return saveOffline();
       }
+      return { ...sale, _stockWarning: stockWarning };
     },
     onSuccess: (sale) => {
-      const wentOffline = sale?._savedOffline;
-      if (!wentOffline && !isEffectivelyOffline) {
-        queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-        queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales', activeBranch?.id] });
-      }
+      pendingSaleIdRef.current = null;
+      queryClient.invalidateQueries({ queryKey: ['product-variants'] });
+      queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales', activeBranch?.id] });
       setLastSale(sale);
       setCartItems([]);
       setShowCheckout(false);
       setShowCart(false);
       if (saleMutation.variables?.printReceipt) setShowReceipt(true);
-      if (wentOffline || isEffectivelyOffline) {
-        toast({ title: '✅ המכירה נשמרה מקומית (אופליין)', description: 'תסונכרן כשיחזור החיבור', duration: 3000 });
-      } else {
-        toast({ title: '✅ המכירה הושלמה!' });
-      }
+      toast({
+        title: sale?._recovered ? '✅ המכירה כבר נשמרה בניסיון הקודם' : '✅ המכירה הושלמה!',
+        description: sale?._recovered
+          ? 'לא נרשמה פעמיים'
+          : sale?._stockWarning ? 'שים לב: עדכון המלאי נכשל' : undefined,
+      });
+    },
+    onError: (error) => {
+      const noInternet = error?.message === NO_INTERNET || !navigator.onLine;
+      toast({
+        title: noInternet ? '📡 אין חיבור לאינטרנט' : '❌ המכירה לא נשמרה',
+        description: noInternet
+          ? 'לא ניתן לבצע מכירה ללא אינטרנט. העגלה נשמרה — נסו שוב כשהחיבור יחזור.'
+          : 'העגלה נשמרה — אפשר ללחוץ שוב על "אשר תשלום". המערכת תוודא שהמכירה לא תירשם פעמיים.',
+        variant: 'destructive',
+        duration: 7000,
+      });
     },
   });
+
+  // Send sales that the old offline mode left on this device (skips any the server already has)
+  const sendUnsentSales = async () => {
+    if (sendingUnsent) return;
+    if (!navigator.onLine) {
+      toast({ title: '📡 אין חיבור לאינטרנט', variant: 'destructive' });
+      return;
+    }
+    setSendingUnsent(true);
+    let sent = 0;
+    let failed = 0;
+    try {
+      const pending = await offlineManager.getPendingSales();
+      for (const p of pending) {
+        const { offline_id, queued_at, status, ...data } = p;
+        const clientSaleId = data.client_sale_id || offline_id;
+        try {
+          const existing = await base44.entities.Sale.filter({ client_sale_id: clientSaleId }, '-created_date', 1);
+          if (existing.length === 0) {
+            await base44.entities.Sale.create({
+              ...data,
+              branch_id: data.branch_id || activeBranch?.id || null,
+              client_sale_id: clientSaleId,
+              created_date: data.created_date || queued_at,
+            });
+          }
+          await offlineManager.markSaleAsSynced(offline_id);
+          sent += 1;
+        } catch (err) {
+          console.error('[POS] Failed to send stored sale:', err);
+          failed += 1;
+        }
+      }
+    } finally {
+      setSendingUnsent(false);
+      await refreshUnsentSales();
+      queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales', activeBranch?.id] });
+    }
+    toast({
+      title: failed ? `⚠️ נשלחו ${sent} מכירות, ${failed} נכשלו — נסו שוב` : `✅ ${sent} מכירות נשלחו לשרת`,
+      variant: failed ? 'destructive' : undefined,
+      duration: 5000,
+    });
+  };
 
   const addToCart = (variant, group) => {
     // Guard: variant must have an id and group must have an id
@@ -425,7 +480,25 @@ export default function POS() {
   // ── Render ───────────────────────────────────────────────────────
   return (
     <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
-      <OfflineSyncStatus syncStatus={syncStatus} failedCount={failedCount} processedCount={processedCount} retryFailedSync={retryFailedSync} />
+      {/* Sales the old offline mode left on this device */}
+      {unsentSales.length > 0 && (
+        <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-3 text-sm shrink-0">
+          <span className="flex items-center gap-2 text-amber-900">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            נמצאו {unsentSales.length} מכירות שנשמרו במכשיר ולא הגיעו לשרת
+          </span>
+          <button onClick={sendUnsentSales} disabled={sendingUnsent}
+            className="px-3 py-1.5 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-60 shrink-0">
+            {sendingUnsent ? 'שולח...' : 'שלח לשרת'}
+          </button>
+        </div>
+      )}
+      {!networkOnline && (
+        <div className="bg-red-600 text-white px-4 py-2 text-sm font-medium flex items-center gap-2 shrink-0">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          אין חיבור לאינטרנט — לא ניתן לבצע מכירות כרגע
+        </div>
+      )}
       {/* Pending network invitations — approve here to join the network */}
       {pendingInvitations.map(inv => (
         <BranchInvitationBanner key={inv.id} invitation={inv} userEmail={user?.email} />
@@ -434,7 +507,12 @@ export default function POS() {
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
         <h1 className="text-xl font-bold text-gray-800">🛍️ קופה</h1>
         <div className="flex items-center gap-3">
-          <OnlineStatus onModeChange={handleModeChange} onSync={handleSync} />
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium ${networkOnline ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}
+            title={networkOnline ? 'מחובר לאינטרנט' : 'אין חיבור לאינטרנט'}>
+            {networkOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+            <span className="hidden sm:inline">{networkOnline ? 'מחובר' : 'אין אינטרנט'}</span>
+          </div>
           <button onClick={() => setShowStaffPortal(true)}
             className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="פורטל עובדים">
             <Users className="w-5 h-5" />
