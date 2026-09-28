@@ -69,51 +69,5 @@
     "supplier_id",
     "order_date",
     "total_amount"
-  ],
-  "rls": {
-    "create": {
-      "user_condition": {
-        "id": "{{user.id}}"
-      }
-    },
-    "read": {
-      "$or": [
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "data.station_email": "{{user.email}}"
-        },
-        {
-          "data.tenant_email": "{{user.email}}"
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "data.station_email": "{{user.email}}"
-        },
-        {
-          "data.tenant_email": "{{user.email}}"
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "created_by": "{{user.email}}"
-        },
-        {
-          "data.station_email": "{{user.email}}"
-        },
-        {
-          "data.tenant_email": "{{user.email}}"
-        }
-      ]
-    }
-  }
+  ]
 }
