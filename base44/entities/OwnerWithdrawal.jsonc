@@ -4,32 +4,78 @@
   "properties": {
     "amount": {
       "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05e9\u05e0\u05de\u05e9\u05da \u05de\u05d4\u05e7\u05d5\u05e4\u05d4"
+      "description": "סכום שנמשך מהקופה"
     },
     "date": {
       "type": "string",
       "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d4\u05de\u05e9\u05d9\u05db\u05d4"
+      "description": "תאריך המשיכה"
     },
     "notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d4"
+      "description": "הערה"
     },
     "branch_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)"
+      "description": "מזהה הסניף (FK to Branch)"
     },
     "station_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
     },
     "tenant_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "אימייל בעל הרשת — שדה בעלות להרשאות"
     }
   },
   "required": [
     "amount",
     "date"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "id": "{{user.id}}"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }

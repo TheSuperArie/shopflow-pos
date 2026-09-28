@@ -4,52 +4,98 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05e1\u05e4\u05e7"
+      "description": "שם הספק"
     },
     "contact_person": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05e9 \u05e7\u05e9\u05e8"
+      "description": "איש קשר"
     },
     "phone": {
       "type": "string",
-      "description": "\u05d8\u05dc\u05e4\u05d5\u05df"
+      "description": "טלפון"
     },
     "email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc"
+      "description": "אימייל"
     },
     "address": {
       "type": "string",
-      "description": "\u05db\u05ea\u05d5\u05d1\u05ea"
+      "description": "כתובת"
     },
     "notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea"
+      "description": "הערות"
     },
     "total_debt": {
       "type": "number",
       "default": 0,
-      "description": "\u05e1\u05da \u05d7\u05d5\u05d1 \u05e0\u05d5\u05db\u05d7\u05d9"
+      "description": "סך חוב נוכחי"
     },
     "is_active": {
       "type": "boolean",
       "default": true,
-      "description": "\u05e1\u05e4\u05e7 \u05e4\u05e2\u05d9\u05dc"
+      "description": "ספק פעיל"
     },
     "branch_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)"
+      "description": "מזהה הסניף (FK to Branch)"
     },
     "station_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
     },
     "tenant_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "אימייל בעל הרשת. ריק = חנות יחידה — שדה בעלות להרשאות"
     }
   },
   "required": [
     "name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "id": "{{user.id}}"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }
