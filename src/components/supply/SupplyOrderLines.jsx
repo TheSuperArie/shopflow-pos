@@ -8,7 +8,7 @@ import { lineQty } from '@/lib/supplyOrders';
  * editable: the network can change each quantity and remove lines.
  * showPicked: adds the picked column once the warehouse has picked.
  */
-export default function SupplyOrderLines({ items = [], editable = false, onChange, showBranchStock = true, showRequested = true, showPicked = false }) {
+export default function SupplyOrderLines({ items = [], editable = false, onChange, showBranchStock = true, showRequested = true, showPicked = false, showReceived = false }) {
   const update = (index, patch) => onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   const remove = (index) => onChange(items.filter((_, i) => i !== index));
 
@@ -26,6 +26,7 @@ export default function SupplyOrderLines({ items = [], editable = false, onChang
             {showRequested && <th className="px-3 py-2.5 text-center font-medium">ביקש הסניף</th>}
             <th className="px-3 py-2.5 text-center font-medium">{editable ? 'כמות להזמנה' : showRequested ? 'להזמנה' : 'כמות'}</th>
             {showPicked && <th className="px-3 py-2.5 text-center font-medium">לוקט</th>}
+            {showReceived && <th className="px-3 py-2.5 text-center font-medium">התקבל</th>}
             {editable && <th className="w-10" />}
           </tr>
         </thead>
@@ -65,6 +66,11 @@ export default function SupplyOrderLines({ items = [], editable = false, onChang
                 {showPicked && (
                   <td className={`px-3 py-2 text-center font-semibold ${over ? 'text-red-600' : 'text-gray-800'}`}>
                     {picked ?? '—'}
+                  </td>
+                )}
+                {showReceived && (
+                  <td className={`px-3 py-2 text-center font-semibold ${item.received_qty != null && Number(item.received_qty) !== Number(picked || 0) ? 'text-amber-600' : 'text-green-700'}`}>
+                    {item.received_qty ?? '—'}
                   </td>
                 )}
                 {editable && (
