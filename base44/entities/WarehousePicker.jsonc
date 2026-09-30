@@ -22,7 +22,14 @@
       "type": "boolean",
       "default": true,
       "description": "מלקט פעיל — רק פעילים מופיעים בבחירת מלקט"
+    },
+    "hourly_rate": {
+      "type": "number",
+      "description": "שכר לשעה (₪) — לחישוב השכר המגיע למלקט, כמו בעובדי הסניפים"
     }
   },
-  "required": ["warehouse_id", "name"]
+  "required": [
+    "warehouse_id",
+    "name"
+  ]
 }

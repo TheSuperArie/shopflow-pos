@@ -102,6 +102,10 @@
           "picked_at": {
             "type": "string",
             "description": "מתי השורה אושרה בליקוט"
+          },
+          "stock_applied": {
+            "type": "boolean",
+            "description": "הכמות שנקלטה כבר נוספה למלאי הסניף (מונע כפילות בניסיון חוזר)"
           }
         }
       }
@@ -145,6 +149,10 @@
     "picking_started_at": {
       "type": "string",
       "description": "מתי התחיל הליקוט"
+    },
+    "received_by": {
+      "type": "string",
+      "description": "החשבון שקלט את המשלוח בסניף"
     }
   },
   "required": [
