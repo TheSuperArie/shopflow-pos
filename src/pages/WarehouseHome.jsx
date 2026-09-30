@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
-  Loader2, Warehouse, Inbox, PackageCheck, MessagesSquare, LogOut, ArrowRight, ScanLine, UsersRound, Printer, Send,
+  Loader2, Warehouse, Inbox, PackageCheck, MessagesSquare, LogOut, ArrowRight, ScanLine, UserRound, Printer, Send, Settings,
 } from 'lucide-react';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
@@ -13,10 +13,16 @@ import SupplyOrderParties from '@/components/supply/SupplyOrderParties';
 import SupplyStatusBadge from '@/components/supply/SupplyStatusBadge';
 import PickingScreen from '@/components/supply/PickingScreen';
 import OrderDocumentDialog from '@/components/supply/OrderDocument';
-import WarehousePickersPanel from '@/components/supply/WarehousePickersPanel';
+import PinPadDialog from '@/components/warehouse/PinPadDialog';
+import PickerPortal from '@/components/warehouse/PickerPortal';
+import WarehouseAdmin, { DEFAULT_WAREHOUSE_CODE } from '@/components/warehouse/WarehouseAdmin';
 import { orderTotals, formatOrderDate } from '@/lib/supplyOrders';
 
-/** The warehouse account's whole app: incoming orders, picking, ready orders, pickers, chat with the network. */
+/**
+ * The warehouse account's whole app: incoming orders, picking, ready orders, chat with the network.
+ * Pickers enter their own portal with a personal 4-digit code; pickers / expenses / settings live
+ * in the management page behind the manager code. None of this is shown to the network.
+ */
 export default function WarehouseHome() {
   const user = useCurrentUser();
   const queryClient = useQueryClient();
@@ -26,6 +32,10 @@ export default function WarehouseHome() {
   const [pickingId, setPickingId] = useState(null);
   const [docOrder, setDocOrder] = useState(null);
   const [sendingId, setSendingId] = useState(null);
+  const [pinFor, setPinFor] = useState(null); // 'picker' | 'admin' | null
+  const [portalPicker, setPortalPicker] = useState(null);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const exitPortal = useCallback(() => setPortalPicker(null), []);
 
   const { data: records = [], isLoading: loadingWarehouse } = useQuery({
     queryKey: ['my-warehouse', user?.email],
@@ -87,7 +97,6 @@ export default function WarehouseHome() {
   const tabs = [
     { key: 'pending', label: 'הזמנות ממתינות', icon: Inbox, count: pending.length },
     { key: 'ready', label: 'הזמנות מוכנות', icon: PackageCheck, count: packed.length },
-    { key: 'pickers', label: 'מלקטים', icon: UsersRound, count: 0 },
     { key: 'chat', label: "צ'אט עם הרשת", icon: MessagesSquare, count: unread.length },
   ];
 
@@ -99,13 +108,27 @@ export default function WarehouseHome() {
           <p className="font-bold truncate">{warehouse.name}</p>
           <p className="text-xs text-gray-400 truncate">מחסן · {warehouse.network_name}</p>
         </div>
+        {!portalPicker && !adminOpen && !pickingOrder && (
+          <>
+            <button onClick={() => setPinFor('picker')} className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold hover:bg-blue-500">
+              <UserRound className="w-4 h-4" /> כניסת מלקט
+            </button>
+            <button onClick={() => setPinFor('admin')} className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-gray-300 hover:bg-white/10" title="ניהול המחסן">
+              <Settings className="w-4 h-4" /> <span className="hidden sm:inline">ניהול</span>
+            </button>
+          </>
+        )}
         <button onClick={() => base44.auth.logout()} className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-gray-300 hover:bg-white/10">
           <LogOut className="w-4 h-4" /> יציאה
         </button>
       </header>
 
       <main className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
-        {pickingOrder ? (
+        {portalPicker ? (
+          <PickerPortal warehouse={warehouse} picker={portalPicker} onExit={exitPortal} />
+        ) : adminOpen ? (
+          <WarehouseAdmin warehouse={warehouse} orders={orders} onExit={() => setAdminOpen(false)} />
+        ) : pickingOrder ? (
           <PickingScreen
             key={pickingOrder.id}
             order={pickingOrder}
@@ -117,7 +140,7 @@ export default function WarehouseHome() {
           <OrderView order={openOrder} warehouse={warehouse} onBack={() => setOpenId(null)} onPick={() => setPickingId(openOrder.id)} onPrint={() => setDocOrder(openOrder)} />
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {tabs.map(({ key, label, icon: Icon, count }) => (
                 <button
                   key={key}
@@ -172,8 +195,6 @@ export default function WarehouseHome() {
               </div>
             )}
 
-            {tab === 'pickers' && <WarehousePickersPanel warehouse={warehouse} orders={orders} />}
-
             {tab === 'chat' && (
               <div className="h-[70vh] rounded-2xl border bg-white overflow-hidden">
                 <GeneralChatDrawer open inline branchId={warehouse.id} tenantEmail={warehouse.tenant_email} senderRole="BRANCH" title="צ'אט עם הרשת" />
@@ -182,6 +203,37 @@ export default function WarehouseHome() {
           </>
         )}
       </main>
+
+      {pinFor === 'picker' && (
+        <PinPadDialog
+          title="כניסת מלקט"
+          subtitle="הקש את הקוד האישי שלך"
+          onClose={() => setPinFor(null)}
+          onSubmit={async (code) => {
+            const list = await base44.entities.WarehousePicker.filter({ warehouse_id: warehouse.id });
+            const picker = list.find(p => p.pin === code && p.is_active !== false);
+            if (!picker) return 'קוד שגוי';
+            setPinFor(null);
+            setOpenId(null);
+            setPortalPicker(picker);
+            return true;
+          }}
+        />
+      )}
+      {pinFor === 'admin' && (
+        <PinPadDialog
+          title="ניהול המחסן"
+          subtitle="הקש את קוד המנהל"
+          onClose={() => setPinFor(null)}
+          onSubmit={async (code) => {
+            if (code !== (warehouse.admin_code || DEFAULT_WAREHOUSE_CODE)) return 'קוד שגוי';
+            setPinFor(null);
+            setOpenId(null);
+            setAdminOpen(true);
+            return true;
+          }}
+        />
+      )}
 
       {docOrder && <OrderDocumentDialog order={docOrder} warehouse={warehouse} onClose={() => setDocOrder(null)} />}
     </div>
