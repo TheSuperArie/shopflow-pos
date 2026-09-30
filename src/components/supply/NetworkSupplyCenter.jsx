@@ -162,7 +162,7 @@ export default function NetworkSupplyCenter({ tenantEmail, networkName }) {
       </div>
 
       {openOrder && (
-        <NetworkSupplyOrderDialog order={openOrder} warehouse={warehouse} onClose={() => setOpenOrderId(null)} onPrint={(o) => { setOpenOrderId(null); setDocOrder(o); }} />
+        <NetworkSupplyOrderDialog order={openOrder} branch={branches.find(b => b.id === openOrder.branch_id)} warehouse={warehouse} onClose={() => setOpenOrderId(null)} onPrint={(o) => { setOpenOrderId(null); setDocOrder(o); }} />
       )}
       {docOrder && <OrderDocumentDialog order={docOrder} warehouse={warehouse} onClose={() => setDocOrder(null)} />}
     </div>

@@ -1,20 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Warehouse, Save, Ban, Send, Loader2, Printer } from 'lucide-react';
+import { Warehouse, Save, Ban, Send, Loader2, Printer, LayoutGrid, List } from 'lucide-react';
 import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
 import SupplyOrderParties from '@/components/supply/SupplyOrderParties';
 import SupplyStatusBadge from '@/components/supply/SupplyStatusBadge';
-import { formatOrderDate, nowIso, orderTotals, lineQty } from '@/lib/supplyOrders';
+import OrderTilesBuilder from '@/components/supply/OrderTilesBuilder';
+import { useInventoryData } from '@/hooks/useInventoryData';
+import { buildInventoryIndex } from '@/lib/inventory';
+import { formatOrderDate, nowIso, orderTotals, lineQty, buildCatalogRows } from '@/lib/supplyOrders';
 
 const EDITABLE = ['SENT_TO_NETWORK', 'SENT_TO_WAREHOUSE'];
 
 /** The network's view of one order: edit lines + notes, share to the warehouse / back to the branch. */
-export default function NetworkSupplyOrderDialog({ order, warehouse, onClose, onPrint }) {
+export default function NetworkSupplyOrderDialog({ order, branch, warehouse, onClose, onPrint }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [items, setItems] = useState([]);
@@ -22,6 +25,7 @@ export default function NetworkSupplyOrderDialog({ order, warehouse, onClose, on
   const [networkNotes, setNetworkNotes] = useState('');
   const [busy, setBusy] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [editView, setEditView] = useState('tiles'); // tiles | lines
 
   useEffect(() => {
     if (!order) return;
@@ -111,7 +115,21 @@ export default function NetworkSupplyOrderDialog({ order, warehouse, onClose, on
           {editable && ' · אפשר לשנות כמויות, להסיר שורות ולערוך הערות'}
         </p>
 
-        <SupplyOrderLines items={items} editable={editable} onChange={setItems} showPicked={hasPicked} showReceived={order.status === 'RECEIVED'} />
+        {editable && branch && (
+          <div className="flex rounded-xl border bg-white p-1 w-fit">
+            <button onClick={() => setEditView('tiles')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${editView === 'tiles' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>
+              <LayoutGrid className="w-4 h-4" /> ריבועים (מלאי הסניף)
+            </button>
+            <button onClick={() => setEditView('lines')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${editView === 'lines' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>
+              <List className="w-4 h-4" /> שורות ההזמנה
+            </button>
+          </div>
+        )}
+        {editable && branch && editView === 'tiles' ? (
+          <NetworkOrderTiles branch={branch} items={items} setItems={setItems} scanEnabled={!busy && !confirmCancel} />
+        ) : (
+          <SupplyOrderLines items={items} editable={editable} onChange={setItems} showPicked={hasPicked} showReceived={order.status === 'RECEIVED'} />
+        )}
         {order.status === 'RECEIVED' && (
           <p className="text-sm text-green-700">נקלטה בסניף {formatOrderDate(order.received_at, true)} — המלאי של הסניף עודכן.</p>
         )}
@@ -180,5 +198,91 @@ export default function NetworkSupplyOrderDialog({ order, warehouse, onClose, on
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * The network editing a branch's order with the branch's own catalog as tiles:
+ * change quantities, add sizes the branch didn't ask for, scan to add.
+ * Lines whose product is no longer in the branch catalog are kept as they are.
+ */
+function NetworkOrderTiles({ branch, items, setItems, scanEnabled }) {
+  const inv = useInventoryData(branch);
+  const index = useMemo(
+    () => buildInventoryIndex({ categories: inv.categories, groups: inv.groups, variants: inv.variants, globalThreshold: inv.threshold }),
+    [inv.categories, inv.groups, inv.variants, inv.threshold]
+  );
+  const rowById = useMemo(
+    () => new Map(buildCatalogRows(inv.variants, inv.groups, inv.categories).map(r => [r.variant_id, r])),
+    [inv.variants, inv.groups, inv.categories]
+  );
+
+  const quantities = useMemo(() => {
+    const q = {};
+    items.forEach(i => {
+      const n = lineQty(i);
+      if (n > 0) q[i.variant_id] = (q[i.variant_id] || 0) + n;
+    });
+    return q;
+  }, [items]);
+
+  const requested = useMemo(
+    () => Object.fromEntries(items.filter(i => Number(i.requested_qty) > 0).map(i => [i.variant_id, Number(i.requested_qty)])),
+    [items]
+  );
+
+  const onChange = (next) => {
+    const seen = new Set();
+    const updated = items.map(i => {
+      if (!rowById.has(i.variant_id)) return i;
+      seen.add(i.variant_id);
+      return { ...i, qty: next[i.variant_id] || 0 };
+    });
+    Object.entries(next).forEach(([vid, q]) => {
+      if (seen.has(vid) || !(q > 0)) return;
+      const r = rowById.get(vid);
+      if (!r) return;
+      updated.push({
+        variant_id: r.variant_id,
+        group_id: r.group_id,
+        sku: r.sku,
+        barcode: r.barcode,
+        group_barcode: r.group_barcode,
+        product_name: r.product_name,
+        variant_label: r.variant_label,
+        category_name: r.category_name,
+        branch_stock: r.branch_stock,
+        requested_qty: 0,
+        qty: q,
+        added_by_network: true,
+      });
+    });
+    setItems(updated);
+  };
+
+  if (inv.isLoading) {
+    return <div className="py-12 flex justify-center"><Loader2 className="w-7 h-7 animate-spin text-amber-500" /></div>;
+  }
+
+  const outside = items.filter(i => !rowById.has(i.variant_id) && lineQty(i) > 0).length;
+
+  return (
+    <div className="space-y-2">
+      {outside > 0 && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {outside} שורות בהזמנה שייכות למוצרים שכבר לא בקטלוג של הסניף — הן נשארות בהזמנה ומופיעות ב"שורות ההזמנה".
+        </p>
+      )}
+      <OrderTilesBuilder
+        index={index}
+        categories={inv.categories}
+        groups={inv.groups}
+        variants={inv.variants}
+        quantities={quantities}
+        onChange={onChange}
+        requested={requested}
+        scanEnabled={scanEnabled}
+      />
+    </div>
   );
 }
