@@ -131,3 +131,23 @@ export function matchScannedCode(code, rows = []) {
   if (exact.length) return exact;
   return rows.filter(r => eq(r.group_barcode));
 }
+
+/* ── Draft of the branch's next order (kept on the device until sent) ── */
+
+export const supplyDraftKey = (branchId) => `supply-draft:${branchId}`;
+
+/**
+ * Adds quantities to the branch's unsent order draft (used from the inventory / shortages pages).
+ * A size already in the draft keeps the larger of the two quantities.
+ */
+export function addToSupplyDraft(branchId, quantities) {
+  const key = supplyDraftKey(branchId);
+  let draft = { quantities: {}, notes: '' };
+  try { draft = JSON.parse(localStorage.getItem(key) || 'null') || draft; } catch { /* corrupt draft → start fresh */ }
+  const merged = { ...(draft.quantities || {}) };
+  Object.entries(quantities).forEach(([id, qty]) => {
+    if (qty > 0) merged[id] = Math.max(Number(merged[id] || 0), Number(qty));
+  });
+  localStorage.setItem(key, JSON.stringify({ ...draft, quantities: merged }));
+  return Object.keys(quantities).length;
+}

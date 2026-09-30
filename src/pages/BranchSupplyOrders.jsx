@@ -18,10 +18,10 @@ import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
 import StatusBadge from '@/components/supply/SupplyStatusBadge';
 import ReceiveOrderDialog from '@/components/supply/ReceiveOrderDialog';
 import {
-  buildCatalogRows, nextOrderNumber, nowIso, orderTotals, formatOrderDate,
+  buildCatalogRows, nextOrderNumber, nowIso, orderTotals, formatOrderDate, supplyDraftKey,
 } from '@/lib/supplyOrders';
 
-const draftKey = (branchId) => `supply-draft:${branchId}`;
+const draftKey = supplyDraftKey;
 const readDraft = (branchId) => {
   try { return JSON.parse(localStorage.getItem(draftKey(branchId)) || 'null') || { quantities: {}, notes: '' }; }
   catch { return { quantities: {}, notes: '' }; }
