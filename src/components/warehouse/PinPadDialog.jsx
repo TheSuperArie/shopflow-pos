@@ -26,14 +26,11 @@ export default function PinPadDialog({ title, subtitle, onSubmit, onClose }) {
   };
 
   const press = (d) => {
-    if (busy) return;
+    if (busy || pin.length >= 4) return;
     setError('');
-    setPin(prev => {
-      if (prev.length >= 4) return prev;
-      const next = prev + d;
-      if (next.length === 4) setTimeout(() => submit(next), 120);
-      return next;
-    });
+    const next = pin + d;
+    setPin(next);
+    if (next.length === 4) setTimeout(() => submit(next), 120);
   };
   const back = () => { setError(''); setPin(p => p.slice(0, -1)); };
 
