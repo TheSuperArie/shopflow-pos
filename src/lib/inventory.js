@@ -7,10 +7,10 @@ export { variantLabel };
 export const DEFAULT_THRESHOLD = 5;
 
 /** A product's own shortage threshold wins over the store-wide one. */
-export const thresholdFor = (group, globalThreshold = DEFAULT_THRESHOLD) =>
-  (group?.low_stock_threshold ?? null) !== null && group?.low_stock_threshold !== undefined && group?.low_stock_threshold !== ''
-    ? Number(group.low_stock_threshold)
-    : Number(globalThreshold ?? DEFAULT_THRESHOLD);
+export const thresholdFor = (group, globalThreshold = DEFAULT_THRESHOLD) => {
+  const own = group?.low_stock_threshold;
+  return own === null || own === undefined || own === '' ? Number(globalThreshold ?? DEFAULT_THRESHOLD) : Number(own);
+};
 
 /** 'out' | 'low' | 'ok' */
 export const stockStatus = (stock, threshold) => {
