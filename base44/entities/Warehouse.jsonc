@@ -1,0 +1,54 @@
+{
+  "name": "Warehouse",
+  "type": "object",
+  "properties": {
+    "tenant_email": {
+      "type": "string",
+      "description": "אימייל בעל הרשת שהמחסן מחובר אליה"
+    },
+    "network_name": {
+      "type": "string",
+      "description": "שם הרשת — מוצג בהזמנה שהמחסן מקבל"
+    },
+    "name": {
+      "type": "string",
+      "description": "שם המחסן"
+    },
+    "station_email": {
+      "type": "string",
+      "description": "אימייל החשבון שהמחסן עובד ממנו"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PENDING", "ACTIVE", "REJECTED"],
+      "default": "PENDING",
+      "description": "PENDING = ממתין לאישור חשבון המחסן, ACTIVE = מחובר, REJECTED = נדחה"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "האם המחסן פעיל"
+    },
+    "address": {
+      "type": "string",
+      "description": "כתובת המחסן"
+    },
+    "manager_name": {
+      "type": "string",
+      "description": "איש קשר במחסן"
+    },
+    "manager_phone": {
+      "type": "string",
+      "description": "טלפון איש הקשר"
+    },
+    "network_phone": {
+      "type": "string",
+      "description": "טלפון הנהלת הרשת — מוצג למחסן בתחתית כל הזמנה"
+    },
+    "notes": {
+      "type": "string",
+      "description": "הערות פנימיות"
+    }
+  },
+  "required": ["tenant_email", "name", "station_email"]
+}
