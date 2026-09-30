@@ -3,10 +3,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
-  Search, LayoutGrid, Table2, X, ScanLine, Package, ArrowRight, Check, Plus, Minus, Equal, TrendingUp, Trash2,
+  Search, LayoutGrid, Table2, X, ScanLine, Package, ArrowRight, Check, Plus, Minus, Equal, TrendingUp, Trash2, AlertTriangle,
 } from 'lucide-react';
 import { CatalogTiles, Tile, TriCheck } from '@/components/inventory/InventoryTiles';
-import { stockStatus, variantLabel } from '@/lib/inventory';
+import { stockStatus, variantLabel, buildInventoryIndex } from '@/lib/inventory';
 import { buildCatalogRows, matchScannedCode } from '@/lib/supplyOrders';
 import { useScanDetector } from '@/hooks/useScanDetector';
 import SupplyOrderBuilder from './SupplyOrderBuilder';
@@ -22,7 +22,7 @@ const collator = new Intl.Collator('he', { numeric: true });
  *  scanEnabled — a barcode scan adds +1 of that size (a product's general barcode opens its sizes)
  */
 export default function OrderTilesBuilder({
-  index, categories = [], groups = [], variants = [], quantities, onChange, requested = null, scanEnabled = true,
+  index: fullIndex, categories = [], groups = [], variants = [], quantities, onChange, requested = null, scanEnabled = true,
 }) {
   const { toast } = useToast();
   const [view, setView] = useState('tiles');
@@ -32,12 +32,32 @@ export default function OrderTilesBuilder({
   const [filter, setFilter] = useState('all'); // all | ordered | low | out
   const [selected, setSelected] = useState(() => new Set());
   const [flashId, setFlashId] = useState(null);
+  const [shortOnly, setShortOnly] = useState(false);
+
+  // "Below the shortage threshold only": everything else disappears from every level (categories → sizes)
+  const shortIds = useMemo(
+    () => new Set(fullIndex.allVariants.filter(v => stockStatus(v.stock, fullIndex.thresholdOfVariant(v)) !== 'ok').map(v => v.id)),
+    [fullIndex]
+  );
+  const index = useMemo(
+    () => (shortOnly
+      ? buildInventoryIndex({ categories, groups, variants: variants.filter(v => shortIds.has(v.id)), globalThreshold: fullIndex.globalThreshold })
+      : fullIndex),
+    [shortOnly, shortIds, fullIndex, categories, groups, variants]
+  );
+  const toggleShortOnly = () => {
+    setShortOnly(s => !s);
+    setPath([]);
+    setProductId(null);
+    setSelected(new Set());
+  };
 
   // Always work from the latest quantities (several scans can land before a re-render)
   const qRef = useRef(quantities);
   qRef.current = quantities;
 
   const rows = useMemo(() => buildCatalogRows(variants, groups, categories), [variants, groups, categories]);
+  const tableRows = useMemo(() => (shortOnly ? rows.filter(r => shortIds.has(r.variant_id)) : rows), [rows, shortOnly, shortIds]);
 
   const setQty = (id, value) => {
     const n = Math.max(0, Math.floor(Number(value) || 0));
@@ -54,7 +74,7 @@ export default function OrderTilesBuilder({
     return u > 0 ? `${u} בהזמנה` : null;
   };
 
-  const orderedIds = Object.keys(quantities).filter(id => quantities[id] > 0 && index.allVariants.some(v => v.id === id));
+  const orderedIds = Object.keys(quantities).filter(id => quantities[id] > 0 && fullIndex.allVariants.some(v => v.id === id));
   const totalLines = orderedIds.length;
   const totalUnits = orderedIds.reduce((s, id) => s + quantities[id], 0);
 
@@ -74,11 +94,16 @@ export default function OrderTilesBuilder({
     if (matches.length === 1) {
       const r = matches[0];
       const n = setQty(r.variant_id, (qRef.current[r.variant_id] || 0) + 1);
-      if (view === 'tiles') { setProductId(r.group_id); setSearch(''); setFilter('all'); }
+      const visible = !shortOnly || shortIds.has(r.variant_id);
+      if (view === 'tiles' && visible) { setProductId(r.group_id); setSearch(''); setFilter('all'); }
       setFlashId(r.variant_id);
       clearTimeout(flashTimer.current);
       flashTimer.current = setTimeout(() => setFlashId(null), 1200);
-      toast({ title: `+1 ${r.product_name}${r.variant_label ? ` · ${r.variant_label}` : ''}`, description: `בהזמנה: ${n}`, duration: 1500 });
+      toast({
+        title: `+1 ${r.product_name}${r.variant_label ? ` · ${r.variant_label}` : ''}`,
+        description: `בהזמנה: ${n}${visible ? '' : ' · (לא מתחת לרף — מוסתר בתצוגה)'}`,
+        duration: 1800,
+      });
       return 'added';
     }
     if (matches.length > 1) {
@@ -118,7 +143,7 @@ export default function OrderTilesBuilder({
     const ids = [...selected];
     const next = { ...qRef.current };
     ids.forEach(id => {
-      const v = index.allVariants.find(x => x.id === id);
+      const v = fullIndex.allVariants.find(x => x.id === id);
       if (!v) return;
       const cur = next[id] || 0;
       let n = cur;
@@ -192,6 +217,13 @@ export default function OrderTilesBuilder({
             )}
           </>
         )}
+        <button
+          onClick={toggleShortOnly}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${shortOnly ? 'bg-red-500 border-red-500 text-white' : 'bg-white text-gray-600 hover:border-red-300'}`}
+          title={`מציג רק מידות שהמלאי שלהן מתחת לרף החוסרים (${fullIndex.globalThreshold} או הרף של המוצר)`}
+        >
+          <AlertTriangle className="w-4 h-4" /> רק מתחת לרף החוסרים{shortOnly ? ` (${shortIds.size})` : ''}
+        </button>
         <div className="flex rounded-xl border bg-white p-1 mr-auto">
           <button onClick={() => setView('tiles')} className={`rounded-lg p-2 ${view === 'tiles' ? 'bg-gray-900 text-white' : 'text-gray-500'}`} title="תצוגת ריבועים"><LayoutGrid className="w-4 h-4" /></button>
           <button onClick={() => setView('table')} className={`rounded-lg p-2 ${view === 'table' ? 'bg-gray-900 text-white' : 'text-gray-500'}`} title="תצוגת טבלה"><Table2 className="w-4 h-4" /></button>
@@ -199,7 +231,7 @@ export default function OrderTilesBuilder({
       </div>
 
       {view === 'table' ? (
-        <SupplyOrderBuilder rows={rows} quantities={quantities} onQuantitiesChange={(next) => { qRef.current = next; onChange(next); }} />
+        <SupplyOrderBuilder rows={tableRows} quantities={quantities} onQuantitiesChange={(next) => { qRef.current = next; onChange(next); }} />
       ) : productId ? (
         <OrderSizes
           key={productId}

@@ -93,6 +93,7 @@ export function buildInventoryIndex({ categories = [], groups = [], variants = [
     categoryStats,
     allVariants: variants.filter(v => groupById.has(v.group_id)),
     thresholdOfVariant: (v) => thresholdFor(groupById.get(v.group_id), globalThreshold),
+    globalThreshold,
   };
 }
 
