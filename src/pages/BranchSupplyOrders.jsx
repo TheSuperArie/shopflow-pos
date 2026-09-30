@@ -90,6 +90,7 @@ export default function BranchSupplyOrders() {
         group_id: r.group_id,
         sku: r.sku,
         barcode: r.barcode,
+        group_barcode: r.group_barcode,
         product_name: r.product_name,
         variant_label: r.variant_label,
         category_name: r.category_name,
