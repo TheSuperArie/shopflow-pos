@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2, Mail, Download, Check, Receipt as ReceiptIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { getOrCreateReceipt } from '@/lib/receiptNumbers';
 
 export default function ReceiptModal({ open, sale, onClose }) {
   const [customerName, setCustomerName] = useState('');
@@ -29,28 +29,17 @@ export default function ReceiptModal({ open, sale, onClose }) {
     },
   });
 
-  const generateReceiptNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-    return `${year}${month}${day}-${random}`;
-  };
-
   const createReceiptMutation = useMutation({
+    // One running number per sale — printing and sending use the same receipt
     mutationFn: async () => {
-      const receiptNumber = generateReceiptNumber();
-      return await base44.entities.Receipt.create({
-        sale_id: sale.id,
-        receipt_number: receiptNumber,
+      return await getOrCreateReceipt(sale, {
         customer_name: customerName || 'לקוח',
         customer_email: customerEmail || null,
         items: sale.items,
         total: sale.total,
         payment_method: sale.payment_method,
         sent_by_email: false,
-      });
+      }, user?.email);
     },
   });
 
@@ -133,14 +122,22 @@ export default function ReceiptModal({ open, sale, onClose }) {
     }
   };
 
-  const handleDownloadPDF = () => {
-    // Create a printable version
-    const receiptNumber = generateReceiptNumber();
+  const handleDownloadPDF = async () => {
+    // Open the window right away (inside the click) so the browser doesn't block it, then fill it
+    const printWindow = window.open('', '_blank');
+    let receiptNumber = '';
+    try {
+      const receipt = await createReceiptMutation.mutateAsync();
+      receiptNumber = receipt.receipt_number;
+    } catch {
+      printWindow?.close();
+      return;
+    }
     const storeName = settings?.store_name || 'החנות שלי';
     const sd2 = sale.created_date?.endsWith('Z') ? sale.created_date : `${sale.created_date}Z`;
     const receiptDate = new Date(sd2).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-    
-    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) return;
     printWindow.document.write(`
       <html dir="rtl">
         <head>
