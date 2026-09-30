@@ -1,0 +1,28 @@
+{
+  "name": "WarehousePicker",
+  "type": "object",
+  "properties": {
+    "warehouse_id": {
+      "type": "string",
+      "description": "המחסן (FK to Warehouse)"
+    },
+    "tenant_email": {
+      "type": "string",
+      "description": "אימייל בעל הרשת"
+    },
+    "name": {
+      "type": "string",
+      "description": "שם המלקט"
+    },
+    "phone": {
+      "type": "string",
+      "description": "טלפון (אופציונלי)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "מלקט פעיל — רק פעילים מופיעים בבחירת מלקט"
+    }
+  },
+  "required": ["warehouse_id", "name"]
+}

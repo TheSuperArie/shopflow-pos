@@ -28,9 +28,18 @@
     },
     "status": {
       "type": "string",
-      "enum": ["SENT_TO_NETWORK", "SENT_TO_WAREHOUSE", "PICKING", "READY", "SENT_TO_BRANCH", "RECEIVED", "CANCELLED"],
+      "enum": [
+        "SENT_TO_NETWORK",
+        "SENT_TO_WAREHOUSE",
+        "PICKING",
+        "PACKED",
+        "READY",
+        "SENT_TO_BRANCH",
+        "RECEIVED",
+        "CANCELLED"
+      ],
       "default": "SENT_TO_NETWORK",
-      "description": "SENT_TO_NETWORK = ממתינה אצל הרשת, SENT_TO_WAREHOUSE = שותפה למחסן, PICKING = בליקוט, READY = מוכנה מהמחסן, SENT_TO_BRANCH = שותפה לסניף, RECEIVED = נקלטה בסניף, CANCELLED = בוטלה"
+      "description": "SENT_TO_NETWORK = ממתינה אצל הרשת, SENT_TO_WAREHOUSE = שותפה למחסן, PICKING = בליקוט, PACKED = הליקוט הסתיים ועוד לא נשלחה לרשת, READY = המחסן שלח לרשת, SENT_TO_BRANCH = שותפה לסניף, RECEIVED = נקלטה בסניף, CANCELLED = בוטלה"
     },
     "items": {
       "type": "array",
@@ -38,18 +47,62 @@
       "items": {
         "type": "object",
         "properties": {
-          "variant_id": { "type": "string", "description": "ProductVariant של הסניף" },
-          "group_id": { "type": "string", "description": "ProductGroup" },
-          "sku": { "type": "string" },
-          "barcode": { "type": "string" },
-          "product_name": { "type": "string" },
-          "variant_label": { "type": "string", "description": "מידות / ערכי הממדים" },
-          "category_name": { "type": "string" },
-          "branch_stock": { "type": "number", "description": "המלאי בסניף ברגע ההזמנה" },
-          "requested_qty": { "type": "number", "description": "הכמות שהסניף ביקש" },
-          "qty": { "type": "number", "description": "הכמות להזמנה אחרי עריכת הרשת — זה מה שהמחסן מלקט" },
-          "picked_qty": { "type": "number", "description": "כמה המחסן ליקט בפועל" },
-          "received_qty": { "type": "number", "description": "כמה הסניף קלט בפועל" }
+          "variant_id": {
+            "type": "string",
+            "description": "ProductVariant של הסניף"
+          },
+          "group_id": {
+            "type": "string",
+            "description": "ProductGroup"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "barcode": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "variant_label": {
+            "type": "string",
+            "description": "מידות / ערכי הממדים"
+          },
+          "category_name": {
+            "type": "string"
+          },
+          "branch_stock": {
+            "type": "number",
+            "description": "המלאי בסניף ברגע ההזמנה"
+          },
+          "requested_qty": {
+            "type": "number",
+            "description": "הכמות שהסניף ביקש"
+          },
+          "qty": {
+            "type": "number",
+            "description": "הכמות להזמנה אחרי עריכת הרשת — זה מה שהמחסן מלקט"
+          },
+          "picked_qty": {
+            "type": "number",
+            "description": "כמה המחסן ליקט בפועל"
+          },
+          "received_qty": {
+            "type": "number",
+            "description": "כמה הסניף קלט בפועל"
+          },
+          "group_barcode": {
+            "type": "string",
+            "description": "ברקוד כללי של המוצר (ProductGroup)"
+          },
+          "extra": {
+            "type": "boolean",
+            "description": "שורה שהמחסן הוסיף בליקוט — לא הייתה בהזמנה"
+          },
+          "picked_at": {
+            "type": "string",
+            "description": "מתי השורה אושרה בליקוט"
+          }
         }
       }
     },
@@ -69,11 +122,34 @@
       "type": "string",
       "description": "שם המלקט"
     },
-    "sent_to_network_at": { "type": "string", "description": "מתי הסניף שלח" },
-    "sent_to_warehouse_at": { "type": "string", "description": "מתי הרשת שיתפה למחסן" },
-    "ready_at": { "type": "string", "description": "מתי המחסן סיים ליקוט" },
-    "sent_to_branch_at": { "type": "string", "description": "מתי הרשת שיתפה לסניף" },
-    "received_at": { "type": "string", "description": "מתי הסניף קלט" }
+    "sent_to_network_at": {
+      "type": "string",
+      "description": "מתי הסניף שלח"
+    },
+    "sent_to_warehouse_at": {
+      "type": "string",
+      "description": "מתי הרשת שיתפה למחסן"
+    },
+    "ready_at": {
+      "type": "string",
+      "description": "מתי המחסן סיים ליקוט"
+    },
+    "sent_to_branch_at": {
+      "type": "string",
+      "description": "מתי הרשת שיתפה לסניף"
+    },
+    "received_at": {
+      "type": "string",
+      "description": "מתי הסניף קלט"
+    },
+    "picking_started_at": {
+      "type": "string",
+      "description": "מתי התחיל הליקוט"
+    }
   },
-  "required": ["tenant_email", "branch_id", "status"]
+  "required": [
+    "tenant_email",
+    "branch_id",
+    "status"
+  ]
 }
