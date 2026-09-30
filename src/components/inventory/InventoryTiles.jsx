@@ -79,12 +79,13 @@ export function CatalogTiles({ index, path, setPath, onOpenProduct, selected, on
           );
         })}
         {!currentCat && index.hasUncategorized && (() => {
-          const s = index.categoryStats(null);
+          const list = index.productsIn(null).map(g => index.productStats(g));
+          const sum = (k) => list.reduce((a, s) => a + s[k], 0);
           return (
-            <Tile title="ללא קטגוריה" subtitle={`${index.productsIn(null).length} מוצרים`} units={index.productsIn(null).reduce((a, g) => a + index.productStats(g).units, 0)}
-              low={0} out={0} icon={Folder} accent="blue"
-              ids={index.productsIn(null).flatMap(g => index.productStats(g).variantIds)} selected={selected} onToggle={onToggle}
-              onClick={() => setPath(['__none__'])} key="__none__" data-stats={s.units} />
+            <Tile key="__none__" title="ללא קטגוריה" subtitle={`${list.length} מוצרים`} units={sum('units')}
+              low={sum('low')} out={sum('out')} icon={Folder} accent="blue"
+              ids={list.flatMap(s => s.variantIds)} selected={selected} onToggle={onToggle}
+              onClick={() => setPath(['__none__'])} />
           );
         })()}
         {products.map(g => {
