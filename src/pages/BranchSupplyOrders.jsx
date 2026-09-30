@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { Send, Package, MessagesSquare, ClipboardList, Loader2, Truck, Trash2 } from 'lucide-react';
+import { Send, Package, MessagesSquare, ClipboardList, Loader2, Truck, Trash2, ScanLine } from 'lucide-react';
 import { usePosBranch, usePosCatalogQuery } from '@/hooks/usePosCatalog';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 import SupplyOrderBuilder from '@/components/supply/SupplyOrderBuilder';
 import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
 import StatusBadge from '@/components/supply/SupplyStatusBadge';
+import ReceiveOrderDialog from '@/components/supply/ReceiveOrderDialog';
 import {
   buildCatalogRows, nextOrderNumber, nowIso, orderTotals, formatOrderDate,
 } from '@/lib/supplyOrders';
@@ -39,6 +40,7 @@ export default function BranchSupplyOrders() {
   const [sending, setSending] = useState(false);
   const [openOrder, setOpenOrder] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [receiving, setReceiving] = useState(null); // { order: null | order }
 
   const { data: categories = [] } = usePosCatalogQuery('categories', 'Category', { sort: 'sort_order' });
   const { data: groups = [], isLoading: loadingGroups } = usePosCatalogQuery('product-groups', 'ProductGroup');
@@ -223,8 +225,13 @@ export default function BranchSupplyOrders() {
 
           {tab === 'incoming' && (
             <>
-              <p className="text-sm text-gray-500">הזמנות שהמחסן סיים לארוז והרשת שלחה אליך. קליטת המשלוח בסריקה תתווסף בשלב הבא.</p>
-              <OrdersList orders={incoming} onOpen={setOpenOrder} empty="אין כרגע הזמנות בדרך לסניף" />
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-green-200 bg-green-50 p-4">
+                <p className="text-sm text-green-900">הגיע משלוח? לחץ על "קבל הזמנה" וסרוק את הברקוד שעל דף ההזמנה. אחרי האישור המלאי מתעדכן אוטומטית.</p>
+                <Button onClick={() => setReceiving({ order: null })} disabled={incoming.length === 0} className="h-12 px-6 text-base gap-2 bg-green-600 hover:bg-green-700">
+                  <ScanLine className="w-5 h-5" /> קבל הזמנה
+                </Button>
+              </div>
+              <OrdersList orders={incoming} onOpen={(o) => setReceiving({ order: o })} empty="אין כרגע הזמנות בדרך לסניף" />
             </>
           )}
         </div>
@@ -237,6 +244,15 @@ export default function BranchSupplyOrders() {
 
       {chatOpen && (
         <GeneralChatDrawer open onClose={() => setChatOpen(false)} branchId={branch.id} tenantEmail={branch.tenant_email} senderRole="BRANCH" />
+      )}
+
+      {receiving && (
+        <ReceiveOrderDialog
+          orders={orders}
+          initialOrder={receiving.order}
+          userEmail={user?.email}
+          onClose={() => { setReceiving(null); setTab('orders'); }}
+        />
       )}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -267,7 +283,12 @@ export default function BranchSupplyOrders() {
                 </DialogTitle>
               </DialogHeader>
               <p className="text-sm text-gray-500">נשלחה {formatOrderDate(openOrder.sent_to_network_at || openOrder.created_date, true)}</p>
-              <SupplyOrderLines items={openOrder.items || []} showBranchStock={false} showPicked={openOrder.items?.some(i => i.picked_qty != null)} />
+              <SupplyOrderLines
+                items={openOrder.items || []}
+                showBranchStock={false}
+                showPicked={openOrder.items?.some(i => i.picked_qty != null)}
+                showReceived={openOrder.status === 'RECEIVED'}
+              />
               {openOrder.branch_notes && <NoteBox label="ההערות שלך" text={openOrder.branch_notes} />}
               {openOrder.network_notes && <NoteBox label="הערות הרשת" text={openOrder.network_notes} />}
               {openOrder.warehouse_notes && <NoteBox label="הערות המחסן" text={openOrder.warehouse_notes} />}
