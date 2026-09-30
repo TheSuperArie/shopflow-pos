@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import BranchCatalogView from './BranchCatalogView';
-import BranchStockView from './BranchStockView';
+import InventoryManager from '@/components/inventory/InventoryManager';
 import BranchDashboard from '@/components/dashboard/BranchDashboard';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 import BranchExpensesView from './BranchExpensesView';
@@ -186,7 +186,7 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
 
         {/* ── INVENTORY TAB — the branch station's own stock ── */}
         <TabsContent value="inventory" className="mt-4">
-          <BranchStockView branch={branch} />
+          <InventoryManager key={branch.id} branch={branch} title={null} />
         </TabsContent>
 
         {/* ── EXPENSES / RETURNS / EMPLOYEES — scoped to this branch only ── */}

@@ -22,11 +22,10 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminProducts = lazy(() => import('./pages/AdminProducts'));
 const AdminSales = lazy(() => import('./pages/AdminSales'));
 const AdminExpenses = lazy(() => import('./pages/AdminExpenses'));
-const AdminStock = lazy(() => import('./pages/AdminStock'));
+const BranchInventoryPage = lazy(() => import('./pages/BranchInventoryPage'));
 const AdminSettings = lazy(() => import('./pages/AdminSettings'));
 const AdminDailyReport = lazy(() => import('./pages/AdminDailyReport'));
 const AdminOrders = lazy(() => import('./pages/AdminOrders'));
-const AdminLowStock = lazy(() => import('./pages/AdminLowStock'));
 const AdminSuppliers = lazy(() => import('./pages/AdminSuppliers'));
 const AdminReturns = lazy(() => import('./pages/AdminReturns'));
 const AdminEmployees = lazy(() => import('./pages/AdminEmployees'));
@@ -83,10 +82,10 @@ const AuthenticatedApp = () => {
             <Route element={<AdminLayout />}>
               <Route path="/AdminDashboard" element={<AdminDashboard />} />
               <Route path="/AdminProducts" element={<AdminProducts />} />
-              <Route path="/AdminLowStock" element={<AdminLowStock />} />
+              <Route path="/AdminLowStock" element={<BranchInventoryPage defaultTab="shortages" />} />
               <Route path="/AdminSales" element={<AdminSales />} />
               <Route path="/AdminExpenses" element={<AdminExpenses />} />
-              <Route path="/AdminStock" element={<AdminStock />} />
+              <Route path="/AdminStock" element={<BranchInventoryPage defaultTab="stock" />} />
               {/* Supply orders to the network (the old ticket screen, BranchNetworkOrders, is kept but unrouted) */}
               <Route path="/AdminOrders" element={<BranchSupplyOrders />} />
               <Route path="/AdminSuppliers" element={<AdminSuppliers />} />
