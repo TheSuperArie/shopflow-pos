@@ -1,3 +1,4 @@
+import { useShortageCount } from '@/hooks/useShortageCount';
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -23,8 +24,8 @@ import {
 const BRANCH_MANAGER_ITEMS = [
   { path: '/AdminDashboard', label: 'לוח בקרה', icon: LayoutDashboard },
   { path: '/AdminProducts', label: 'מוצרים וקטלוג', icon: Package },
-  { path: '/AdminLowStock', label: 'מלאי חסר', icon: AlertTriangle },
-  { path: '/AdminStock', label: 'עדכון מלאי', icon: TruckIcon },
+  { path: '/AdminStock', label: 'מלאי', icon: TruckIcon },
+  { path: '/AdminLowStock', label: 'חוסרים', icon: AlertTriangle },
   { path: '/AdminOrders', label: 'הזמנות לרשת', icon: ShoppingCart },
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
   { path: '/AdminOrderDistribution', label: 'חלוקת הזמנה', icon: BarChart3 },
@@ -85,6 +86,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
             >
               <Icon className="w-5 h-5" />
               {label}
+              {path === '/AdminLowStock' && <ShortageBadge />}
             </Link>
           );
         })}
@@ -126,4 +128,10 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
       )}
     </>
   );
+}
+/** Live count of sizes under their shortage threshold — same catalog cache as the POS. */
+function ShortageBadge() {
+  const count = useShortageCount();
+  if (!count) return null;
+  return <span className="mr-auto rounded-full bg-red-500 text-white text-xs font-bold px-2 py-0.5">{count}</span>;
 }
