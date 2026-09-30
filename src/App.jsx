@@ -9,6 +9,7 @@ import { ShipmentBatchProvider } from '@/lib/ShipmentBatchContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { useUsageLogger } from '@/hooks/useUsageLogger';
 import AccessGate from '@/components/access/AccessGate';
+import WarehouseGate from '@/components/access/WarehouseGate';
 
 import POS from './pages/POS.jsx';
 import Layout from './components/Layout';
@@ -35,7 +36,8 @@ const AdminNetwork = lazy(() => import('./pages/AdminNetwork'));
 const AdminOrderDistribution = lazy(() => import('./pages/AdminOrderDistribution'));
 const NetworkMasterDashboard = lazy(() => import('./pages/NetworkMasterDashboard'));
 const BatchShipmentEntry = lazy(() => import('./pages/BatchShipmentEntry'));
-const BranchNetworkOrders = lazy(() => import('./pages/BranchNetworkOrders'));
+const BranchSupplyOrders = lazy(() => import('./pages/BranchSupplyOrders'));
+const WarehouseHome = lazy(() => import('./pages/WarehouseHome'));
 const UsageAnalytics = lazy(() => import('./pages/UsageAnalytics'));
 
 const PageLoader = () => (
@@ -71,6 +73,7 @@ const AuthenticatedApp = () => {
   return (
     <ShipmentBatchProvider>
       <AccessGate>
+      <WarehouseGate>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route element={<Layout />}>
@@ -84,7 +87,8 @@ const AuthenticatedApp = () => {
               <Route path="/AdminSales" element={<AdminSales />} />
               <Route path="/AdminExpenses" element={<AdminExpenses />} />
               <Route path="/AdminStock" element={<AdminStock />} />
-              <Route path="/AdminOrders" element={<BranchNetworkOrders />} />
+              {/* Supply orders to the network (the old ticket screen, BranchNetworkOrders, is kept but unrouted) */}
+              <Route path="/AdminOrders" element={<BranchSupplyOrders />} />
               <Route path="/AdminSuppliers" element={<AdminSuppliers />} />
               <Route path="/AdminReturns" element={<AdminReturns />} />
               <Route path="/AdminDailyReport" element={<AdminDailyReport />} />
@@ -97,6 +101,7 @@ const AuthenticatedApp = () => {
             </Route>
           </Route>
           <Route path="/UsageAnalytics" element={<UsageAnalytics />} />
+          <Route path="/Warehouse" element={<WarehouseHome />} />
           <Route path="/NetworkMasterDashboard" element={<NetworkMasterDashboard />} />
           <Route
             path="/network/reports/category/:id"
@@ -106,6 +111,7 @@ const AuthenticatedApp = () => {
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </Suspense>
+      </WarehouseGate>
       </AccessGate>
     </ShipmentBatchProvider>
   );
