@@ -14,7 +14,7 @@ import SupplyStatusBadge from '@/components/supply/SupplyStatusBadge';
 import PickingScreen from '@/components/supply/PickingScreen';
 import OrderDocumentDialog from '@/components/supply/OrderDocument';
 import WarehousePickersPanel from '@/components/supply/WarehousePickersPanel';
-import { orderTotals, formatOrderDate, nowIso } from '@/lib/supplyOrders';
+import { orderTotals, formatOrderDate } from '@/lib/supplyOrders';
 
 /** The warehouse account's whole app: incoming orders, picking, ready orders, pickers, chat with the network. */
 export default function WarehouseHome() {
