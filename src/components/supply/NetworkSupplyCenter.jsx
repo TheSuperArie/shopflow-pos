@@ -6,6 +6,7 @@ import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 import SupplyStatusBadge from '@/components/supply/SupplyStatusBadge';
 import NetworkSupplyOrderDialog from '@/components/supply/NetworkSupplyOrderDialog';
 import WarehouseConnectCard from '@/components/supply/WarehouseConnectCard';
+import OrderDocumentDialog from '@/components/supply/OrderDocument';
 import { orderTotals, formatOrderDate } from '@/lib/supplyOrders';
 
 /**
@@ -18,6 +19,7 @@ export default function NetworkSupplyCenter({ tenantEmail, networkName }) {
   const [branchTab, setBranchTab] = useState('pending');
   const [warehouseTab, setWarehouseTab] = useState('pending');
   const [chatBranchId, setChatBranchId] = useState('');
+  const [docOrder, setDocOrder] = useState(null);
 
   const { data: orders = [] } = useQuery({
     queryKey: ['supply-orders-network', tenantEmail],
@@ -69,7 +71,7 @@ export default function NetworkSupplyCenter({ tenantEmail, networkName }) {
     branchPending: by('SENT_TO_NETWORK'),
     ready: by('READY'),
     branchSent: by('SENT_TO_BRANCH', 'RECEIVED'),
-    warehousePending: by('SENT_TO_WAREHOUSE', 'PICKING'),
+    warehousePending: by('SENT_TO_WAREHOUSE', 'PICKING', 'PACKED'),
   };
   const openOrder = orders.find(o => o.id === openOrderId) || null;
   const branchUnreadTotal = activeBranches.reduce((s, b) => s + (unreadBy[b.id] || 0), 0);
@@ -160,8 +162,9 @@ export default function NetworkSupplyCenter({ tenantEmail, networkName }) {
       </div>
 
       {openOrder && (
-        <NetworkSupplyOrderDialog order={openOrder} warehouse={warehouse} onClose={() => setOpenOrderId(null)} />
+        <NetworkSupplyOrderDialog order={openOrder} warehouse={warehouse} onClose={() => setOpenOrderId(null)} onPrint={(o) => { setOpenOrderId(null); setDocOrder(o); }} />
       )}
+      {docOrder && <OrderDocumentDialog order={docOrder} warehouse={warehouse} onClose={() => setDocOrder(null)} />}
     </div>
   );
 }
