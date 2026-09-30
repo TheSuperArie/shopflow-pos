@@ -48,6 +48,10 @@
     "notes": {
       "type": "string",
       "description": "הערות פנימיות"
+    },
+    "admin_code": {
+      "type": "string",
+      "description": "קוד כניסה לדף הניהול של המחסן (ברירת מחדל 1234) — נקבע רק מתוך הגדרות המחסן"
     }
   },
   "required": ["tenant_email", "name", "station_email"]

@@ -134,7 +134,10 @@ export default function WarehousePickersPanel({ warehouse, orders = [] }) {
                           {onShift && <Badge className="mr-2 bg-green-100 text-green-700 text-[10px]">במשמרת</Badge>}
                           {p.is_active === false && <span className="text-xs text-gray-400"> · לא פעיל</span>}
                         </p>
-                        <p className="text-xs text-gray-500">{p.phone ? `${p.phone} · ` : ''}{pickedBy(p.name).length} הזמנות לוקטו</p>
+                        <p className="text-xs text-gray-500">
+                          {p.phone ? `${p.phone} · ` : ''}{pickedBy(p.name).length} הזמנות לוקטו ·{' '}
+                          {p.pin ? <span dir="ltr">קוד {p.pin}</span> : <span className="text-red-600 font-medium">אין קוד כניסה</span>}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
@@ -254,14 +257,14 @@ export default function WarehousePickersPanel({ warehouse, orders = [] }) {
         </div>
       )}
 
-      {editing && <PickerFormDialog picker={editing === 'new' ? null : editing} warehouse={warehouse} onClose={() => setEditing(null)} />}
+      {editing && <PickerFormDialog picker={editing === 'new' ? null : editing} warehouse={warehouse} pickers={pickers} onClose={() => setEditing(null)} />}
       {manualFor && <ManualHoursDialog picker={manualFor} onClose={() => setManualFor(null)} onSaved={refreshLogs} />}
       <ShiftEditModal open={!!editingLog} log={editingLog} onClose={() => setEditingLog(null)} />
     </div>
   );
 }
 
-function PickerFormDialog({ picker, warehouse, onClose }) {
+function PickerFormDialog({ picker, warehouse, pickers = [], onClose }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [form, setForm] = useState({
@@ -269,7 +272,10 @@ function PickerFormDialog({ picker, warehouse, onClose }) {
     phone: picker?.phone || '',
     hourly_rate: picker?.hourly_rate ?? '',
     is_active: picker ? picker.is_active !== false : true,
+    pin: picker?.pin || '',
   });
+  const pinTaken = form.pin.length === 4 && pickers.some(p => p.id !== picker?.id && p.pin === form.pin);
+  const pinValid = /^\d{4}$/.test(form.pin) && !pinTaken;
 
   const save = useMutation({
     mutationFn: () => {
@@ -278,6 +284,7 @@ function PickerFormDialog({ picker, warehouse, onClose }) {
         phone: form.phone.trim(),
         hourly_rate: form.hourly_rate === '' ? null : Number(form.hourly_rate),
         is_active: form.is_active,
+        pin: form.pin,
       };
       return picker
         ? base44.entities.WarehousePicker.update(picker.id, data)
@@ -309,13 +316,27 @@ function PickerFormDialog({ picker, warehouse, onClose }) {
             <Input type="number" value={form.hourly_rate} onChange={e => setForm({ ...form, hourly_rate: e.target.value })} placeholder="למשל: 45" className="h-11" />
             <p className="text-xs text-gray-400 mt-1">לפי שדה זה מחושב השכר המגיע למלקט והחוב אליו</p>
           </div>
+          <div>
+            <Label>קוד כניסה אישי (4 ספרות)</Label>
+            <Input
+              value={form.pin}
+              onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+              inputMode="numeric"
+              placeholder="למשל: 4821"
+              className={`h-11 text-center text-lg tracking-[0.5em] font-bold ${pinTaken ? 'border-red-400' : ''}`}
+              dir="ltr"
+            />
+            <p className={`text-xs mt-1 ${pinTaken ? 'text-red-600' : 'text-gray-400'}`}>
+              {pinTaken ? 'הקוד הזה כבר שייך למלקט אחר' : 'בקוד הזה המלקט נכנס לפורטל שלו מהמסך הראשי של המחסן'}
+            </p>
+          </div>
           <label className="flex items-center justify-between rounded-xl border p-3">
             <span className="text-sm">פעיל (מופיע בבחירת מלקט)</span>
             <Switch checked={form.is_active} onCheckedChange={v => setForm({ ...form, is_active: v })} />
           </label>
         </div>
         <DialogFooter>
-          <Button onClick={() => save.mutate()} disabled={!form.name.trim() || save.isPending} className="w-full h-11 bg-blue-600 hover:bg-blue-700">
+          <Button onClick={() => save.mutate()} disabled={!form.name.trim() || !pinValid || save.isPending} className="w-full h-11 bg-blue-600 hover:bg-blue-700">
             {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'שמור'}
           </Button>
         </DialogFooter>
