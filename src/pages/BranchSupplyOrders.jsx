@@ -251,7 +251,7 @@ export default function BranchSupplyOrders() {
           orders={orders}
           initialOrder={receiving.order}
           userEmail={user?.email}
-          onClose={() => { setReceiving(null); setTab('orders'); }}
+          onClose={() => setReceiving(null)}
         />
       )}
 
