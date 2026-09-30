@@ -13,6 +13,7 @@ import NetworkWarehouseOrdersTab from '@/components/network/master/NetworkWareho
 import NotificationBell from '@/components/network/master/NotificationBell';
 import NetworkAdminDashboard from '@/components/network/master/NetworkAdminDashboard';
 import NetworkLevelExpensesTab from '@/components/network/master/NetworkLevelExpensesTab';
+import NetworkSupplyCenter from '@/components/supply/NetworkSupplyCenter';
 
 export default function NetworkMasterDashboard() {
   // Returning from a branch insights page restores the tab (and branch) it was opened from
@@ -113,7 +114,7 @@ export default function NetworkMasterDashboard() {
           <h1 className="font-bold text-gray-800 flex-1">{networkName || 'מרכז פיקוד רשת'}</h1>
           {tenantEmail && (
             <div className="bg-gray-900 rounded-xl p-1">
-              <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} onNavigateToBranches={() => setActiveTab('branches')} />
+              <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('supply')} onNavigateToBranches={() => setActiveTab('branches')} />
             </div>
           )}
         </header>
@@ -127,7 +128,7 @@ export default function NetworkMasterDashboard() {
             </div>
           )}
           {tenantEmail && (
-            <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('orders')} onNavigateToBranches={() => setActiveTab('branches')} />
+            <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('supply')} onNavigateToBranches={() => setActiveTab('branches')} />
           )}
         </div>
 
@@ -138,6 +139,8 @@ export default function NetworkMasterDashboard() {
               {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} networkName={networkName} initialBranchId={initialBranchId} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
               {activeTab === 'network-expenses' && <NetworkLevelExpensesTab tenantEmail={tenantEmail} />}
+              {activeTab === 'supply' && <NetworkSupplyCenter tenantEmail={tenantEmail} networkName={networkName} />}
+              {/* Legacy order screens — hidden from the menu, replaced by 'supply' */}
               {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'warehouse' && <NetworkWarehouseOrdersTab tenantEmail={tenantEmail} />}
               {activeTab === 'suppliers' && <NetworkSuppliersTab tenantEmail={tenantEmail} />}
