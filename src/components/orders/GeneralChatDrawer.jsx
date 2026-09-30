@@ -9,7 +9,9 @@ import { parseServerDate } from '@/lib/serverDate';
 
 // senderRole: 'BRANCH' | 'HQ'
 // inline: render as embedded panel instead of floating drawer
-export default function GeneralChatDrawer({ open, onClose, branchId, tenantEmail, senderRole, inline = false }) {
+// branchId may also be a Warehouse id — the network ↔ warehouse chat uses the same channel
+// (the warehouse writes as 'BRANCH', the network as 'HQ').
+export default function GeneralChatDrawer({ open, onClose, branchId, tenantEmail, senderRole, inline = false, title }) {
   const [text, setText] = useState('');
   const bottomRef = useRef(null);
   const queryClient = useQueryClient();
@@ -88,7 +90,7 @@ export default function GeneralChatDrawer({ open, onClose, branchId, tenantEmail
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-white" />
           <span className="font-semibold text-white">
-            {senderRole === 'BRANCH' ? "צ'אט עם מטה הרשת" : "צ'אט עם הסניף"}
+            {title || (senderRole === 'BRANCH' ? "צ'אט עם מטה הרשת" : "צ'אט עם הסניף")}
           </span>
         </div>
         {!inline && (
