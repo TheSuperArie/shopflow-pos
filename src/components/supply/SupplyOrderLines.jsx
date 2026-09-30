@@ -8,7 +8,7 @@ import { lineQty } from '@/lib/supplyOrders';
  * editable: the network can change each quantity and remove lines.
  * showPicked: adds the picked column once the warehouse has picked.
  */
-export default function SupplyOrderLines({ items = [], editable = false, onChange, showBranchStock = true, showPicked = false }) {
+export default function SupplyOrderLines({ items = [], editable = false, onChange, showBranchStock = true, showRequested = true, showPicked = false }) {
   const update = (index, patch) => onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   const remove = (index) => onChange(items.filter((_, i) => i !== index));
 
@@ -23,8 +23,8 @@ export default function SupplyOrderLines({ items = [], editable = false, onChang
             <th className="px-3 py-2.5 text-right font-medium">מידה</th>
             <th className="px-3 py-2.5 text-right font-medium">סוג</th>
             {showBranchStock && <th className="px-3 py-2.5 text-center font-medium">מלאי בסניף</th>}
-            <th className="px-3 py-2.5 text-center font-medium">ביקש הסניף</th>
-            <th className="px-3 py-2.5 text-center font-medium">{editable ? 'כמות להזמנה' : 'להזמנה'}</th>
+            {showRequested && <th className="px-3 py-2.5 text-center font-medium">ביקש הסניף</th>}
+            <th className="px-3 py-2.5 text-center font-medium">{editable ? 'כמות להזמנה' : showRequested ? 'להזמנה' : 'כמות'}</th>
             {showPicked && <th className="px-3 py-2.5 text-center font-medium">לוקט</th>}
             {editable && <th className="w-10" />}
           </tr>
@@ -43,7 +43,7 @@ export default function SupplyOrderLines({ items = [], editable = false, onChang
                 <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{item.variant_label || '—'}</td>
                 <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{item.category_name || '—'}</td>
                 {showBranchStock && <td className="px-3 py-2 text-center text-gray-500">{item.branch_stock ?? '—'}</td>}
-                <td className="px-3 py-2 text-center text-gray-500">{item.requested_qty ?? '—'}</td>
+                {showRequested && <td className="px-3 py-2 text-center text-gray-500">{item.requested_qty ?? '—'}</td>}
                 <td className="px-3 py-1.5 text-center">
                   {editable ? (
                     <Input
