@@ -13,7 +13,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { Send, Package, MessagesSquare, ClipboardList, Loader2, Truck, Trash2, ScanLine } from 'lucide-react';
 import { usePosBranch, usePosCatalogQuery } from '@/hooks/usePosCatalog';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
-import SupplyOrderBuilder from '@/components/supply/SupplyOrderBuilder';
+import OrderTilesBuilder from '@/components/supply/OrderTilesBuilder';
+import { useInventoryData } from '@/hooks/useInventoryData';
+import { buildInventoryIndex } from '@/lib/inventory';
 import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
 import StatusBadge from '@/components/supply/SupplyStatusBadge';
 import ReceiveOrderDialog from '@/components/supply/ReceiveOrderDialog';
@@ -47,6 +49,21 @@ export default function BranchSupplyOrders() {
   const { data: variants = [], isLoading: loadingVariants } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
   const rows = useMemo(() => buildCatalogRows(variants, groups, categories), [variants, groups, categories]);
+
+  // Same catalog + shortage threshold as the inventory screen → same square tiles
+  const inv = useInventoryData();
+  const index = useMemo(
+    () => buildInventoryIndex({ categories: inv.categories, groups: inv.groups, variants: inv.variants, globalThreshold: inv.threshold }),
+    [inv.categories, inv.groups, inv.variants, inv.threshold]
+  );
+
+  // Unread messages from the network — shown on the chat button
+  const { data: unreadChat = [] } = useQuery({
+    queryKey: ['general-chat-unread', branch?.id],
+    queryFn: () => base44.entities.BranchGeneralChat.filter({ branch_id: branch.id, tenant_email: branch.tenant_email, sender_role: 'HQ', is_read: false }),
+    enabled: !!branch?.id && !!branch?.tenant_email,
+    refetchInterval: 30000,
+  });
 
   const { data: orders = [] } = useQuery({
     queryKey: ['supply-orders-branch', branch?.id],
@@ -150,10 +167,6 @@ export default function BranchSupplyOrders() {
   const activeOrders = orders.filter(o => !['RECEIVED', 'CANCELLED'].includes(o.status));
   const incoming = orders.filter(o => o.status === 'SENT_TO_BRANCH');
 
-  const chat = (
-    <GeneralChatDrawer open inline branchId={branch.id} tenantEmail={branch.tenant_email} senderRole="BRANCH" />
-  );
-
   return (
     <div className="space-y-5" dir="rtl">
       {/* Header */}
@@ -162,8 +175,11 @@ export default function BranchSupplyOrders() {
           <h1 className="text-xl font-bold text-gray-800">הזמנות מהרשת</h1>
           <p className="text-xs text-gray-500 mt-0.5">{branch.name}</p>
         </div>
-        <Button variant="outline" onClick={() => setChatOpen(true)} className="xl:hidden gap-2 bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100">
+        <Button variant="outline" onClick={() => setChatOpen(true)} className="relative gap-2 bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100">
           <MessagesSquare className="w-4 h-4" /> צ'אט עם הרשת
+          {unreadChat.length > 0 && (
+            <span className="absolute -top-2 -left-2 rounded-full bg-red-500 text-white text-xs font-bold px-1.5 min-w-[20px] text-center">{unreadChat.length}</span>
+          )}
         </Button>
       </div>
 
@@ -187,11 +203,19 @@ export default function BranchSupplyOrders() {
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+      <div>
         <div className="min-w-0 space-y-4">
           {tab === 'new' && (
             <>
-              <SupplyOrderBuilder rows={rows} quantities={quantities} onQuantitiesChange={setQuantities} />
+              <OrderTilesBuilder
+                index={index}
+                categories={categories}
+                groups={groups}
+                variants={variants}
+                quantities={quantities}
+                onChange={setQuantities}
+                scanEnabled={tab === 'new' && !confirmOpen && !receiving && !chatOpen}
+              />
 
               <Card>
                 <CardContent className="p-4 space-y-3">
@@ -234,11 +258,6 @@ export default function BranchSupplyOrders() {
               <OrdersList orders={incoming} onOpen={(o) => setReceiving({ order: o })} empty="אין כרגע הזמנות בדרך לסניף" />
             </>
           )}
-        </div>
-
-        {/* Chat — always visible on wide screens */}
-        <div className="hidden xl:block h-[620px] sticky top-4 rounded-2xl border bg-white shadow-sm overflow-hidden">
-          {chat}
         </div>
       </div>
 
