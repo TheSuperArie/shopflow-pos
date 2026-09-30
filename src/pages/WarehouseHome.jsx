@@ -170,7 +170,7 @@ function OrderView({ order, warehouse, onBack }) {
         </div>
       )}
 
-      <SupplyOrderLines items={order.items || []} showBranchStock={false} showPicked={order.items?.some(i => i.picked_qty != null)} />
+      <SupplyOrderLines items={order.items || []} showBranchStock={false} showRequested={false} showPicked={order.items?.some(i => i.picked_qty != null)} />
 
       <SupplyOrderParties order={order} warehouse={warehouse} />
     </div>
