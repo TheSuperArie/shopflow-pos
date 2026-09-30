@@ -33,7 +33,7 @@ const StatusPills = ({ low, out }) => (
 );
 
 /** Square tile — categories and products look the same size so the grid stays calm. */
-export function Tile({ title, subtitle, units, low, out, image, icon: Icon, ids, selected, onToggle, onClick, accent = 'amber' }) {
+export function Tile({ title, subtitle, units, low, out, image, icon: Icon, ids, selected, onToggle, onClick, accent = 'amber', badge = null }) {
   const ring = accent === 'blue' ? 'hover:border-blue-400' : 'hover:border-amber-400';
   return (
     <div
@@ -43,6 +43,9 @@ export function Tile({ title, subtitle, units, low, out, image, icon: Icon, ids,
       }`}
     >
       <TriCheck ids={ids} selected={selected} onToggle={onToggle} className="absolute top-2 left-2" />
+      {badge && (
+        <span className="absolute top-2 right-2 rounded-full bg-amber-500 text-white text-[11px] font-bold px-2 py-0.5 shadow-sm">{badge}</span>
+      )}
       {image ? (
         <img src={image} alt="" className="w-14 h-14 rounded-xl object-cover" />
       ) : (
@@ -59,7 +62,7 @@ export function Tile({ title, subtitle, units, low, out, image, icon: Icon, ids,
 }
 
 /** Folder → sub-folder → product navigation with square tiles. */
-export function CatalogTiles({ index, path, setPath, onOpenProduct, selected, onToggle, productFilter }) {
+export function CatalogTiles({ index, path, setPath, onOpenProduct, selected, onToggle, productFilter, badgeFor }) {
   const currentCat = path[path.length - 1] ?? null;
   const isUncategorized = currentCat === '__none__';
   const subCats = isUncategorized ? [] : index.childCategories(currentCat);
@@ -75,7 +78,8 @@ export function CatalogTiles({ index, path, setPath, onOpenProduct, selected, on
           if (s.sizes === 0) return null;
           return (
             <Tile key={c.id} title={c.name} subtitle={`${s.products} מוצרים · ${s.sizes} מידות`} units={s.units} low={s.low} out={s.out}
-              icon={Folder} accent="blue" ids={s.variantIds} selected={selected} onToggle={onToggle} onClick={() => setPath([...path, c.id])} />
+              icon={Folder} accent="blue" ids={s.variantIds} selected={selected} onToggle={onToggle} onClick={() => setPath([...path, c.id])}
+              badge={badgeFor?.(s.variantIds)} />
           );
         })}
         {!currentCat && index.hasUncategorized && (() => {
@@ -85,14 +89,15 @@ export function CatalogTiles({ index, path, setPath, onOpenProduct, selected, on
             <Tile key="__none__" title="ללא קטגוריה" subtitle={`${list.length} מוצרים`} units={sum('units')}
               low={sum('low')} out={sum('out')} icon={Folder} accent="blue"
               ids={list.flatMap(s => s.variantIds)} selected={selected} onToggle={onToggle}
-              onClick={() => setPath(['__none__'])} />
+              onClick={() => setPath(['__none__'])} badge={badgeFor?.(list.flatMap(s => s.variantIds))} />
           );
         })()}
         {products.map(g => {
           const s = index.productStats(g);
           return (
             <Tile key={g.id} title={g.name} subtitle={`${s.sizes} מידות`} units={s.units} low={s.low} out={s.out}
-              image={g.image_url} icon={Package} ids={s.variantIds} selected={selected} onToggle={onToggle} onClick={() => onOpenProduct(g.id)} />
+              image={g.image_url} icon={Package} ids={s.variantIds} selected={selected} onToggle={onToggle} onClick={() => onOpenProduct(g.id)}
+              badge={badgeFor?.(s.variantIds)} />
           );
         })}
       </div>
