@@ -5,24 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { RefreshCw } from 'lucide-react';
+import { fetchBranchCatalogRecords } from '@/lib/branchCatalog';
 
 /**
- * Read-only view of a branch station's own inventory — the stock levels its
- * POS actually holds (FlexibleVariant records owned by the station account).
+ * Read-only view of a branch's inventory — exactly the stock its POS holds and deducts from:
+ * the branch's ProductVariant records (station-owned + created for it by the network).
  * Refreshed on demand via the "רענן" button.
  */
 export default function BranchStockView({ branch }) {
-  const station = branch.station_email;
-
   const { data: groups = [], isLoading: loadingGroups, refetch: refetchGroups } = useQuery({
-    queryKey: ['branch-catalog-groups', station],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: station }),
-    enabled: !!station,
+    queryKey: ['branch-catalog-groups', branch.id],
+    queryFn: () => fetchBranchCatalogRecords(base44.entities.ProductGroup, branch),
+    enabled: !!branch?.id,
   });
   const { data: variants = [], isLoading: loadingVariants, refetch: refetchVariants } = useQuery({
-    queryKey: ['branch-stock-variants', station],
-    queryFn: () => base44.entities.FlexibleVariant.filter({ created_by: station }),
-    enabled: !!station,
+    queryKey: ['branch-stock-variants', branch.id],
+    queryFn: () => fetchBranchCatalogRecords(base44.entities.ProductVariant, branch),
+    enabled: !!branch?.id,
   });
 
   const loading = loadingGroups || loadingVariants;
