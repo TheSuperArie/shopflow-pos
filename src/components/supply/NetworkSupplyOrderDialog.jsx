@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { Warehouse, Save, Ban, Send, Loader2 } from 'lucide-react';
+import { Warehouse, Save, Ban, Send, Loader2, Printer } from 'lucide-react';
 import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
 import SupplyOrderParties from '@/components/supply/SupplyOrderParties';
 import SupplyStatusBadge from '@/components/supply/SupplyStatusBadge';
@@ -14,7 +14,7 @@ import { formatOrderDate, nowIso, orderTotals, lineQty } from '@/lib/supplyOrder
 const EDITABLE = ['SENT_TO_NETWORK', 'SENT_TO_WAREHOUSE'];
 
 /** The network's view of one order: edit lines + notes, share to the warehouse / back to the branch. */
-export default function NetworkSupplyOrderDialog({ order, warehouse, onClose }) {
+export default function NetworkSupplyOrderDialog({ order, warehouse, onClose, onPrint }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [items, setItems] = useState([]);
@@ -47,6 +47,15 @@ export default function NetworkSupplyOrderDialog({ order, warehouse, onClose }) 
   const save = async (patch = {}, label) => {
     setBusy(label);
     try {
+      if (editable) {
+        // The warehouse may have started picking since this window opened — never overwrite its progress
+        const [fresh] = await base44.entities.SupplyOrder.filter({ id: order.id });
+        if (fresh && !EDITABLE.includes(fresh.status)) {
+          toast({ title: 'המחסן כבר התחיל ללקט את ההזמנה — השינויים לא נשמרו', variant: 'destructive' });
+          queryClient.invalidateQueries({ queryKey: ['supply-orders-network'] });
+          return false;
+        }
+      }
       const data = editable
         ? { items: items.filter(i => lineQty(i) > 0), branch_notes: branchNotes.trim(), network_notes: networkNotes.trim(), ...patch }
         : patch;
@@ -139,6 +148,11 @@ export default function NetworkSupplyOrderDialog({ order, warehouse, onClose }) 
             <Button onClick={shareToBranch} disabled={!!busy} className="gap-2 h-11 bg-purple-600 hover:bg-purple-700">
               {busy === 'branch' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               שתף לסניף
+            </Button>
+          )}
+          {hasPicked && ['PACKED', 'READY', 'SENT_TO_BRANCH', 'RECEIVED'].includes(order.status) && onPrint && (
+            <Button variant="outline" onClick={() => onPrint(order)} className="gap-2 h-11">
+              <Printer className="w-4 h-4" /> דף הזמנה / PDF
             </Button>
           )}
           {editable && (
