@@ -99,3 +99,35 @@ export async function fetchNetworkDetails(tenantEmail) {
     email: tenantEmail,
   };
 }
+
+/* ── Picking ── */
+
+/** Barcode printed on the order document — prefixed so it never collides with a product SKU. */
+export const orderBarcodeValue = (order) => `SO${order?.order_number || ''}`;
+
+/** Percent of the ordered quantity that was picked (null when nothing was ordered). */
+export const pickedPercent = (item) => {
+  const q = lineQty(item);
+  if (!q) return null;
+  return Math.round((Number(item.picked_qty || 0) / q) * 100);
+};
+
+/** Picked more than ordered, or a line that wasn't in the order at all → shown in red. */
+export const isOverPicked = (item) => !!item.extra || Number(item.picked_qty || 0) > lineQty(item);
+
+/**
+ * Same matching rules as the POS scanner: SKU or variant barcode (full, or last 4 digits),
+ * then the product's general barcode (may match several sizes).
+ * rows need: sku, barcode, group_barcode. Returns every matching row.
+ */
+export function matchScannedCode(code, rows = []) {
+  const c = String(code || '').trim().toLowerCase();
+  if (!c) return [];
+  const eq = (v) => {
+    const s = String(v || '').toLowerCase();
+    return !!s && (s === c || s.slice(-4) === c);
+  };
+  const exact = rows.filter(r => eq(r.sku) || eq(r.barcode));
+  if (exact.length) return exact;
+  return rows.filter(r => eq(r.group_barcode));
+}
