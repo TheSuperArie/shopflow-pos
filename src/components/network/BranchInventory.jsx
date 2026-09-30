@@ -4,86 +4,58 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Save } from 'lucide-react';
+import { fetchBranchCatalogRecords } from '@/lib/branchCatalog';
 
-export default function BranchInventory({ branch, tenantEmail }) {
+/**
+ * Edit a branch's stock from the network side. Reads and writes the branch's own
+ * ProductVariant records — the same stock the branch POS sells from — so there is
+ * one number per variant (the old separate BranchVariantStock table is no longer used here).
+ */
+export default function BranchInventory({ branch }) {
   const queryClient = useQueryClient();
   const [edits, setEdits] = useState({});
 
-  // All visible groups for this branch (no hidden overrides)
-  const { data: allGroups = [] } = useQuery({
-    queryKey: ['productGroups', tenantEmail],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: tenantEmail }),
+  const { data: groups = [] } = useQuery({
+    queryKey: ['branch-catalog-groups', branch.id],
+    queryFn: () => fetchBranchCatalogRecords(base44.entities.ProductGroup, branch),
+    enabled: !!branch?.id,
   });
 
-  const { data: visibilityRecords = [] } = useQuery({
-    queryKey: ['branchVisibility', branch.id],
-    queryFn: () => base44.entities.BranchProductVisibility.filter({ branch_id: branch.id }),
-  });
-
-  const { data: allVariants = [] } = useQuery({
-    queryKey: ['flexibleVariants', tenantEmail],
-    queryFn: () => base44.entities.FlexibleVariant.filter({ created_by: tenantEmail }),
-  });
-
-  const { data: branchStocks = [] } = useQuery({
-    queryKey: ['branchStocks', branch.id],
-    queryFn: () => base44.entities.BranchVariantStock.filter({ branch_id: branch.id }),
+  const { data: variants = [] } = useQuery({
+    queryKey: ['branch-stock-variants', branch.id],
+    queryFn: () => fetchBranchCatalogRecords(base44.entities.ProductVariant, branch),
+    enabled: !!branch?.id,
   });
 
   const saveMutation = useMutation({
-    mutationFn: async ({ variantId, qty }) => {
-      const existing = branchStocks.find(s => s.variant_id === variantId);
-      if (existing) {
-        await base44.entities.BranchVariantStock.update(existing.id, { stock: Number(qty) });
-      } else {
-        await base44.entities.BranchVariantStock.create({
-          branch_id: branch.id,
-          variant_id: variantId,
-          stock: Number(qty),
-          tenant_email: tenantEmail,
-        });
-      }
-    },
+    mutationFn: ({ variantId, qty }) => base44.entities.ProductVariant.update(variantId, { stock: Math.max(0, Number(qty) || 0) }),
     onSuccess: (_, { variantId }) => {
-      queryClient.invalidateQueries({ queryKey: ['branchStocks', branch.id] });
+      queryClient.invalidateQueries({ queryKey: ['branch-stock-variants', branch.id] });
       setEdits(p => { const n = { ...p }; delete n[variantId]; return n; });
     },
   });
 
-  const isGroupVisible = (groupId) => {
-    const rec = visibilityRecords.find(r => r.product_group_id === groupId);
-    return !rec || rec.is_visible !== false;
-  };
-
-  const visibleGroups = allGroups.filter(g => isGroupVisible(g.id));
-
-  const getStock = (variantId) => {
-    const rec = branchStocks.find(s => s.variant_id === variantId);
-    return rec?.stock ?? 0;
-  };
-
-  const formatDimensions = (dims) =>
-    Object.values(dims || {}).filter(Boolean).join(' / ');
+  const visibleGroups = groups.filter(g => g.is_active !== false);
+  const formatDimensions = (dims) => Object.values(dims || {}).filter(Boolean).join(' / ');
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500">
-        עדכן את כמות המלאי הספציפית לסניף זה. מוצרים מוסתרים לא מוצגים כאן.
+        המלאי של הסניף — אותו מלאי שהקופה של הסניף עובדת איתו.
       </p>
 
       {visibleGroups.map(group => {
-        const variants = allVariants.filter(v => v.group_id === group.id);
-        if (variants.length === 0) return null;
+        const groupVariants = variants.filter(v => v.group_id === group.id);
+        if (groupVariants.length === 0) return null;
 
         return (
           <Card key={group.id}>
             <CardContent className="p-4">
               <p className="font-semibold text-gray-800 mb-3 text-sm border-b pb-2">{group.name}</p>
               <div className="space-y-2">
-                {variants.map(variant => {
-                  const currentStock = getStock(variant.id);
+                {groupVariants.map(variant => {
+                  const currentStock = variant.stock ?? 0;
                   const editVal = edits[variant.id];
                   const isDirty = editVal !== undefined && Number(editVal) !== currentStock;
 
@@ -93,9 +65,6 @@ export default function BranchInventory({ branch, tenantEmail }) {
                         {formatDimensions(variant.dimensions) || 'ברירת מחדל'}
                       </span>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          גלובלי: {variant.stock ?? 0}
-                        </Badge>
                         <Input
                           type="number"
                           min="0"
@@ -126,7 +95,7 @@ export default function BranchInventory({ branch, tenantEmail }) {
       {visibleGroups.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-gray-400">
-            כל המוצרים מוסתרים בסניף זה
+            אין מוצרים בקטלוג של הסניף
           </CardContent>
         </Card>
       )}
