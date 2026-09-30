@@ -15,8 +15,9 @@ import { usePosBranch, usePosCatalogQuery } from '@/hooks/usePosCatalog';
 import GeneralChatDrawer from '@/components/orders/GeneralChatDrawer';
 import SupplyOrderBuilder from '@/components/supply/SupplyOrderBuilder';
 import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
+import StatusBadge from '@/components/supply/SupplyStatusBadge';
 import {
-  SUPPLY_STATUS, buildCatalogRows, nextOrderNumber, nowIso, orderTotals, formatOrderDate,
+  buildCatalogRows, nextOrderNumber, nowIso, orderTotals, formatOrderDate,
 } from '@/lib/supplyOrders';
 
 const draftKey = (branchId) => `supply-draft:${branchId}`;
@@ -275,11 +276,6 @@ export default function BranchSupplyOrders() {
       </Dialog>
     </div>
   );
-}
-
-export function StatusBadge({ status }) {
-  const cfg = SUPPLY_STATUS[status] || SUPPLY_STATUS.SENT_TO_NETWORK;
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${cfg.color}`}>{cfg.label}</span>;
 }
 
 function NoteBox({ label, text }) {
