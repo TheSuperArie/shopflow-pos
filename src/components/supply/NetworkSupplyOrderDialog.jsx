@@ -111,7 +111,10 @@ export default function NetworkSupplyOrderDialog({ order, warehouse, onClose, on
           {editable && ' · אפשר לשנות כמויות, להסיר שורות ולערוך הערות'}
         </p>
 
-        <SupplyOrderLines items={items} editable={editable} onChange={setItems} showPicked={hasPicked} />
+        <SupplyOrderLines items={items} editable={editable} onChange={setItems} showPicked={hasPicked} showReceived={order.status === 'RECEIVED'} />
+        {order.status === 'RECEIVED' && (
+          <p className="text-sm text-green-700">נקלטה בסניף {formatOrderDate(order.received_at, true)} — המלאי של הסניף עודכן.</p>
+        )}
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
