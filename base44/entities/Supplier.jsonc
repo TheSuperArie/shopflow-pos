@@ -60,7 +60,7 @@
     "delete": {
       "$or": [
         {
-          "created_by": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "data.station_email": "{{user.email}}"
@@ -73,7 +73,7 @@
     "read": {
       "$or": [
         {
-          "created_by": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "data.station_email": "{{user.email}}"
@@ -86,7 +86,7 @@
     "update": {
       "$or": [
         {
-          "created_by": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "data.station_email": "{{user.email}}"
