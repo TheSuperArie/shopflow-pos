@@ -298,21 +298,19 @@ export default function POS() {
 
       // The sale is saved — a stock-update failure must not turn it into an error (and a retry)
       let stockWarning = false;
-      {
-        try {
-          for (const item of saleItems) {
-            if (!item.variant_id) continue;
-            const variant = allVariants.find(v => v.id === item.variant_id);
-            if (variant) {
-              await base44.entities.ProductVariant.update(variant.id, {
-                stock: Math.max(0, (variant.stock || 0) - item.quantity),
-              });
-            }
+      try {
+        for (const item of saleItems) {
+          if (!item.variant_id) continue;
+          const variant = allVariants.find(v => v.id === item.variant_id);
+          if (variant) {
+            await base44.entities.ProductVariant.update(variant.id, {
+              stock: Math.max(0, (variant.stock || 0) - item.quantity),
+            });
           }
-        } catch (err) {
-          console.warn('[POS] Sale saved but stock update failed:', err?.message);
-          stockWarning = true;
         }
+      } catch (err) {
+        console.warn('[POS] Sale saved but stock update failed:', err?.message);
+        stockWarning = true;
       }
       return { ...sale, _stockWarning: stockWarning };
     },
