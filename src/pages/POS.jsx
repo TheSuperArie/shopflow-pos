@@ -101,7 +101,8 @@ export default function POS() {
     staleTime: 60000,
   });
   const virtualFolders = appSettingsList[0]?.pos_virtual_folders || [];
-  // "פעל ע"פ מלאי" (settings): off → sell without stock limits, sales don't touch stock
+  // "חסום מכירה של מוצר שאזל" (settings, field stock_mode_enabled): on → out-of-stock items can't be sold.
+  // It only controls blocking — every sale always deducts from stock, so inventory/shortages stay accurate.
   const stockModeEnabled = appSettingsList[0]?.stock_mode_enabled !== false;
 
   useInventorySync();
@@ -297,7 +298,7 @@ export default function POS() {
 
       // The sale is saved — a stock-update failure must not turn it into an error (and a retry)
       let stockWarning = false;
-      if (stockModeEnabled) {
+      {
         try {
           for (const item of saleItems) {
             if (!item.variant_id) continue;
