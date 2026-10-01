@@ -115,7 +115,7 @@ export default function NetworkMasterDashboard() {
           <h1 className="font-bold text-gray-800 flex-1">{networkName || 'מרכז פיקוד רשת'}</h1>
           {tenantEmail && (
             <div className="bg-gray-900 rounded-xl p-1">
-              <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('supply')} onNavigateToBranches={() => setActiveTab('branches')} />
+              <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('supply')} onNavigateToBranches={() => setActiveTab('branches')} onNavigateToWarehouse={() => setActiveTab('warehouse-stock')} />
             </div>
           )}
         </header>
@@ -129,7 +129,7 @@ export default function NetworkMasterDashboard() {
             </div>
           )}
           {tenantEmail && (
-            <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('supply')} onNavigateToBranches={() => setActiveTab('branches')} />
+            <NotificationBell tenantEmail={tenantEmail} onNavigateToOrders={() => setActiveTab('supply')} onNavigateToBranches={() => setActiveTab('branches')} onNavigateToWarehouse={() => setActiveTab('warehouse-stock')} />
           )}
         </div>
 

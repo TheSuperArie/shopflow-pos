@@ -414,8 +414,8 @@ export default function POS() {
         return;
       }
       setStockConfirm({
-        title: 'שים לב — המוצר אזל מהמלאי',
-        description: stockWarningText(variant, group, available, inCart),
+        title: stockWarningTitle(available),
+        description: stockWarningText(variant, group),
         onConfirm: () => pushToCart(variant, group, liveVariant),
       });
       return;
@@ -424,13 +424,19 @@ export default function POS() {
     pushToCart(variant, group, liveVariant);
   };
 
-  const stockWarningText = (variant, group, available, inCart) => {
+  // "Only 2 in stock" when some are left, "out of stock" when none
+  const stockWarningTitle = (available) => {
+    if (available <= 0) return 'שים לב — המוצר אזל מהמלאי';
+    if (available === 1) return 'שים לב — קיים במלאי רק פריט אחד מהמוצר הזה';
+    return `שים לב — קיימים במלאי רק ${available} פריטים מהמוצר הזה`;
+  };
+
+  const stockWarningText = (variant, group) => {
     const dimText = variant.dimensions && Object.keys(variant.dimensions).length > 0
       ? Object.values(variant.dimensions).join(' / ')
       : '';
     const name = dimText ? `${group.name} - ${dimText}` : group.name;
-    const stockText = available > 0 ? `רשומים במלאי ${available} וכבר יש ${inCart} בעגלה` : 'רשום במלאי 0';
-    return `${name}: ${stockText}. אם יש פריט כזה בחנות — אפשר למכור אותו.`;
+    return `${name}. אם יש עוד בחנות — אפשר למכור.`;
   };
 
   const pushToCart = (variant, group, liveVariant) => {
@@ -511,8 +517,8 @@ export default function POS() {
           return;
         }
         setStockConfirm({
-          title: 'שים לב — אין מספיק במלאי',
-          description: `${item.product_name}: רשומים במלאי ${available}. אם יש עוד בחנות — אפשר למכור.`,
+          title: stockWarningTitle(available),
+          description: `${item.product_name}. אם יש עוד בחנות — אפשר למכור.`,
           onConfirm: setQty,
         });
         return;

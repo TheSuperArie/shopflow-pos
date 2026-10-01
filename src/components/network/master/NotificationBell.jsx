@@ -6,7 +6,7 @@ import { useNetworkShortages } from '@/hooks/useNetworkShortages';
 import { format } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
 
-export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNavigateToBranches }) {
+export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNavigateToBranches, onNavigateToWarehouse }) {
   const [open, setOpen] = useState(false);
   const [dismissedOrders, setDismissedOrders] = useState(() => {
     try {
@@ -93,6 +93,7 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
     queryClient.invalidateQueries({ queryKey: ['network-alerts', tenantEmail] });
     setOpen(false);
     if (alert.navigate_to === 'branches' && onNavigateToBranches) onNavigateToBranches();
+    else if (alert.navigate_to === 'warehouse-stock' && onNavigateToWarehouse) onNavigateToWarehouse();
     else if (onNavigateToOrders) onNavigateToOrders();
   };
 
