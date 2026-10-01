@@ -27,8 +27,9 @@ async function createForBranch(branch, product, rows, initialStock) {
     uniform_cost_price: product.uniform_cost_price === '' ? null : Number(product.uniform_cost_price),
     branch_id: branch.id,
   });
+  let variants = [];
   try {
-    await Promise.all(rows.map(r => base44.entities.ProductVariant.create({
+    variants = await Promise.all(rows.map(r => base44.entities.ProductVariant.create({
       dimensions: r.dimensions || {},
       stock: initialStock,
       sell_price: r.sell_price === null || r.sell_price === '' ? null : Number(r.sell_price),
@@ -43,7 +44,7 @@ async function createForBranch(branch, product, rows, initialStock) {
     await base44.entities.ProductGroup.delete(group.id);
     throw e;
   }
-  return { categoryCreated: category.created };
+  return { categoryCreated: category.created, groupId: group.id, variantIds: variants.map(v => v.id) };
 }
 
 /** Creates a copy of the product in every given branch; returns a per-branch result list. */
@@ -53,6 +54,8 @@ export async function createProductForBranches(branches, product, rows, initialS
     branch: branches[i],
     ok: s.status === 'fulfilled',
     categoryCreated: s.value?.categoryCreated || false,
+    groupId: s.value?.groupId || null,
+    variantIds: s.value?.variantIds || [],
     error: s.reason?.message || (s.status === 'rejected' ? 'שגיאה לא ידועה' : null),
   }));
 }

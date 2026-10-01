@@ -14,6 +14,7 @@ import NotificationBell from '@/components/network/master/NotificationBell';
 import NetworkAdminDashboard from '@/components/network/master/NetworkAdminDashboard';
 import NetworkLevelExpensesTab from '@/components/network/master/NetworkLevelExpensesTab';
 import NetworkSupplyCenter from '@/components/supply/NetworkSupplyCenter';
+import NetworkWarehouseStockTab from '@/components/network/warehouse/NetworkWarehouseStockTab';
 
 export default function NetworkMasterDashboard() {
   // Returning from a branch insights page restores the tab (and branch) it was opened from
@@ -139,6 +140,7 @@ export default function NetworkMasterDashboard() {
               {activeTab === 'branches' && <NetworkBranchesTab tenantEmail={tenantEmail} networkName={networkName} initialBranchId={initialBranchId} />}
               {activeTab === 'analytics' && <NetworkAnalyticsTab tenantEmail={tenantEmail} />}
               {activeTab === 'network-expenses' && <NetworkLevelExpensesTab tenantEmail={tenantEmail} />}
+              {activeTab === 'warehouse-stock' && <NetworkWarehouseStockTab tenantEmail={tenantEmail} />}
               {activeTab === 'supply' && <NetworkSupplyCenter tenantEmail={tenantEmail} networkName={networkName} />}
               {/* Legacy order screens — hidden from the menu, replaced by 'supply' */}
               {activeTab === 'orders' && <NetworkOrdersTab tenantEmail={tenantEmail} />}
