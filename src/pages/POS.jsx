@@ -751,6 +751,33 @@ export default function POS() {
 
       <ReturnFormModal open={showReturnForm} onClose={() => setShowReturnForm(false)} />
       <StaffPortal open={showStaffPortal} onClose={() => setShowStaffPortal(false)} />
+
+      {/* Out-of-stock warning — no button is focused, so a scanner's Enter can't confirm it by accident */}
+      {stockConfirm && (
+        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center gap-2 text-amber-600 mb-2">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h2 className="text-lg font-bold">{stockConfirm.title}</h2>
+            </div>
+            <p className="text-gray-700 mb-5">{stockConfirm.description}</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { const fn = stockConfirm.onConfirm; setStockConfirm(null); fn(); }}
+                className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-bold hover:bg-amber-600">
+                כן, הוסף לעגלה
+              </button>
+              <button
+                type="button"
+                onClick={() => setStockConfirm(null)}
+                className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200">
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
