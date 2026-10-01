@@ -410,7 +410,7 @@ export default function POS() {
     const inCart = cartItems.find(item => item.variant_id === variant.id)?.quantity || 0;
     if (inCart + 1 > available) {
       if (stockModeEnabled) {
-        toast({ title: '⛔ אין מלאי', description: 'הפריט אזל מהמלאי', duration: 2000 });
+        toast({ title: '⛔ אין מלאי', description: available > 0 ? `קיימים במלאי רק ${available}` : 'הפריט אזל מהמלאי', duration: 2000 });
         return;
       }
       setStockConfirm({
