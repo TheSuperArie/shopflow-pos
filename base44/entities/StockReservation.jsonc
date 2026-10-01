@@ -1,0 +1,99 @@
+{
+  "name": "StockReservation",
+  "type": "object",
+  "properties": {
+    "scope": {
+      "type": "string",
+      "enum": [
+        "WAREHOUSE",
+        "BRANCH"
+      ],
+      "description": "WAREHOUSE = \u05e9\u05e8\u05d9\u05d5\u05df \u05d1\u05dc\u05d9\u05e7\u05d5\u05d8 \u05d4\u05d6\u05de\u05e0\u05d4, BRANCH = \u05e9\u05e8\u05d9\u05d5\u05df \u05d1\u05e2\u05d2\u05dc\u05ea \u05e7\u05d5\u05e4\u05d4"
+    },
+    "warehouse_id": {
+      "type": "string",
+      "description": "\u05d4\u05de\u05d7\u05e1\u05df (\u05d1\u05e9\u05e8\u05d9\u05d5\u05df \u05de\u05d7\u05e1\u05df)"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "\u05d4\u05d6\u05de\u05e0\u05ea \u05d4\u05d0\u05e1\u05e4\u05e7\u05d4 \u05e9\u05de\u05e9\u05e8\u05d9\u05d9\u05e0\u05ea (\u05d1\u05e9\u05e8\u05d9\u05d5\u05df \u05de\u05d7\u05e1\u05df)"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "\u05d4\u05e1\u05e0\u05d9\u05e3 (\u05d1\u05e9\u05e8\u05d9\u05d5\u05df \u05e7\u05d5\u05e4\u05d4). \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05d7\u05e9\u05d1 \u05e9\u05de\u05e9\u05e8\u05d9\u05d9\u05df (\u05d1\u05e9\u05e8\u05d9\u05d5\u05df \u05e7\u05d5\u05e4\u05d4)"
+    },
+    "item_key": {
+      "type": "string",
+      "description": "\u05de\u05d7\u05e1\u05df: \u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d9\u05ea \u05d4\u05e8\u05e9\u05ea. \u05e7\u05d5\u05e4\u05d4: \u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d9\u05ea \u05d4\u05e1\u05e0\u05d9\u05e3"
+    },
+    "variant_id": {
+      "type": "string"
+    },
+    "qty": {
+      "type": "number"
+    },
+    "touched_at": {
+      "type": "string",
+      "description": "\u05e2\u05d3\u05db\u05d5\u05df \u05d0\u05d7\u05e8\u05d5\u05df ISO \u2014 \u05e9\u05e8\u05d9\u05d5\u05df \u05e7\u05d5\u05e4\u05d4 \u05e9\u05dc\u05d0 \u05e2\u05d5\u05d3\u05db\u05df 15 \u05d3\u05e7\u05d5\u05ea \u05e4\u05d2"
+    },
+    "tenant_email": {
+      "type": "string",
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+    },
+    "station_email": {
+      "type": "string",
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05de\u05d7\u05e1\u05df/\u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+    }
+  },
+  "required": [
+    "scope",
+    "item_key",
+    "qty"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
+}

@@ -44,7 +44,11 @@ export default function StockTable({ items, isLoading, onEdit }) {
                 </p>
                 <p className="text-xs text-gray-500 truncate">{i.category_name || '—'}{i.sku ? ` · ${i.sku}` : ''}</p>
               </div>
-              <span className={`min-w-[56px] text-center text-lg font-bold ${i.qty < 0 ? 'text-red-600' : i.qty === 0 ? 'text-gray-400' : 'text-gray-900'}`}>{i.qty}</span>
+              <div className="flex items-center gap-3 text-center">
+                <div className="min-w-[48px]"><p className="text-[10px] text-gray-400">במלאי</p><p className={`text-lg font-bold ${i.qty <= 0 ? 'text-gray-400' : 'text-gray-900'}`}>{i.qty}</p></div>
+                <div className="min-w-[48px]"><p className="text-[10px] text-gray-400">משוריין</p><p className={`text-lg font-bold ${i.reserved ? 'text-indigo-600' : 'text-gray-300'}`}>{i.reserved || 0}</p></div>
+                <div className="min-w-[48px]"><p className="text-[10px] text-gray-400">פנוי</p><p className={`text-lg font-bold ${i.free < 0 ? 'text-red-600' : i.free === 0 ? 'text-gray-400' : 'text-green-700'}`}>{i.free ?? i.qty}</p></div>
+              </div>
               {onEdit && (
                 <button onClick={() => onEdit(i)} className="p-2 rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-600" title="עדכון / ספירה">
                   <Pencil className="w-4 h-4" />

@@ -38,83 +38,20 @@ export async function fetchNetworkCatalogRows(tenantEmail) {
   return buildCatalogRows(variants.filter(mine), groups.filter(mine), categories);
 }
 
-/**
- * Applies quantity changes and records one movement per change.
- * changes: [{ variant_id?, local_product_id?, delta, product_name, variant_label, category_name, sku }]
- * movement: shared movement fields (type, order_id, receipt_id, supplier_name, notes, performed_by...)
- */
-export async function applyStockChanges(warehouse, changes, movement) {
-  const real = changes.filter(c => Number(c.delta) !== 0 || movement.type === 'COUNT');
-  if (!real.length) return;
-  const stock = await fetchWarehouseStock(warehouse.id);
-  const byKey = new Map(stock.map(s => [stockKey(s), s]));
-  const date = new Date().toISOString();
-  const movements = [];
-  for (const c of real) {
-    const delta = Number(c.delta);
-    const existing = byKey.get(stockKey(c));
-    let row;
-    if (existing) {
-      row = await base44.entities.WarehouseStock.update(existing.id, { qty: Number(existing.qty || 0) + delta });
-      row = { ...existing, ...row, qty: Number(existing.qty || 0) + delta };
-    } else {
-      row = await base44.entities.WarehouseStock.create({
-        ...owner(warehouse),
-        variant_id: c.variant_id || null,
-        local_product_id: c.local_product_id || null,
-        product_name: c.product_name || '',
-        variant_label: c.variant_label || '',
-        category_name: c.category_name || '',
-        sku: c.sku || '',
-        qty: delta,
-      });
-    }
-    byKey.set(stockKey(c), row);
-    movements.push({
-      ...owner(warehouse),
-      ...movement,
-      stock_id: row.id,
-      variant_id: c.variant_id || null,
-      local_product_id: c.local_product_id || null,
-      product_name: c.product_name || row.product_name || '',
-      variant_label: c.variant_label || row.variant_label || '',
-      qty_change: delta,
-      qty_after: row.qty,
-      date,
-    });
+export const fetchWarehouseReservations = (warehouseId) =>
+  base44.entities.StockReservation.filter({ scope: 'WAREHOUSE', warehouse_id: warehouseId }, undefined, 5000);
+
+export const newOpKey = () =>
+  (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+
+/** Every stock change runs on the server (permission check, fresh quantities, one-time keys). */
+export async function stockOps(action, payload) {
+  try {
+    const res = await base44.functions.invoke('stockOps', { action, ...payload });
+    return res.data;
+  } catch (err) {
+    throw new Error(err?.response?.data?.error || err?.message || 'השרת לא ענה');
   }
-  await base44.entities.WarehouseStockMovement.bulkCreate(movements);
-}
-
-/** Manual count / correction: sets the quantity to an exact value (recorded as the difference). */
-export function setStockQty(warehouse, item, newQty, current, { type = 'COUNT', notes, performed_by }) {
-  return applyStockChanges(warehouse, [{ ...item, delta: Number(newQty) - Number(current || 0) }], { type, notes, performed_by });
-}
-
-/**
- * Picking finished (also after "ערוך ליקוט"): deducts from warehouse stock only the difference
- * between picked_qty and what was already deducted for each line. Returns the items with
- * network_variant_id + warehouse_deducted stamped, and the stock changes to apply.
- */
-export async function planPickDeduction(items) {
-  const missing = items.filter(i => i.variant_id && !i.network_variant_id).map(i => i.variant_id);
-  const variants = missing.length
-    ? await base44.entities.ProductVariant.filter({ id: { $in: [...new Set(missing)] } }, undefined, 2000)
-    : [];
-  const sourceOf = new Map(variants.map(v => [v.id, v.source_id || v.id]));
-  const changes = [];
-  const nextItems = items.map(it => {
-    if (!it.variant_id) return it;
-    const networkId = it.network_variant_id || sourceOf.get(it.variant_id) || it.variant_id;
-    const picked = Number(it.picked_qty || 0);
-    const delta = picked - Number(it.warehouse_deducted || 0);
-    if (delta !== 0) {
-      changes.push({
-        variant_id: networkId, delta: -delta,
-        product_name: it.product_name, variant_label: it.variant_label, category_name: it.category_name, sku: it.sku,
-      });
-    }
-    return { ...it, network_variant_id: networkId, warehouse_deducted: picked };
-  });
-  return { nextItems, changes };
 }

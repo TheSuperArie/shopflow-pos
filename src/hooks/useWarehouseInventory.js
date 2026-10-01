@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchNetworkCatalogRows, fetchWarehouseStock, fetchLocalProducts, stockKey } from '@/lib/warehouseStock';
+import { fetchNetworkCatalogRows, fetchWarehouseStock, fetchLocalProducts, fetchWarehouseReservations, stockKey } from '@/lib/warehouseStock';
 
 /** Network catalog + warehouse-local products + current stock, merged into one list. */
 export function useWarehouseInventory(warehouse) {
@@ -13,6 +13,13 @@ export function useWarehouseInventory(warehouse) {
   });
   const stock = useQuery({ queryKey: ['warehouse-stock', id], queryFn: () => fetchWarehouseStock(id), enabled: !!id });
   const locals = useQuery({ queryKey: ['warehouse-local-products', id], queryFn: () => fetchLocalProducts(id), enabled: !!id });
+
+  const reservations = useQuery({
+    queryKey: ['warehouse-reservations', id],
+    queryFn: () => fetchWarehouseReservations(id),
+    enabled: !!id,
+    refetchInterval: 60000,
+  });
 
   const items = useMemo(() => {
     const stockBy = new Map((stock.data || []).map(s => [stockKey(s), s]));
@@ -40,8 +47,17 @@ export function useWarehouseInventory(warehouse) {
         sku: s.sku || '', barcode: '', group_barcode: '', qty: Number(s.qty || 0),
       });
     });
-    return [...out.values()];
-  }, [catalog.data, stock.data, locals.data]);
+    // Reserved = confirmed in an open picking, not deducted yet. Free = in stock − reserved
+    const reservedBy = new Map();
+    (reservations.data || []).forEach(r => {
+      const key = `v:${r.item_key}`;
+      reservedBy.set(key, (reservedBy.get(key) || 0) + Number(r.qty || 0));
+    });
+    return [...out.values()].map(i => {
+      const reserved = reservedBy.get(i.key) || 0;
+      return { ...i, reserved, free: i.qty - reserved };
+    });
+  }, [catalog.data, stock.data, locals.data, reservations.data]);
 
   return {
     items,

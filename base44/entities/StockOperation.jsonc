@@ -1,0 +1,92 @@
+{
+  "name": "StockOperation",
+  "type": "object",
+  "properties": {
+    "op_key": {
+      "type": "string",
+      "description": "\u05de\u05e4\u05ea\u05d7 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u05dc\u05e4\u05e2\u05d5\u05dc\u05d4 (pick:<order>:<version>, sale:<client_sale_id>, receive:<id>, count:<id>) \u2014 \u05e4\u05e2\u05d5\u05dc\u05d4 \u05e9\u05db\u05d1\u05e8 \u05d1\u05d5\u05e6\u05e2\u05d4 \u05dc\u05d0 \u05de\u05d1\u05d5\u05e6\u05e2\u05ea \u05e9\u05d5\u05d1"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "PICK",
+        "SALE",
+        "RECEIPT",
+        "COUNT"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "IN_PROGRESS",
+        "DONE"
+      ],
+      "default": "IN_PROGRESS"
+    },
+    "applied_lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "\u05e9\u05d5\u05e8\u05d5\u05ea \u05e9\u05db\u05d1\u05e8 \u05e2\u05d5\u05d3\u05db\u05e0\u05d5 \u05d1\u05de\u05dc\u05d0\u05d9 \u2014 \u05d1\u05d4\u05e8\u05e6\u05d4 \u05d7\u05d5\u05d6\u05e8\u05ea \u05de\u05d3\u05dc\u05d2\u05d9\u05dd \u05e2\u05dc\u05d9\u05d4\u05df"
+    },
+    "payload": {
+      "type": "object",
+      "description": "\u05ea\u05de\u05d5\u05e0\u05ea \u05d4\u05e9\u05d5\u05e8\u05d5\u05ea \u05d1\u05ea\u05d7\u05d9\u05dc\u05ea \u05d4\u05e4\u05e2\u05d5\u05dc\u05d4"
+    },
+    "tenant_email": {
+      "type": "string",
+      "description": "\u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+    },
+    "station_email": {
+      "type": "string",
+      "description": "\u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+    }
+  },
+  "required": [
+    "op_key",
+    "status"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
+}

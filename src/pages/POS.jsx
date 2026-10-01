@@ -20,6 +20,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGlobalBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 import { usePosBranch } from '@/hooks/usePosCatalog';
+import { usePosReservations } from '@/hooks/usePosReservations';
+import { enqueueSaleStock, flushSaleStock } from '@/lib/saleStockQueue';
 
 // Offline selling is disabled: a sale is recorded ONLY when it reaches the server.
 // (The offline code in offlineManager / OnlineStatus / useOfflineSync is kept but no longer wired in.)
@@ -108,6 +110,20 @@ export default function POS() {
   const stockModeEnabled = appSettingsList[0]?.stock_mode_enabled !== false;
 
   useInventorySync();
+
+  // Cart reservations across this branch's computers (background only)
+  const reservedByOthers = usePosReservations({ branch: activeBranch, user, cartItems });
+
+  // Stock of saved sales is deducted on the server in the background; waiting ones are resent
+  const flushStock = useCallback(() => {
+    flushSaleStock().then(n => { if (n) queryClient.invalidateQueries({ queryKey: ['product-variants'] }); });
+  }, [queryClient]);
+  useEffect(() => {
+    flushStock();
+    const timer = setInterval(flushStock, 60000);
+    window.addEventListener('online', flushStock);
+    return () => { clearInterval(timer); window.removeEventListener('online', flushStock); };
+  }, [flushStock]);
 
   // ── Derived values (not hooks) ───────────────────────────────────
   const isEffectivelyOffline = isOfflineMode || !navigator.onLine;
@@ -293,31 +309,20 @@ export default function POS() {
 
       if (isRetry) {
         const existing = await base44.entities.Sale.filter({ client_sale_id: clientSaleId }, '-created_date', 1);
-        if (existing.length > 0) return { ...existing[0], _recovered: true };
+        if (existing.length > 0) {
+          enqueueSaleStock(clientSaleId); // deducted once on the server, even if it was already done
+          return { ...existing[0], _recovered: true };
+        }
       }
 
       const sale = await base44.entities.Sale.create({ ...saleData, client_sale_id: clientSaleId });
-
-      // The sale is saved — a stock-update failure must not turn it into an error (and a retry)
-      let stockWarning = false;
-      try {
-        for (const item of saleItems) {
-          if (!item.variant_id) continue;
-          const variant = allVariants.find(v => v.id === item.variant_id);
-          if (variant) {
-            await base44.entities.ProductVariant.update(variant.id, {
-              stock: Math.max(0, (variant.stock || 0) - item.quantity),
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('[POS] Sale saved but stock update failed:', err?.message);
-        stockWarning = true;
-      }
-      return { ...sale, _stockWarning: stockWarning };
+      // Stock is deducted on the server in the background (keyed by client_sale_id, never below 0)
+      enqueueSaleStock(clientSaleId);
+      return sale;
     },
     onSuccess: (sale) => {
       pendingSaleIdRef.current = null;
+      flushStock();
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales', activeBranch?.id] });
       setLastSale(sale);
@@ -370,6 +375,7 @@ export default function POS() {
               created_date: data.created_date || queued_at,
             });
           }
+          enqueueSaleStock(clientSaleId);
           await offlineManager.markSaleAsSynced(offline_id);
           sent += 1;
         } catch (err) {
@@ -379,6 +385,7 @@ export default function POS() {
       }
     } finally {
       setSendingUnsent(false);
+      flushStock();
       await refreshUnsentSales();
       queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales', activeBranch?.id] });
     }
@@ -406,7 +413,8 @@ export default function POS() {
     if (stockConfirm) return;
 
     const liveVariant = allVariants.find(v => v.id === variant.id);
-    const available = liveVariant?.stock || 0;
+    // Free = stock − what other computers of this branch hold in their carts
+    const available = (liveVariant?.stock || 0) - reservedByOthers(variant.id);
     const inCart = cartItems.find(item => item.variant_id === variant.id)?.quantity || 0;
     if (inCart + 1 > available) {
       if (stockModeEnabled) {
@@ -510,7 +518,7 @@ export default function POS() {
     // Raising the quantity above what's in stock → block (if blocking is on) or warn first
     if (item && newQty > item.quantity) {
       if (stockConfirm) return;
-      const available = allVariants.find(v => v.id === item.variant_id)?.stock || 0;
+      const available = (allVariants.find(v => v.id === item.variant_id)?.stock || 0) - reservedByOthers(item.variant_id);
       if (newQty > available) {
         if (stockModeEnabled) {
           toast({ title: '⛔ אין מלאי', description: `רשומים במלאי רק ${available}`, duration: 2000 });

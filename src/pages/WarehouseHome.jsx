@@ -12,6 +12,7 @@ import SupplyOrderLines from '@/components/supply/SupplyOrderLines';
 import SupplyOrderParties from '@/components/supply/SupplyOrderParties';
 import SupplyStatusBadge from '@/components/supply/SupplyStatusBadge';
 import PickingScreen from '@/components/supply/PickingScreen';
+import PendingStockBanner from '@/components/supply/PendingStockBanner';
 import OrderDocumentDialog from '@/components/supply/OrderDocument';
 import PinPadDialog from '@/components/warehouse/PinPadDialog';
 import PickerPortal from '@/components/warehouse/PickerPortal';
@@ -172,6 +173,7 @@ export default function WarehouseHome() {
                             <p className="text-lg font-bold text-gray-900">{o.branch_name} · {formatOrderDate(o.ready_at || o.created_date)}</p>
                             <p className="text-sm text-gray-500">הזמנה #{o.order_number} · {t.lines} שורות · נארזו {units}/{t.units}</p>
                             {o.picker_name && <p className="text-xs text-gray-400 mt-0.5">מלקט: {o.picker_name}</p>}
+                            {o.stock_status === 'PENDING' && <p className="text-xs font-semibold text-red-600 mt-0.5">ממתין לעדכון מלאי — פתחו את ההזמנה להשלמה</p>}
                           </button>
                           <div className="grid grid-cols-2 gap-2">
                             <Button variant="outline" onClick={() => setDocOrder(o)} className="h-12 gap-1.5 text-base">
@@ -291,6 +293,8 @@ function OrderView({ order, warehouse, onBack, onPick, onPrint }) {
           </Button>
         )}
       </div>
+
+      <PendingStockBanner order={order} />
 
       {order.network_notes && (
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-gray-800">

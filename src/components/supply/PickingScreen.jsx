@@ -10,7 +10,9 @@ import { fetchBranchCatalogRecords } from '@/lib/branchCatalog';
 import {
   buildCatalogRows, lineQty, matchScannedCode, pickedPercent, isOverPicked, nowIso,
 } from '@/lib/supplyOrders';
-import { planPickDeduction, applyStockChanges } from '@/lib/warehouseStock';
+import { stockOps } from '@/lib/warehouseStock';
+import { usePickAvailability } from '@/hooks/usePickAvailability';
+import StockWarningDialog from '@/components/stock/StockWarningDialog';
 import PickLineDialog from './PickLineDialog';
 import PickerSelectDialog from './PickerSelectDialog';
 
@@ -22,7 +24,16 @@ import PickerSelectDialog from './PickerSelectDialog';
 export default function PickingScreen({ order, warehouse, onBack, onFinished }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [items, setItems] = useState(() => (order.items || []).map(i => ({ ...i })));
+  // An order packed before stock was tracked: what was packed then counts as already deducted,
+  // so editing it only changes the stock by the difference
+  const legacyPacked = order.status === 'PACKED' && !order.pick_version && !order.stock_deducted;
+  const [items, setItems] = useState(() => (order.items || []).map(i => (
+    legacyPacked && i.warehouse_deducted == null ? { ...i, warehouse_deducted: Number(i.picked_qty || 0) } : { ...i }
+  )));
+  // Same version for every retry of "finish" from this screen → the deduction happens once
+  const version = useRef((order.pick_version || 0) + 1);
+  const availableFor = usePickAvailability(warehouse, order);
+  const [stockWarn, setStockWarn] = useState(null); // { available, description, onConfirm }
   const [picker, setPicker] = useState(null); // chosen on entry every time
   const [active, setActive] = useState(null); // { index } | { extraRow }
   const [qty, setQty] = useState('');
@@ -90,20 +101,50 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
     return undefined;
   };
 
+  // Already deducted from the warehouse for this branch variant (server-side record, or legacy line field)
+  const deductedFor = (line) => (order.stock_deducted
+    ? Number(order.stock_deducted[line.variant_id] || 0)
+    : Number(line.warehouse_deducted || 0));
+
   const confirm = async (qtyValue = qty) => {
     if (!activeLine) return;
     const n = Math.max(0, parseInt(qtyValue, 10) || 0);
+    const act = active;
+    const line = activeLine;
+    // Packing more than is free in the warehouse → warn, the picker may still confirm
+    if (line.variant_id && n > Number(line.picked_qty || 0)) {
+      const need = n - deductedFor(line);
+      const free = need > 0 ? await availableFor(line.variant_id).catch(() => Infinity) : Infinity;
+      if (need > free) {
+        setStockWarn({
+          available: Math.max(0, free),
+          description: `${line.product_name || ''} ${line.variant_label ? `· ${line.variant_label}` : ''}`,
+          onConfirm: () => applyConfirm(n, act),
+        });
+        return;
+      }
+    }
+    await applyConfirm(n, act);
+  };
+
+  const applyConfirm = async (n, act) => {
     let next;
-    if (active.extraRow) {
+    if (act.extraRow) {
       if (n === 0) { setActive(null); return; }
-      next = [...items, { ...active.extraRow, picked_qty: n, picked_at: nowIso() }];
+      next = [...items, { ...act.extraRow, picked_qty: n, picked_at: nowIso() }];
     } else {
-      next = items.map((it, i) => (i === active.index ? { ...it, picked_qty: n, picked_at: nowIso() } : it));
+      next = items.map((it, i) => (i === act.index ? { ...it, picked_qty: n, picked_at: nowIso() } : it));
     }
     setItems(next);
     setActive(null);
     setQty('');
-    await persist(next);
+    const ok = await persist(next);
+    // Confirmed quantity is reserved in the warehouse (in the background — never blocks the picker)
+    if (ok) {
+      stockOps('pickReserve', { order_id: order.id })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['warehouse-reservations', warehouse.id] }))
+        .catch(() => {});
+    }
   };
 
   // ── Scanner ──
@@ -161,35 +202,26 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
     setFinishing(true);
     // Lines never confirmed are recorded as 0 packed
     const pickedItems = items.map(it => (it.picked_qty == null ? { ...it, picked_qty: 0 } : it));
-    // Warehouse stock goes down only by what wasn't deducted yet (safe for "ערוך ליקוט")
-    let finalItems = pickedItems;
-    let stockChanges = [];
+    // The server saves the order, deducts only what wasn't deducted yet (safe for "ערוך ליקוט"),
+    // and marks it deducted only after the stock was updated. A retry with the same version is applied once.
     try {
-      const plan = await planPickDeduction(pickedItems);
-      finalItems = plan.nextItems;
-      stockChanges = plan.changes;
-    } catch { /* stock is skipped; the order still finishes */ }
-    const ok = await persist(finalItems, {
-      status: 'PACKED',
-      ready_at: nowIso(),
-      warehouse_notes: notes.trim(),
-      picker_name: picker,
-    });
-    if (ok && stockChanges.length) {
-      try {
-        await applyStockChanges(warehouse, stockChanges, {
-          type: 'PICK', order_id: order.id, order_number: order.order_number, performed_by: picker,
-        });
-        queryClient.invalidateQueries({ queryKey: ['warehouse-stock'] });
-      } catch (err) {
-        toast({ title: 'ההזמנה נשמרה, אך מלאי המחסן לא עודכן', description: err?.message, variant: 'destructive' });
-      }
-    }
-    setFinishing(false);
-    if (ok) {
+      const res = await stockOps('pickFinish', {
+        order_id: order.id, items: pickedItems, notes: notes.trim(), picker, version: version.current,
+      });
       setConfirmFinish(false);
       toast({ title: `הזמנה #${order.order_number} נארזה` });
-      onFinished({ ...order, items: finalItems, status: 'PACKED', ready_at: nowIso(), warehouse_notes: notes.trim(), picker_name: picker });
+      onFinished(res.order);
+    } catch (err) {
+      toast({
+        title: 'סיום ההזמנה לא הושלם — לחצו שוב',
+        description: `${err.message}. לחיצה חוזרת לא תוריד מלאי פעמיים.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setFinishing(false);
+      queryClient.invalidateQueries({ queryKey: ['supply-orders-warehouse'] });
+      queryClient.invalidateQueries({ queryKey: ['warehouse-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['warehouse-reservations'] });
     }
   };
 
@@ -332,6 +364,15 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
           onConfirm={() => confirm()}
           onCancel={() => { setActive(null); setQty(''); }}
           saving={saving}
+        />
+      )}
+
+      {stockWarn && (
+        <StockWarningDialog
+          available={stockWarn.available}
+          description={stockWarn.description}
+          onConfirm={() => { const fn = stockWarn.onConfirm; setStockWarn(null); fn(); }}
+          onCancel={() => setStockWarn(null)}
         />
       )}
     </div>

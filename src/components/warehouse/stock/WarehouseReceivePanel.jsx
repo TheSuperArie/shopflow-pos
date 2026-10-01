@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Trash2, ScanLine, Save } from 'lucide-react';
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { useWarehouseInventory } from '@/hooks/useWarehouseInventory';
-import { applyStockChanges } from '@/lib/warehouseStock';
+import { stockOps } from '@/lib/warehouseStock';
 import { matchScannedCode } from '@/lib/supplyOrders';
 import ReceiptHistory from './ReceiptHistory';
 
@@ -20,6 +20,7 @@ export default function WarehouseReceivePanel({ warehouse }) {
   const [q, setQ] = useState('');
   const [meta, setMeta] = useState(emptyMeta);
   const [saving, setSaving] = useState(false);
+  const receiptKey = useRef(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -53,14 +54,22 @@ export default function WarehouseReceivePanel({ warehouse }) {
   const save = async () => {
     setSaving(true);
     try {
-      await applyStockChanges(warehouse, valid.map(l => ({ ...l.item, delta: parseInt(l.qty, 10) })), {
-        type: 'RECEIPT',
-        receipt_id: `R${Date.now()}`,
-        supplier_name: meta.supplier_name.trim(),
-        delivery_note: meta.delivery_note.trim(),
-        notes: meta.notes.trim(),
-        performed_by: 'מנהל המחסן',
+      // Same key until the receipt succeeds — a retry after a failure never adds the stock twice
+      if (!receiptKey.current) receiptKey.current = `R${Date.now()}`;
+      await stockOps('warehouseReceive', {
+        warehouse_id: warehouse.id,
+        op_key: receiptKey.current,
+        lines: valid.map(l => ({
+          variant_id: l.item.variant_id || null, local_product_id: l.item.local_product_id || null,
+          product_name: l.item.product_name, variant_label: l.item.variant_label, category_name: l.item.category_name,
+          sku: l.item.sku, qty: parseInt(l.qty, 10),
+        })),
+        meta: {
+          supplier_name: meta.supplier_name.trim(), delivery_note: meta.delivery_note.trim(),
+          notes: meta.notes.trim(), performed_by: 'מנהל המחסן',
+        },
       });
+      receiptKey.current = null;
       queryClient.invalidateQueries({ queryKey: ['warehouse-stock', warehouse.id] });
       queryClient.invalidateQueries({ queryKey: ['warehouse-movements', warehouse.id] });
       toast({ title: `נקלטו ${valid.length} שורות` });
