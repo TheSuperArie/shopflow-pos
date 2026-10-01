@@ -151,9 +151,9 @@ export default function AdminSettings() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label>פעל ע"פ מלאי</Label>
+              <Label>חסום מכירה של מוצר שאזל</Label>
               <p className="text-xs text-gray-400 mt-1">
-                כבוי — החנות פועלת ללא קשר למלאי: ניתן למכור בקופה גם מוצרים שאינם במלאי ומכירות אינן מורידות מלאי
+                דלוק — מוצר שהמלאי שלו 0 לא יופיע למכירה בקופה. כבוי — ניתן למכור הכל. בכל מקרה כל מכירה מורידה מהמלאי
               </p>
             </div>
             <Switch checked={stockModeEnabled} onCheckedChange={setStockModeEnabled} />
