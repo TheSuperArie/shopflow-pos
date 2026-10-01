@@ -14,14 +14,14 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const user = useCurrentUser();
 
-  const { data: settings = [], isLoading } = useQuery({
+  const { data: settings = [], isLoading, isFetched: settingsLoaded } = useQuery({
     queryKey: ['app-settings', user?.email],
     queryFn: () => user ? base44.entities.AppSettings.filter({ created_by: user.email }) : [],
     enabled: !!user,
   });
 
   // The network this account's station belongs to (branch where this email is the station)
-  const { data: myNetworkBranches = [] } = useQuery({
+  const { data: myNetworkBranches = [], isFetched: branchesLoaded } = useQuery({
     queryKey: ['my-network-branch', user?.email],
     queryFn: () => user ? base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }) : [],
     enabled: !!user,
@@ -31,6 +31,12 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Never check a code before the account's settings and branches have loaded —
+    // otherwise the fallback codes or a missing branch link could let someone in.
+    if (!user || !settingsLoaded || !branchesLoaded) {
+      setError('טוען נתונים... נסה שוב בעוד רגע');
+      return;
+    }
     const s = settings[0];
     // Fallback hardcoded values for testing — replace via AppSettings in DB
     const branchPassword = s?.admin_password || '1234';
