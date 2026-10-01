@@ -1,53 +1,52 @@
 {
   "name": "SupplierPayment",
-  "type": "object",
   "properties": {
-    "supplier_id": {
-      "type": "string",
-      "description": "מזהה ספק"
-    },
-    "order_id": {
-      "type": "string",
-      "description": "מזהה הזמנה (אופציונלי)"
-    },
     "amount": {
-      "type": "number",
-      "description": "סכום תשלום"
-    },
-    "payment_date": {
-      "type": "string",
-      "format": "date",
-      "description": "תאריך תשלום"
-    },
-    "payment_method": {
-      "type": "string",
-      "enum": [
-        "מזומן",
-        "אשראי",
-        "העברה בנקאית",
-        "צ'ק"
-      ],
-      "description": "אמצעי תשלום"
-    },
-    "reference_number": {
-      "type": "string",
-      "description": "מספר אסמכתא"
-    },
-    "notes": {
-      "type": "string",
-      "description": "הערות"
+      "description": "\u05e1\u05db\u05d5\u05dd \u05ea\u05e9\u05dc\u05d5\u05dd",
+      "type": "number"
     },
     "branch_id": {
-      "type": "string",
-      "description": "מזהה הסניף (FK to Branch)"
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)",
+      "type": "string"
+    },
+    "notes": {
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea",
+      "type": "string"
+    },
+    "order_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d6\u05de\u05e0\u05d4 (\u05d0\u05d5\u05e4\u05e6\u05d9\u05d5\u05e0\u05dc\u05d9)",
+      "type": "string"
+    },
+    "payment_date": {
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05ea\u05e9\u05dc\u05d5\u05dd",
+      "format": "date",
+      "type": "string"
+    },
+    "payment_method": {
+      "description": "\u05d0\u05de\u05e6\u05e2\u05d9 \u05ea\u05e9\u05dc\u05d5\u05dd",
+      "enum": [
+        "\u05de\u05d6\u05d5\u05de\u05df",
+        "\u05d0\u05e9\u05e8\u05d0\u05d9",
+        "\u05d4\u05e2\u05d1\u05e8\u05d4 \u05d1\u05e0\u05e7\u05d0\u05d9\u05ea",
+        "\u05e6'\u05e7"
+      ],
+      "type": "string"
+    },
+    "reference_number": {
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05d0\u05e1\u05de\u05db\u05ea\u05d0",
+      "type": "string"
     },
     "station_email": {
-      "type": "string",
-      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "supplier_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05e4\u05e7",
+      "type": "string"
     },
     "tenant_email": {
-      "type": "string",
-      "description": "אימייל בעל הרשת. ריק = חנות יחידה — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
     }
   },
   "required": [
@@ -55,5 +54,48 @@
     "amount",
     "payment_date",
     "payment_method"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  },
+  "type": "object"
 }
