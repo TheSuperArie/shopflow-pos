@@ -47,7 +47,6 @@ export default function Cart({ items, onUpdateQty, onRemove, onCheckout }) {
               <span className="font-bold text-lg w-8 text-center">{item.quantity}</span>
               <button
                 onClick={() => onUpdateQty(idx, item.quantity + 1)}
-                disabled={item.variant_stock && item.quantity >= item.variant_stock}
                 className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
