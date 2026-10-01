@@ -50,6 +50,8 @@ export default function POS() {
   // Id of the sale currently being checked out — kept across retries of the same cart,
   // so a retry after an unclear failure never records the sale twice
   const pendingSaleIdRef = useRef(null);
+  // Out-of-stock warning popup: { title, description, onConfirm } — the seller can still sell after confirming
+  const [stockConfirm, setStockConfirm] = useState(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -400,12 +402,38 @@ export default function POS() {
       return;
     }
 
+    // A warning popup is already open — ignore further scans/taps until the seller answers it
+    if (stockConfirm) return;
+
     const liveVariant = allVariants.find(v => v.id === variant.id);
-    if (stockModeEnabled && (liveVariant?.stock || 0) <= 0) {
-      toast({ title: '⛔ אין מלאי', description: 'הפריט אזל מהמלאי', duration: 2000 });
+    const available = liveVariant?.stock || 0;
+    const inCart = cartItems.find(item => item.variant_id === variant.id)?.quantity || 0;
+    if (inCart + 1 > available) {
+      if (stockModeEnabled) {
+        toast({ title: '⛔ אין מלאי', description: 'הפריט אזל מהמלאי', duration: 2000 });
+        return;
+      }
+      setStockConfirm({
+        title: 'שים לב — המוצר אזל מהמלאי',
+        description: stockWarningText(variant, group, available, inCart),
+        onConfirm: () => pushToCart(variant, group, liveVariant),
+      });
       return;
     }
 
+    pushToCart(variant, group, liveVariant);
+  };
+
+  const stockWarningText = (variant, group, available, inCart) => {
+    const dimText = variant.dimensions && Object.keys(variant.dimensions).length > 0
+      ? Object.values(variant.dimensions).join(' / ')
+      : '';
+    const name = dimText ? `${group.name} - ${dimText}` : group.name;
+    const stockText = available > 0 ? `רשומים במלאי ${available} וכבר יש ${inCart} בעגלה` : 'רשום במלאי 0';
+    return `${name}: ${stockText}. אם יש פריט כזה בחנות — אפשר למכור אותו.`;
+  };
+
+  const pushToCart = (variant, group, liveVariant) => {
     const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
     const costPrice = group.has_uniform_price ? group.uniform_cost_price : variant.cost_price;
     const dimText = variant.dimensions && Object.keys(variant.dimensions).length > 0
@@ -452,6 +480,7 @@ export default function POS() {
     groups: allGroups,
     onAddToCart: addToCart,
     onGroupSelect: handleScannerGroupSelect,
+    stockModeEnabled,
   });
 
   // Barcode scan: bypass modal entirely — add directly to cart (or open selector only if multi-variant needed)
@@ -468,9 +497,28 @@ export default function POS() {
   const updateCartQty = (idx, newQty) => {
     if (newQty <= 0) {
       setCartItems(prev => prev.filter((_, i) => i !== idx));
-    } else {
-      setCartItems(prev => prev.map((item, i) => i === idx ? { ...item, quantity: newQty } : item));
+      return;
     }
+    const item = cartItems[idx];
+    const setQty = () => setCartItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: newQty } : it));
+    // Raising the quantity above what's in stock → block (if blocking is on) or warn first
+    if (item && newQty > item.quantity) {
+      if (stockConfirm) return;
+      const available = allVariants.find(v => v.id === item.variant_id)?.stock || 0;
+      if (newQty > available) {
+        if (stockModeEnabled) {
+          toast({ title: '⛔ אין מלאי', description: `רשומים במלאי רק ${available}`, duration: 2000 });
+          return;
+        }
+        setStockConfirm({
+          title: 'שים לב — אין מספיק במלאי',
+          description: `${item.product_name}: רשומים במלאי ${available}. אם יש עוד בחנות — אפשר למכור.`,
+          onConfirm: setQty,
+        });
+        return;
+      }
+    }
+    setQty();
   };
 
   const removeCartItem = (idx) => setCartItems(prev => prev.filter((_, i) => i !== idx));

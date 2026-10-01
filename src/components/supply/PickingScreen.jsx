@@ -10,6 +10,7 @@ import { fetchBranchCatalogRecords } from '@/lib/branchCatalog';
 import {
   buildCatalogRows, lineQty, matchScannedCode, pickedPercent, isOverPicked, nowIso,
 } from '@/lib/supplyOrders';
+import { planPickDeduction, applyStockChanges } from '@/lib/warehouseStock';
 import PickLineDialog from './PickLineDialog';
 import PickerSelectDialog from './PickerSelectDialog';
 
@@ -159,13 +160,31 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
   const finish = async () => {
     setFinishing(true);
     // Lines never confirmed are recorded as 0 packed
-    const finalItems = items.map(it => (it.picked_qty == null ? { ...it, picked_qty: 0 } : it));
+    const pickedItems = items.map(it => (it.picked_qty == null ? { ...it, picked_qty: 0 } : it));
+    // Warehouse stock goes down only by what wasn't deducted yet (safe for "ערוך ליקוט")
+    let finalItems = pickedItems;
+    let stockChanges = [];
+    try {
+      const plan = await planPickDeduction(pickedItems);
+      finalItems = plan.nextItems;
+      stockChanges = plan.changes;
+    } catch { /* stock is skipped; the order still finishes */ }
     const ok = await persist(finalItems, {
       status: 'PACKED',
       ready_at: nowIso(),
       warehouse_notes: notes.trim(),
       picker_name: picker,
     });
+    if (ok && stockChanges.length) {
+      try {
+        await applyStockChanges(warehouse, stockChanges, {
+          type: 'PICK', order_id: order.id, order_number: order.order_number, performed_by: picker,
+        });
+        queryClient.invalidateQueries({ queryKey: ['warehouse-stock'] });
+      } catch (err) {
+        toast({ title: 'ההזמנה נשמרה, אך מלאי המחסן לא עודכן', description: err?.message, variant: 'destructive' });
+      }
+    }
     setFinishing(false);
     if (ok) {
       setConfirmFinish(false);
