@@ -1,73 +1,115 @@
 {
   "name": "SupplierOrder",
-  "type": "object",
   "properties": {
-    "supplier_id": {
-      "type": "string",
-      "description": "מזהה ספק"
-    },
-    "order_number": {
-      "type": "string",
-      "description": "מספר הזמנה"
-    },
-    "order_date": {
-      "type": "string",
-      "format": "date",
-      "description": "תאריך הזמנה"
+    "branch_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)",
+      "type": "string"
     },
     "expected_delivery": {
-      "type": "string",
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d0\u05e1\u05e4\u05e7\u05d4 \u05de\u05e9\u05d5\u05e2\u05e8",
       "format": "date",
-      "description": "תאריך אספקה משוער"
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "ממתין",
-        "בדרך",
-        "התקבל חלקית",
-        "התקבל",
-        "בוטל"
-      ],
-      "default": "ממתין",
-      "description": "סטטוס הזמנה"
+      "type": "string"
     },
     "items": {
-      "type": "array",
+      "description": "\u05e4\u05e8\u05d9\u05d8\u05d9 \u05d4\u05d4\u05d6\u05de\u05e0\u05d4",
       "items": {
         "type": "object"
       },
-      "description": "פריטי ההזמנה"
-    },
-    "total_amount": {
-      "type": "number",
-      "description": "סכום כולל"
-    },
-    "paid_amount": {
-      "type": "number",
-      "default": 0,
-      "description": "סכום ששולם"
+      "type": "array"
     },
     "notes": {
-      "type": "string",
-      "description": "הערות"
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea",
+      "type": "string"
     },
-    "branch_id": {
-      "type": "string",
-      "description": "מזהה הסניף (FK to Branch)"
+    "order_date": {
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d4\u05d6\u05de\u05e0\u05d4",
+      "format": "date",
+      "type": "string"
+    },
+    "order_number": {
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4",
+      "type": "string"
+    },
+    "paid_amount": {
+      "default": 0,
+      "description": "\u05e1\u05db\u05d5\u05dd \u05e9\u05e9\u05d5\u05dc\u05dd",
+      "type": "number"
     },
     "station_email": {
-      "type": "string",
-      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "status": {
+      "default": "\u05de\u05de\u05ea\u05d9\u05df",
+      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d6\u05de\u05e0\u05d4",
+      "enum": [
+        "\u05de\u05de\u05ea\u05d9\u05df",
+        "\u05d1\u05d3\u05e8\u05da",
+        "\u05d4\u05ea\u05e7\u05d1\u05dc \u05d7\u05dc\u05e7\u05d9\u05ea",
+        "\u05d4\u05ea\u05e7\u05d1\u05dc",
+        "\u05d1\u05d5\u05d8\u05dc"
+      ],
+      "type": "string"
+    },
+    "supplier_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05e4\u05e7",
+      "type": "string"
     },
     "tenant_email": {
-      "type": "string",
-      "description": "אימייל בעל הרשת. ריק = חנות יחידה — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "total_amount": {
+      "description": "\u05e1\u05db\u05d5\u05dd \u05db\u05d5\u05dc\u05dc",
+      "type": "number"
     }
   },
   "required": [
     "supplier_id",
     "order_date",
     "total_amount"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  },
+  "type": "object"
 }
