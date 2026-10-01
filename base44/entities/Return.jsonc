@@ -1,94 +1,136 @@
 {
   "name": "Return",
-  "type": "object",
   "properties": {
-    "sale_id": {
-      "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4 \u05d4\u05de\u05e7\u05d5\u05e8\u05d9\u05ea"
+    "approval_date": {
+      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d0\u05d9\u05e9\u05d5\u05e8",
+      "format": "date",
+      "type": "string"
     },
-    "customer_name": {
-      "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05dc\u05e7\u05d5\u05d7"
+    "branch_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d1\u05d5 \u05d1\u05d5\u05e6\u05e2\u05d4 \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4 (FK to Branch). null = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 / \u05e8\u05e9\u05d5\u05de\u05d4 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05ea \u2014 \u05ea\u05d5\u05d0\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8 \u05de\u05dc\u05d0\u05d4",
+      "type": "string"
     },
     "customer_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7",
+      "type": "string"
+    },
+    "customer_name": {
+      "description": "\u05e9\u05dd \u05d4\u05dc\u05e7\u05d5\u05d7",
+      "type": "string"
     },
     "customer_phone": {
-      "type": "string",
-      "description": "\u05d8\u05dc\u05e4\u05d5\u05df \u05d4\u05dc\u05e7\u05d5\u05d7"
-    },
-    "items": {
-      "type": "array",
-      "items": {
-        "type": "object"
-      },
-      "description": "\u05e4\u05e8\u05d9\u05d8\u05d9\u05dd \u05dc\u05d4\u05d7\u05d6\u05e8\u05d4"
+      "description": "\u05d8\u05dc\u05e4\u05d5\u05df \u05d4\u05dc\u05e7\u05d5\u05d7",
+      "type": "string"
     },
     "exchange_items": {
-      "type": "array",
+      "description": "\u05de\u05d5\u05e6\u05e8\u05d9\u05dd \u05d7\u05dc\u05d5\u05e4\u05d9\u05d9\u05dd \u05e9\u05e0\u05de\u05e1\u05e8\u05d5 \u05dc\u05dc\u05e7\u05d5\u05d7 \u05d1\u05d4\u05d7\u05dc\u05e4\u05d4 \u2014 \u05e8\u05e7 \u05db\u05d0\u05e9\u05e8 \u05d0\u05d5\u05e4\u05df \u05d4\u05d4\u05d7\u05d6\u05e8 \u05d4\u05d5\u05d0 \u05d4\u05d7\u05dc\u05e4\u05d4",
       "items": {
         "type": "object"
       },
-      "description": "\u05de\u05d5\u05e6\u05e8\u05d9\u05dd \u05d7\u05dc\u05d5\u05e4\u05d9\u05d9\u05dd \u05e9\u05e0\u05de\u05e1\u05e8\u05d5 \u05dc\u05dc\u05e7\u05d5\u05d7 \u05d1\u05d4\u05d7\u05dc\u05e4\u05d4 \u2014 \u05e8\u05e7 \u05db\u05d0\u05e9\u05e8 \u05d0\u05d5\u05e4\u05df \u05d4\u05d4\u05d7\u05d6\u05e8 \u05d4\u05d5\u05d0 \u05d4\u05d7\u05dc\u05e4\u05d4"
+      "type": "array"
     },
-    "total_amount": {
-      "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
+    "items": {
+      "description": "\u05e4\u05e8\u05d9\u05d8\u05d9\u05dd \u05dc\u05d4\u05d7\u05d6\u05e8\u05d4",
+      "items": {
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "notes": {
+      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05e0\u05d5\u05e1\u05e4\u05d5\u05ea",
+      "type": "string"
+    },
+    "processed_by": {
+      "description": "\u05de\u05d9 \u05e2\u05d9\u05d1\u05d3 \u05d0\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4",
+      "type": "string"
     },
     "reason": {
-      "type": "string",
-      "description": "\u05e1\u05d9\u05d1\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
+      "description": "\u05e1\u05d9\u05d1\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4",
+      "type": "string"
+    },
+    "refund_method": {
+      "description": "\u05d0\u05d5\u05e4\u05df \u05d4\u05d4\u05d7\u05d6\u05e8",
+      "enum": [
+        "\u05d6\u05d9\u05db\u05d5\u05d9",
+        "\u05d4\u05d7\u05d6\u05e8 \u05db\u05e1\u05e4\u05d9",
+        "\u05d4\u05d7\u05dc\u05e4\u05d4"
+      ],
+      "type": "string"
+    },
+    "sale_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4 \u05d4\u05de\u05e7\u05d5\u05e8\u05d9\u05ea",
+      "type": "string"
+    },
+    "station_email": {
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
     },
     "status": {
-      "type": "string",
+      "default": "\u05de\u05de\u05ea\u05d9\u05df",
+      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4",
       "enum": [
         "\u05de\u05de\u05ea\u05d9\u05df",
         "\u05d0\u05d5\u05e9\u05e8",
         "\u05e0\u05d3\u05d7\u05d4",
         "\u05d4\u05d5\u05e9\u05dc\u05dd"
       ],
-      "default": "\u05de\u05de\u05ea\u05d9\u05df",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
-    },
-    "refund_method": {
-      "type": "string",
-      "enum": [
-        "\u05d6\u05d9\u05db\u05d5\u05d9",
-        "\u05d4\u05d7\u05d6\u05e8 \u05db\u05e1\u05e4\u05d9",
-        "\u05d4\u05d7\u05dc\u05e4\u05d4"
-      ],
-      "description": "\u05d0\u05d5\u05e4\u05df \u05d4\u05d4\u05d7\u05d6\u05e8"
-    },
-    "processed_by": {
-      "type": "string",
-      "description": "\u05de\u05d9 \u05e2\u05d9\u05d1\u05d3 \u05d0\u05ea \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4"
-    },
-    "notes": {
-      "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05e0\u05d5\u05e1\u05e4\u05d5\u05ea"
-    },
-    "approval_date": {
-      "type": "string",
-      "format": "date",
-      "description": "\u05ea\u05d0\u05e8\u05d9\u05da \u05d0\u05d9\u05e9\u05d5\u05e8"
-    },
-    "branch_id": {
-      "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d1\u05d5 \u05d1\u05d5\u05e6\u05e2\u05d4 \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4 (FK to Branch). null = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 / \u05e8\u05e9\u05d5\u05de\u05d4 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05ea \u2014 \u05ea\u05d5\u05d0\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8 \u05de\u05dc\u05d0\u05d4"
-    },
-    "station_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "type": "string"
     },
     "tenant_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "total_amount": {
+      "description": "\u05e1\u05db\u05d5\u05dd \u05d4\u05d4\u05d7\u05d6\u05e8\u05d4",
+      "type": "number"
     }
   },
   "required": [
     "items",
     "total_amount",
     "reason"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  },
+  "type": "object"
 }
