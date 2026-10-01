@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
  * Detects rapid sequential keystrokes (hardware scanner) terminating with Enter,
  * looks up the product, and calls onAddToCart(variant, group) or onGroupSelect(group).
  */
-export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroupSelect }) {
+export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroupSelect, stockModeEnabled = true }) {
   const bufferRef = useRef('');
   const lastKeyTimeRef = useRef(0);
   const { toast } = useToast();
@@ -56,11 +56,14 @@ export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroup
         g.barcode && (g.barcode.toLowerCase() === code.toLowerCase() || g.barcode.slice(-4).toLowerCase() === code.toLowerCase())
       );
       if (group) {
-        const groupVariants = variants.filter(v => v.group_id === group.id && (v.stock || 0) > 0);
+        // Blocking off → every size can be sold (the POS warns about ones out of stock)
+        const groupVariants = variants.filter(v => v.group_id === group.id && (!stockModeEnabled || (v.stock || 0) > 0));
         if (groupVariants.length === 1) {
           onAddToCart(groupVariants[0], group);
         } else if (groupVariants.length > 1) {
           onGroupSelect(group);
+        } else {
+          toast({ title: `⛔ ${group.name} — אזל מהמלאי`, duration: 2000, variant: 'destructive' });
         }
         return;
       }
@@ -71,7 +74,7 @@ export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroup
 
     // Accumulate printable characters
     bufferRef.current += e.key;
-  }, [variants, groups, onAddToCart, onGroupSelect, toast]);
+  }, [variants, groups, onAddToCart, onGroupSelect, toast, stockModeEnabled]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
