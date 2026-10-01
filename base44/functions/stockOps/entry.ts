@@ -34,9 +34,15 @@ export default async function (req) {
       tenant_email: owner.tenant_email || null, station_email: owner.station_email || null,
     });
     const isApplied = (op, line) => (op.applied_lines || []).includes(String(line));
-    const markLine = async (op, line) => {
+    // Saves the line as applied together with the quantity that actually changed (in one write)
+    const markLine = async (op, line, actual) => {
       op.applied_lines = [...(op.applied_lines || []), String(line)];
-      await db.StockOperation.update(op.id, { applied_lines: op.applied_lines });
+      const patch = { applied_lines: op.applied_lines };
+      if (actual !== undefined) {
+        op.payload = { ...(op.payload || {}), actual: { ...(op.payload?.actual || {}), [String(line)]: actual } };
+        patch.payload = op.payload;
+      }
+      await db.StockOperation.update(op.id, patch);
     };
     const finishOp = (op) => db.StockOperation.update(op.id, { status: 'DONE' });
 
@@ -75,6 +81,7 @@ export default async function (req) {
           qty_change: change, qty_after: after, date: now(),
         });
       }
+      return change;
     };
 
     // Branch variant → original network variant (source_id), aggregated per branch variant
@@ -144,18 +151,21 @@ export default async function (req) {
       for (const l of lines) {
         if (isApplied(op, l.k)) continue;
         const delta = l.target - l.base;
+        let change = 0;
         if (delta !== 0) {
-          await applyWarehouseLine(w, {
+          change = await applyWarehouseLine(w, {
             variant_id: l.nid, delta: -delta, product_name: l.product_name, variant_label: l.variant_label,
             category_name: l.category_name, sku: l.sku,
           }, { type: 'PICK', order_id: order.id, order_number: order.order_number, performed_by: op.payload?.picker || '' });
         }
-        await markLine(op, l.k);
+        // What really left the warehouse (stock never goes below 0)
+        await markLine(op, l.k, l.base - change);
       }
-      // Only now — after the stock was updated — the order is marked as deducted
+      // Only now — after the stock was updated — the order is marked as deducted (actual quantities)
       const fresh = await first(db.SupplyOrder, { id: order.id });
       const deducted = { ...(fresh.stock_deducted || {}) };
-      lines.forEach(l => { deducted[l.k] = l.target; });
+      const actual = op.payload?.actual || {};
+      lines.forEach(l => { deducted[l.k] = actual[l.k] ?? l.target; });
       await db.SupplyOrder.update(order.id, { stock_deducted: deducted, stock_status: 'DONE' });
       await finishOp(op);
       const left = await db.StockReservation.filter({ scope: 'WAREHOUSE', order_id: order.id }, undefined, 1000);
@@ -264,8 +274,14 @@ export default async function (req) {
         const v = await first(db.ProductVariant, { id: it.variant_id });
         const allowed = v && (v.created_by_id === sale.created_by_id || v.created_by_id === user.id ||
           isMe(v.station_email) || isMe(v.tenant_email) || (sale.branch_id && v.branch_id === sale.branch_id));
-        if (allowed) await db.ProductVariant.update(v.id, { stock: Math.max(0, Number(v.stock || 0) - Number(it.quantity || 0)) });
-        await markLine(op, i);
+        let removed = 0;
+        if (allowed) {
+          const before = Number(v.stock || 0);
+          const after = Math.max(0, before - Number(it.quantity || 0));
+          removed = before - after; // actually deducted, never below 0
+          if (after !== before) await db.ProductVariant.update(v.id, { stock: after });
+        }
+        await markLine(op, i, removed);
       }
       await finishOp(op);
       // The cart reservation of this computer turns into the deduction

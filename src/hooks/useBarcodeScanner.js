@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
  * Detects rapid sequential keystrokes (hardware scanner) terminating with Enter,
  * looks up the product, and calls onAddToCart(variant, group) or onGroupSelect(group).
  */
-export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroupSelect, stockModeEnabled = true }) {
+export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroupSelect, stockModeEnabled = true, freeStock = (v) => v.stock || 0 }) {
   const bufferRef = useRef('');
   const lastKeyTimeRef = useRef(0);
   const { toast } = useToast();
@@ -57,7 +57,7 @@ export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroup
       );
       if (group) {
         // Blocking off → every size can be sold (the POS warns about ones out of stock)
-        const groupVariants = variants.filter(v => v.group_id === group.id && (!stockModeEnabled || (v.stock || 0) > 0));
+        const groupVariants = variants.filter(v => v.group_id === group.id && (!stockModeEnabled || freeStock(v) > 0));
         if (groupVariants.length === 1) {
           onAddToCart(groupVariants[0], group);
         } else if (groupVariants.length > 1) {
@@ -74,7 +74,7 @@ export function useGlobalBarcodeScanner({ variants, groups, onAddToCart, onGroup
 
     // Accumulate printable characters
     bufferRef.current += e.key;
-  }, [variants, groups, onAddToCart, onGroupSelect, toast, stockModeEnabled]);
+  }, [variants, groups, onAddToCart, onGroupSelect, toast, stockModeEnabled, freeStock]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

@@ -21,6 +21,7 @@ import { useGlobalBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { fetchPosCatalogRecords } from '@/lib/branchCatalog';
 import { usePosBranch } from '@/hooks/usePosCatalog';
 import { usePosReservations } from '@/hooks/usePosReservations';
+import StuckStockBanner from '@/components/pos/StuckStockBanner';
 import { enqueueSaleStock, flushSaleStock } from '@/lib/saleStockQueue';
 
 // Offline selling is disabled: a sale is recorded ONLY when it reaches the server.
@@ -488,6 +489,9 @@ export default function POS() {
   const handleVariantConfirm = (variant, group) => { addToCart(variant, group); setSelectedGroup(null); };
   const handleScannerGroupSelect = useCallback((group) => { setSelectedGroup(group); }, []);
 
+  // Same "free" as a regular add: stock − other computers' carts
+  const scanFreeStock = useCallback((v) => (v.stock || 0) - reservedByOthers(v.id), [reservedByOthers]);
+
   // Global barcode listener — always active, silent add to cart
   useGlobalBarcodeScanner({
     variants: allVariants,
@@ -495,6 +499,7 @@ export default function POS() {
     onAddToCart: addToCart,
     onGroupSelect: handleScannerGroupSelect,
     stockModeEnabled,
+    freeStock: scanFreeStock,
   });
 
   // Barcode scan: bypass modal entirely — add directly to cart (or open selector only if multi-variant needed)
@@ -542,6 +547,7 @@ export default function POS() {
   return (
     <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
       {/* Sales the old offline mode left on this device */}
+      <StuckStockBanner onRetry={flushStock} />
       {unsentSales.length > 0 && (
         <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-3 text-sm shrink-0">
           <span className="flex items-center gap-2 text-amber-900">

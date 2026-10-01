@@ -4,9 +4,14 @@ import { base44 } from '@/api/base44Client';
  * POS stock deduction runs on the server, keyed by client_sale_id (so a sale is deducted once,
  * even from two computers or after a resync). Sales waiting for it are kept on this computer
  * and sent in the background — the checkout never waits for it.
+ * A sale the server can't find is retried up to MAX_TRIES times / MAX_AGE, then moved to a
+ * "stuck" list shown to the manager instead of retrying forever.
  */
 const QUEUE_KEY = 'pos_pending_stock_sales';
+const STUCK_KEY = 'pos_stuck_stock_sales';
 const DEVICE_KEY = 'pos_device_id';
+const MAX_TRIES = 10;
+const MAX_AGE = 24 * 60 * 60 * 1000;
 
 export function getDeviceId() {
   let id = localStorage.getItem(DEVICE_KEY);
@@ -19,17 +24,32 @@ export function getDeviceId() {
   return id;
 }
 
-const read = () => {
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
+const load = (key) => {
+  try {
+    // Older entries were plain ids
+    return JSON.parse(localStorage.getItem(key) || '[]').map(x => (typeof x === 'string' ? { id: x, tries: 0, since: Date.now() } : x));
+  } catch { return []; }
 };
-const write = (list) => localStorage.setItem(QUEUE_KEY, JSON.stringify(list));
-const remove = (id) => write(read().filter(x => x !== id));
+const save = (key, list) => {
+  localStorage.setItem(key, JSON.stringify(list));
+  window.dispatchEvent(new Event('pos-stuck-stock'));
+};
 
 export function enqueueSaleStock(clientSaleId) {
   if (!clientSaleId) return;
-  const list = read();
-  if (!list.includes(clientSaleId)) write([...list, clientSaleId]);
+  const list = load(QUEUE_KEY);
+  if (!list.some(x => x.id === clientSaleId)) save(QUEUE_KEY, [...list, { id: clientSaleId, tries: 0, since: Date.now() }]);
 }
+
+export const getStuckSaleStock = () => load(STUCK_KEY);
+
+/** Back to the queue (fresh tries) — the "try again" button */
+export function retryStuckSaleStock() {
+  const stuck = load(STUCK_KEY);
+  save(STUCK_KEY, []);
+  stuck.forEach(s => enqueueSaleStock(s.id));
+}
+export const dismissStuckSaleStock = () => save(STUCK_KEY, []);
 
 let running = false;
 /** Sends every waiting sale; returns how many were deducted now. */
@@ -38,13 +58,23 @@ export async function flushSaleStock() {
   running = true;
   let done = 0;
   try {
-    for (const id of read()) {
+    for (const entry of load(QUEUE_KEY)) {
+      const drop = () => save(QUEUE_KEY, load(QUEUE_KEY).filter(x => x.id !== entry.id));
       try {
-        await base44.functions.invoke('stockOps', { action: 'posSale', client_sale_id: id, device_id: getDeviceId() });
-        remove(id);
+        await base44.functions.invoke('stockOps', { action: 'posSale', client_sale_id: entry.id, device_id: getDeviceId() });
+        drop();
         done += 1;
       } catch (err) {
-        if (err?.response?.status === 403) remove(id); // not ours — never retried
+        const status = err?.response?.status;
+        if (status === 403) { drop(); continue; } // not ours — never retried
+        if (status !== 404) continue; // network/server error — keep trying later
+        const tries = (entry.tries || 0) + 1;
+        if (tries >= MAX_TRIES || Date.now() - (entry.since || Date.now()) > MAX_AGE) {
+          drop();
+          save(STUCK_KEY, [...load(STUCK_KEY).filter(x => x.id !== entry.id), { ...entry, tries, stuck_at: Date.now() }]);
+        } else {
+          save(QUEUE_KEY, load(QUEUE_KEY).map(x => (x.id === entry.id ? { ...x, tries } : x)));
+        }
       }
     }
   } finally {
