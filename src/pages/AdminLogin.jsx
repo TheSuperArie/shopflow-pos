@@ -29,20 +29,12 @@ export default function AdminLogin() {
   // An approved connection to someone else's network → this account is a branch station
   const masterEmail = myNetworkBranches.find(b => b.tenant_email && b.tenant_email !== user.email)?.tenant_email;
 
-  // The network master's settings — his code works from any of his branches
-  const { data: masterSettings = [] } = useQuery({
-    queryKey: ['network-master-settings', masterEmail],
-    queryFn: () => masterEmail ? base44.entities.AppSettings.filter({ created_by: masterEmail }) : [],
-    enabled: !!masterEmail,
-  });
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const s = settings[0];
     // Fallback hardcoded values for testing — replace via AppSettings in DB
     const branchPassword = s?.admin_password || '1234';
     const networkPassword = s?.network_admin_password || '8888';
-    const masterNetworkPassword = masterEmail ? (masterSettings[0]?.network_admin_password || '8888') : null;
 
     const enterNetwork = (email) => {
       sessionStorage.setItem('admin_auth', 'true');
@@ -52,16 +44,11 @@ export default function AdminLogin() {
     };
 
     // Tier 1: Master Network Code (own network) → Network Dashboard.
-    // Blocked for accounts that joined a network as a branch station — they get only
-    // the network they joined (via the master's code, below) or their local branch.
+    // Only the network owner's own account can open the network dashboard.
+    // Accounts that joined a network as a branch station get only their local branch
+    // (entering the network from a branch computer was removed — security, Oct 2026).
     if (!masterEmail && password === networkPassword) {
       enterNetwork(user.email);
-      return;
-    }
-
-    // Tier 1b: The network master's code entered from one of his branches → his Network Dashboard
-    if (masterNetworkPassword && password === masterNetworkPassword) {
-      enterNetwork(masterEmail);
       return;
     }
 
