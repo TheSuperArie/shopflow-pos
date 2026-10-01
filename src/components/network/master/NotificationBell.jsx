@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, GitBranch, ShoppingBag, MessageSquare } from 'lucide-react';
+import { Bell, GitBranch, ShoppingBag, MessageSquare, AlertTriangle } from 'lucide-react';
+import { useNetworkShortages } from '@/hooks/useNetworkShortages';
 import { format } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
 
@@ -78,7 +79,14 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
 
   const pendingOrders = tickets.filter(t => t.status === 'pending' && !dismissedOrders.has(t.id));
   const unreadAlerts = alerts;
-  const totalCount = pendingOrders.length + unreadAlerts.length + unreadChatTickets.length;
+  // Branches with sizes under their shortage threshold (live, one line per branch)
+  const { data: shortages = [] } = useNetworkShortages(tenantEmail);
+  const openBranch = (branchId) => {
+    setOpen(false);
+    window.location.href = `/NetworkMasterDashboard?tab=branches&branch=${branchId}`;
+  };
+
+  const totalCount = pendingOrders.length + unreadAlerts.length + unreadChatTickets.length + shortages.length;
 
   const markAlertRead = async (alert) => {
     await base44.entities.NetworkAlert.delete(alert.id);
@@ -137,6 +145,27 @@ export default function NotificationBell({ tenantEmail, onNavigateToOrders, onNa
                       <p className="text-sm font-semibold text-gray-800">{ct.branchName} — {ct.count} הודעות חדשות</p>
                       <p className="text-xs text-gray-400 mt-1">
                         {ct.latestDate ? format(new Date(ct.latestDate), 'dd/MM/yy HH:mm') : ''}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+
+              {/* Shortages per branch */}
+              {shortages.map(sh => (
+                <button
+                  key={`short-${sh.branchId}`}
+                  onClick={() => openBranch(sh.branchId)}
+                  className="w-full text-right px-4 py-3 hover:bg-red-50 transition-colors"
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-800">{sh.branchName} — {sh.total} מידות מתחת לרף</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {sh.out > 0 ? `${sh.out} אזלו` : ''}{sh.out > 0 && sh.low > 0 ? ' · ' : ''}{sh.low > 0 ? `${sh.low} במלאי נמוך` : ''}
                       </p>
                     </div>
                   </div>
