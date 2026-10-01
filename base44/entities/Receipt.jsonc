@@ -1,59 +1,101 @@
 {
   "name": "Receipt",
-  "type": "object",
   "properties": {
-    "sale_id": {
-      "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4"
-    },
-    "receipt_number": {
-      "type": "string",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05e7\u05d1\u05dc\u05d4 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9"
+    "branch_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)",
+      "type": "string"
     },
     "customer_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05dc\u05e7\u05d5\u05d7",
+      "type": "string"
     },
     "customer_name": {
-      "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05dc\u05e7\u05d5\u05d7"
+      "description": "\u05e9\u05dd \u05d4\u05dc\u05e7\u05d5\u05d7",
+      "type": "string"
     },
     "items": {
-      "type": "array",
+      "description": "\u05e4\u05e8\u05d9\u05d8\u05d9 \u05d4\u05de\u05db\u05d9\u05e8\u05d4",
       "items": {
         "type": "object"
       },
-      "description": "\u05e4\u05e8\u05d9\u05d8\u05d9 \u05d4\u05de\u05db\u05d9\u05e8\u05d4"
-    },
-    "total": {
-      "type": "number",
-      "description": "\u05e1\u05db\u05d5\u05dd \u05db\u05d5\u05dc\u05dc"
+      "type": "array"
     },
     "payment_method": {
-      "type": "string",
-      "description": "\u05d0\u05de\u05e6\u05e2\u05d9 \u05ea\u05e9\u05dc\u05d5\u05dd"
+      "description": "\u05d0\u05de\u05e6\u05e2\u05d9 \u05ea\u05e9\u05dc\u05d5\u05dd",
+      "type": "string"
+    },
+    "receipt_number": {
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05e7\u05d1\u05dc\u05d4 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9",
+      "type": "string"
+    },
+    "sale_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4",
+      "type": "string"
     },
     "sent_by_email": {
-      "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05e0\u05e9\u05dc\u05d7 \u05d1\u05de\u05d9\u05d9\u05dc"
-    },
-    "branch_id": {
-      "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)"
+      "description": "\u05d4\u05d0\u05dd \u05e0\u05e9\u05dc\u05d7 \u05d1\u05de\u05d9\u05d9\u05dc",
+      "type": "boolean"
     },
     "station_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
     },
     "tenant_email": {
-      "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "total": {
+      "description": "\u05e1\u05db\u05d5\u05dd \u05db\u05d5\u05dc\u05dc",
+      "type": "number"
     }
   },
   "required": [
     "sale_id",
     "receipt_number",
     "total"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  },
+  "type": "object"
 }
