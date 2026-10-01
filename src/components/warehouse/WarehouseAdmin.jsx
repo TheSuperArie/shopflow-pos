@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowRight, UsersRound, Wallet, Settings, Loader2, Trash2, Plus, KeyRound, Save } from 'lucide-react';
+import { ArrowRight, UsersRound, Wallet, Settings, Loader2, Trash2, Plus, KeyRound, Save, Boxes, PackagePlus, Package } from 'lucide-react';
+import WarehouseStockPanel from '@/components/warehouse/stock/WarehouseStockPanel';
+import WarehouseReceivePanel from '@/components/warehouse/stock/WarehouseReceivePanel';
+import WarehouseProductsPanel from '@/components/warehouse/stock/WarehouseProductsPanel';
 import { format } from 'date-fns';
 import WarehousePickersPanel from '@/components/supply/WarehousePickersPanel';
 
@@ -13,8 +16,11 @@ export const DEFAULT_WAREHOUSE_CODE = '1234';
 
 /** The warehouse's management page (behind the manager code): pickers, expenses, settings. */
 export default function WarehouseAdmin({ warehouse, orders, onExit }) {
-  const [tab, setTab] = useState('pickers');
+  const [tab, setTab] = useState('stock');
   const tabs = [
+    { key: 'stock', label: 'מלאי', icon: Boxes },
+    { key: 'receive', label: 'קליטת סחורה', icon: PackagePlus },
+    { key: 'products', label: 'מוצרים', icon: Package },
     { key: 'pickers', label: 'מלקטים', icon: UsersRound },
     { key: 'expenses', label: 'הוצאות', icon: Wallet },
     { key: 'settings', label: 'הגדרות', icon: Settings },
@@ -30,7 +36,7 @@ export default function WarehouseAdmin({ warehouse, orders, onExit }) {
         <Button variant="outline" onClick={onExit} className="h-11 gap-1.5"><ArrowRight className="w-4 h-4" /> חזרה להזמנות</Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
             className={`flex flex-col sm:flex-row items-center justify-center gap-2 rounded-2xl border-2 px-3 py-4 font-semibold transition-colors ${
@@ -41,6 +47,9 @@ export default function WarehouseAdmin({ warehouse, orders, onExit }) {
         ))}
       </div>
 
+      {tab === 'stock' && <WarehouseStockPanel warehouse={warehouse} />}
+      {tab === 'receive' && <WarehouseReceivePanel warehouse={warehouse} />}
+      {tab === 'products' && <WarehouseProductsPanel warehouse={warehouse} />}
       {tab === 'pickers' && <WarehousePickersPanel warehouse={warehouse} orders={orders} />}
       {tab === 'expenses' && <WarehouseExpenses warehouse={warehouse} />}
       {tab === 'settings' && <WarehouseSettings warehouse={warehouse} />}
