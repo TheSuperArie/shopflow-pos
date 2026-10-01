@@ -23,6 +23,7 @@ const collator = new Intl.Collator('he', { numeric: true });
  */
 export default function OrderTilesBuilder({
   index: fullIndex, categories = [], groups = [], variants = [], quantities, onChange, requested = null, scanEnabled = true,
+  initialShortOnly = false,
 }) {
   const { toast } = useToast();
   const [view, setView] = useState('tiles');
@@ -32,7 +33,7 @@ export default function OrderTilesBuilder({
   const [filter, setFilter] = useState('all'); // all | ordered | low | out
   const [selected, setSelected] = useState(() => new Set());
   const [flashId, setFlashId] = useState(null);
-  const [shortOnly, setShortOnly] = useState(false);
+  const [shortOnly, setShortOnly] = useState(initialShortOnly);
 
   // "Below the shortage threshold only": everything else disappears from every level (categories → sizes)
   const shortIds = useMemo(

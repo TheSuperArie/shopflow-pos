@@ -35,6 +35,8 @@ export default function BranchSupplyOrders() {
   const { toast } = useToast();
 
   const [tab, setTab] = useState('new');
+  // Opened from the shortage alert (?short=1) → the order starts with only what's under the threshold
+  const [openShortOnly] = useState(() => new URLSearchParams(window.location.search).get('short') === '1');
   const [quantities, setQuantities] = useState({});
   const [notes, setNotes] = useState('');
   const [draftLoadedFor, setDraftLoadedFor] = useState(null);
@@ -215,6 +217,7 @@ export default function BranchSupplyOrders() {
                 quantities={quantities}
                 onChange={setQuantities}
                 scanEnabled={tab === 'new' && !confirmOpen && !receiving && !chatOpen}
+                initialShortOnly={openShortOnly}
               />
 
               <Card>

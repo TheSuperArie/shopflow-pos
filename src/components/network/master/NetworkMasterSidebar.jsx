@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, GitBranch, BarChart2, LogOut, X, ShoppingCart, Settings, Building2, LayoutDashboard, Warehouse, Landmark } from 'lucide-react';
+import { Crown, GitBranch, BarChart2, LogOut, X, ShoppingCart, Settings, LayoutDashboard, Warehouse, Landmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const NAV_ITEMS = [
@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { tab: 'network-expenses', label: 'הוצאות הרשת', icon: Landmark },
   { tab: 'supply',    label: 'הזמנות ואספקה',     icon: Warehouse },
   // Hidden (replaced by 'supply'): { tab: 'orders', הזמנות מהסניפים }, { tab: 'warehouse', הזמנות מהמחסן }
-  { tab: 'suppliers', label: 'ניהול ספקים',        icon: Building2 },
+  // Hidden (supply now goes through the warehouse; data kept): { tab: 'suppliers', label: 'ניהול ספקים', icon: Building2 },
   { tab: 'settings',  label: 'הגדרות רשת',         icon: Settings },
 ];
 

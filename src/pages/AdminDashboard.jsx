@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import BranchDashboard from '@/components/dashboard/BranchDashboard';
 import BranchInvitationBanner from '@/components/dashboard/BranchInvitationBanner';
+import ShortageOrderBanner from '@/components/dashboard/ShortageOrderBanner';
 import { useQuery } from '@tanstack/react-query';
 
 export default function AdminDashboard() {
@@ -61,6 +62,7 @@ export default function AdminDashboard() {
       {pendingInvitations.map(inv => (
         <BranchInvitationBanner key={inv.id} invitation={inv} userEmail={user.email} />
       ))}
+      <ShortageOrderBanner />
       <BranchDashboard
         branchId={mainBranch?.id}
         tenantEmail={user.email}
