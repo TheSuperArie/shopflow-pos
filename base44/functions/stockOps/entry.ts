@@ -45,6 +45,19 @@ export default async function (req) {
       await db.StockOperation.update(op.id, patch);
     };
     const finishOp = (op) => db.StockOperation.update(op.id, { status: 'DONE' });
+    // Two requests with the same key at the same moment (two tabs / two devices): both create an
+    // operation, the earliest one wins and the other backs off with 409 — nothing is applied twice.
+    const claimOp = async (key, kind, owner, payload) => {
+      const mine = await createOp(key, kind, owner, payload);
+      const all = await db.StockOperation.filter({ op_key: key }, 'created_date', 20);
+      const winner = [...all].sort((a, b) =>
+        String(a.created_date || '').localeCompare(String(b.created_date || '')) || String(a.id).localeCompare(String(b.id)))[0];
+      if (winner && winner.id !== mine.id) {
+        await db.StockOperation.delete(mine.id).catch(() => {});
+        throw httpError(409, 'הפעולה כבר מתבצעת ממכשיר אחר — נסו שוב בעוד רגע');
+      }
+      return mine;
+    };
 
     // ── Warehouse ──
     const loadWarehouse = async (id) => {
@@ -145,7 +158,7 @@ export default async function (req) {
       if (!op) {
         const lines = await pickLines(order, items);
         await db.SupplyOrder.update(order.id, { ...extra, items, pick_version: version, stock_status: 'PENDING' });
-        op = await createOp(key, 'PICK', whOwner(w), { lines, picker: extra.picker_name || '' });
+        op = await claimOp(key, 'PICK', whOwner(w), { lines, picker: extra.picker_name || '' });
       }
       const lines = op.payload?.lines || [];
       for (const l of lines) {
@@ -190,7 +203,7 @@ export default async function (req) {
       let op = await getOp(key);
       if (op?.status === 'DONE') return Response.json({ ok: true, already: true });
       const lines = isCount ? [body.item] : (body.lines || []);
-      if (!op) op = await createOp(key, isCount ? 'COUNT' : 'RECEIPT', whOwner(w), {});
+      if (!op) op = await claimOp(key, isCount ? 'COUNT' : 'RECEIPT', whOwner(w), {});
       const meta = body.meta || {};
       for (let i = 0; i < lines.length; i++) {
         if (isApplied(op, i)) continue;
@@ -276,7 +289,7 @@ export default async function (req) {
         ? (v.branch_id === saleScope.branch_id ||
            (!v.branch_id && (sameEmail(v.station_email, saleScope.station_email) || sameEmail(v.created_by, saleScope.station_email))))
         : (v.created_by_id === user.id || isMe(v.station_email) || isMe(v.tenant_email)));
-      if (!op) op = await createOp(key, 'SALE', { tenant_email: sale.tenant_email, station_email: sale.station_email || user.email }, { sale_id: sale.id });
+      if (!op) op = await claimOp(key, 'SALE', { tenant_email: sale.tenant_email, station_email: sale.station_email || user.email }, { sale_id: sale.id });
       const items = sale.items || [];
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
@@ -303,6 +316,83 @@ export default async function (req) {
         await Promise.all(mine.filter(r => sold.has(r.variant_id)).map(r => db.StockReservation.delete(r.id)));
       }
       return Response.json({ ok: true });
+    }
+
+    // ── Branch receiving (scan of the delivery sheet) ──
+    // Adds what arrived to the branch stock (the stock the POS sells from). Runs in rounds of up to
+    // max_lines lines; every line is recorded once added, so a retry / second device never adds twice.
+    if (action === 'branchReceive') {
+      const order = await first(db.SupplyOrder, { id: body.order_id });
+      if (!order) throw httpError(404, 'ההזמנה לא נמצאה');
+      let scope;
+      if (order.branch_id) scope = await branchScope(order.branch_id);
+      else if (isMe(order.station_email) || isMe(order.tenant_email)) {
+        scope = { branch_id: null, station_email: order.station_email || user.email, tenant_email: order.tenant_email || null };
+      } else throw httpError(403, 'אין הרשאה להזמנה הזו');
+
+      const key = `branchReceive:${order.id}`;
+      let op = await getOp(key);
+      if (order.status === 'RECEIVED' || op?.status === 'DONE') return Response.json({ ok: true, done: true, already: true });
+      if (!op && order.status !== 'SENT_TO_BRANCH') throw httpError(409, 'ההזמנה עוד לא נשלחה לסניף');
+
+      const items = order.items || [];
+      const sent = Array.isArray(body.lines) ? body.lines : [];
+      if (sent.some((l, i) => l?.variant_id && items[i] && l.variant_id !== items[i].variant_id)) {
+        throw httpError(409, 'ההזמנה השתנתה — סגרו ופתחו אותה מחדש');
+      }
+      const qtyOf = (i) => Math.max(0, Math.floor(Number(sent[i]?.received_qty ?? items[i]?.received_qty ?? items[i]?.picked_qty ?? 0))) || 0;
+
+      if (!op) {
+        op = await claimOp(key, 'RECEIPT', { tenant_email: order.tenant_email || null, station_email: order.station_email || scope.station_email },
+          { order_id: order.id, received: items.map((_, i) => qtyOf(i)) });
+      } else {
+        // Resumed after an interruption: lines not added yet take the quantities sent now
+        const received = items.map((_, i) => (isApplied(op, i) ? Number(op.payload?.received?.[i] || 0) : qtyOf(i)));
+        op.payload = { ...(op.payload || {}), received };
+        await db.StockOperation.update(op.id, { payload: op.payload });
+      }
+
+      const sameMail = (a, b) => !!a && !!b && String(a).toLowerCase() === String(b).toLowerCase();
+      const inBranch = (v) => !!v && (scope.branch_id
+        ? (v.branch_id === scope.branch_id ||
+           (!v.branch_id && (sameMail(v.station_email, scope.station_email) || sameMail(v.created_by, scope.station_email))))
+        : (v.created_by_id === user.id || isMe(v.station_email) || isMe(v.tenant_email) || sameMail(v.created_by, scope.station_email)));
+
+      const received = op.payload?.received || [];
+      const maxLines = Math.min(50, Math.max(1, Number(body.max_lines) || 25));
+      let processed = 0;
+      for (let i = 0; i < items.length; i++) {
+        if (isApplied(op, i)) continue;
+        if (processed >= maxLines) {
+          return Response.json({ ok: true, done: false, applied: (op.applied_lines || []).length, total: items.length });
+        }
+        const it = items[i] || {};
+        const qty = Number(received[i] || 0);
+        let actual = 0;
+        if (it.stock_applied) actual = qty; // already added by the older receiving screen (before it moved here)
+        else if (qty > 0 && it.variant_id) {
+          const v = await first(db.ProductVariant, { id: it.variant_id });
+          if (inBranch(v)) {
+            await db.ProductVariant.update(v.id, { stock: Number(v.stock || 0) + qty });
+            actual = qty;
+          } else {
+            actual = null; // not in this branch's catalog — reported back, stock untouched
+          }
+        }
+        await markLine(op, i, actual);
+        processed += 1;
+      }
+
+      const actualBy = op.payload?.actual || {};
+      const missing = [];
+      const finalItems = items.map((it, i) => {
+        const a = actualBy[String(i)];
+        if (a === null) missing.push(`${it.product_name || ''} ${it.variant_label || ''}`.trim());
+        return { ...it, received_qty: Number(received[i] || 0), stock_applied: a !== null };
+      });
+      await db.SupplyOrder.update(order.id, { items: finalItems, status: 'RECEIVED', received_at: now(), received_by: user.email || null });
+      await finishOp(op);
+      return Response.json({ ok: true, done: true, missing });
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
