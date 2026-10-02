@@ -52,9 +52,25 @@ export function retryStuckSaleStock() {
 export const dismissStuckSaleStock = () => save(STUCK_KEY, []);
 
 let running = false;
-/** Sends every waiting sale; returns how many were deducted now. */
+/**
+ * Sends every waiting sale; returns how many were deducted now.
+ * One flush at a time across ALL tabs of this computer (two open POS tabs share the same queue),
+ * so the same sale is never sent twice at once. The server also refuses a duplicate (409).
+ */
 export async function flushSaleStock() {
   if (running || !navigator.onLine) return 0;
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    try {
+      return await navigator.locks.request('pos-sale-stock-flush', { ifAvailable: true }, (lock) => (lock ? runFlush() : 0));
+    } catch {
+      return 0;
+    }
+  }
+  return runFlush();
+}
+
+async function runFlush() {
+  if (running) return 0;
   running = true;
   let done = 0;
   try {
