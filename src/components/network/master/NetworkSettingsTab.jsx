@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Crown, Save, Loader2, Settings, Network } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import AdminCodeChange from '@/components/admin/AdminCodeChange';
 
 export default function NetworkSettingsTab({ tenantEmail }) {
-  const [networkPassword, setNetworkPassword] = useState('');
   const [networkName, setNetworkName] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -22,7 +22,6 @@ export default function NetworkSettingsTab({ tenantEmail }) {
 
   useEffect(() => {
     if (settings[0]) {
-      setNetworkPassword(settings[0].network_admin_password || '');
       setNetworkName(settings[0].network_name || '');
     }
   }, [settings]);
@@ -96,29 +95,11 @@ export default function NetworkSettingsTab({ tenantEmail }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label>קוד גישה מאסטר</Label>
-            <Input
-              type="text"
-              value={networkPassword}
-              onChange={e => setNetworkPassword(e.target.value)}
-              placeholder="הכנס קוד מאסטר חדש"
-              className="mt-1"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              קוד זה מעניק גישה מלאה לניהול הרשת מכל סניף. ברירת מחדל זמנית: 8888
-            </p>
-          </div>
-          <Button
-            onClick={() => mutation.mutate({ network_admin_password: networkPassword || null })}
-            className="bg-amber-500 hover:bg-amber-600 gap-2"
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <><Save className="w-4 h-4" /> שמור קוד מאסטר</>
-            }
-          </Button>
+          <AdminCodeChange
+            field="network_admin_password"
+            label="קוד גישה מאסטר"
+            hint="קוד זה מעניק גישה מלאה לניהול הרשת — רק מהחשבון של בעל הרשת. הקוד נשמר ונבדק רק בשרת ולא מוצג כאן."
+          />
         </CardContent>
       </Card>
     </div>
