@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,6 @@ export default function AdminLogin() {
   const [checking, setChecking] = useState(false);
   const navigate = useNavigate();
   const user = useCurrentUser();
-  const isLoading = false;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,14 +68,6 @@ export default function AdminLogin() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" dir="rtl">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4" dir="rtl">
       <div className="w-full max-w-sm">
@@ -102,9 +92,10 @@ export default function AdminLogin() {
             {error && <p className="text-red-400 text-center text-sm">{error}</p>}
             <Button
               type="submit"
+              disabled={checking}
               className="w-full h-12 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-lg"
             >
-              כניסה
+              {checking ? <Loader2 className="w-5 h-5 animate-spin" /> : 'כניסה'}
             </Button>
           </form>
 
