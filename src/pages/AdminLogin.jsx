@@ -11,36 +11,20 @@ import { DEV_CODE_SESSION_KEY } from '@/lib/developerAccess';
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
   const navigate = useNavigate();
   const user = useCurrentUser();
-
-  const { data: settings = [], isLoading, isFetched: settingsLoaded } = useQuery({
-    queryKey: ['app-settings', user?.email],
-    queryFn: () => user ? base44.entities.AppSettings.filter({ created_by: user.email }) : [],
-    enabled: !!user,
-  });
-
-  // The network this account's station belongs to (branch where this email is the station)
-  const { data: myNetworkBranches = [], isFetched: branchesLoaded } = useQuery({
-    queryKey: ['my-network-branch', user?.email],
-    queryFn: () => user ? base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }) : [],
-    enabled: !!user,
-  });
-  // An approved connection to someone else's network → this account is a branch station
-  const masterEmail = myNetworkBranches.find(b => b.tenant_email && b.tenant_email !== user.email)?.tenant_email;
+  const isLoading = false;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Never check a code before the account's settings and branches have loaded —
-    // otherwise the fallback codes or a missing branch link could let someone in.
-    if (!user || !settingsLoaded || !branchesLoaded) {
+    if (!user) {
       setError('טוען נתונים... נסה שוב בעוד רגע');
       return;
     }
-    const s = settings[0];
-    // Fallback hardcoded values for testing — replace via AppSettings in DB
-    const branchPassword = s?.admin_password || '1234';
-    const networkPassword = s?.network_admin_password || '8888';
+    if (checking || !password.trim()) return;
+    setChecking(true);
+    setError('');
 
     const enterNetwork = (email) => {
       sessionStorage.setItem('admin_auth', 'true');
@@ -49,37 +33,41 @@ export default function AdminLogin() {
       navigate('/NetworkMasterDashboard');
     };
 
-    // Tier 1: Master Network Code (own network) → Network Dashboard.
-    // Only the network owner's own account can open the network dashboard.
-    // Accounts that joined a network as a branch station get only their local branch
-    // (entering the network from a branch computer was removed — security, Oct 2026).
-    if (!masterEmail && password === networkPassword) {
-      enterNetwork(user.email);
-      return;
-    }
-
-    // Tier 2: Local Branch Code → Local Dashboard
-    if (password === branchPassword) {
-      sessionStorage.removeItem('network_master_email');
-      sessionStorage.setItem('admin_auth', 'true');
-      sessionStorage.setItem('admin_role', 'BRANCH_MANAGER');
-      navigate('/AdminDashboard');
-      return;
-    }
-
-    // Tier 3: Global developer code (verified server-side) → Developer page
     try {
-      const res = await base44.functions.invoke('developerPortal', { action: 'verify', code: password });
-      if (res.data?.ok) {
-        sessionStorage.setItem(DEV_CODE_SESSION_KEY, password);
-        navigate('/UsageAnalytics');
-        return;
+      // Tier 1 + 2: the network master code / local branch code are checked on the server only
+      // (they are no longer readable from the browser). A branch station of someone else's
+      // network never gets the network dashboard — the server enforces that too.
+      try {
+        const res = await base44.functions.invoke('adminAuth', { action: 'verify', password });
+        if (res.data?.role === 'NETWORK_MASTER') { enterNetwork(user.email); return; }
+        if (res.data?.role === 'BRANCH_MANAGER') {
+          sessionStorage.removeItem('network_master_email');
+          sessionStorage.setItem('admin_auth', 'true');
+          sessionStorage.setItem('admin_role', 'BRANCH_MANAGER');
+          navigate('/AdminDashboard');
+          return;
+        }
+      } catch (err) {
+        if (err?.status === 429) { setError(err?.data?.error || 'יותר מדי ניסיונות שגויים. נסה שוב מאוחר יותר'); return; }
+        if (!err?.status) { setError('אין חיבור לשרת — נסה שוב'); return; }
       }
-    } catch {
-      // not the developer code either
-    }
 
-    setError('סיסמה שגויה');
+      // Tier 3: Global developer code (verified server-side) → Developer page
+      try {
+        const res = await base44.functions.invoke('developerPortal', { action: 'verify', code: password });
+        if (res.data?.ok) {
+          sessionStorage.setItem(DEV_CODE_SESSION_KEY, password);
+          navigate('/UsageAnalytics');
+          return;
+        }
+      } catch {
+        // not the developer code either
+      }
+
+      setError('סיסמה שגויה');
+    } finally {
+      setChecking(false);
+    }
   };
 
   if (isLoading) {
