@@ -14,9 +14,9 @@ import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 import DangerZone from '@/components/admin/DangerZone';
 import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
 import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
+import AdminCodeChange from '@/components/admin/AdminCodeChange';
 
 export default function AdminSettings() {
-  const [password, setPassword] = useState('');
   const [storeName, setStoreName] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const [defaultDimension, setDefaultDimension] = useState('');
@@ -56,7 +56,6 @@ export default function AdminSettings() {
 
   useEffect(() => {
     if (settings[0]) {
-      setPassword(settings[0].admin_password || '12345678');
       setStoreName(settings[0].store_name || 'החנות שלי');
       setLowStockThreshold(settings[0].low_stock_threshold || 5);
       setDefaultDimension(settings[0].dashboard_default_dimension || '');
@@ -106,11 +105,11 @@ export default function AdminSettings() {
             <Input value={storeName} onChange={e => setStoreName(e.target.value)} disabled={!!networkBranch} />
             {!!networkBranch && <p className="text-xs text-gray-400 mt-1">החנות מחוברת לרשת — שם הסניף נקבע על ידי בעל הרשת</p>}
           </div>
-          <div>
-            <Label>קוד מנהל סניף מקומי</Label>
-            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} />
-            <p className="text-xs text-gray-400 mt-1">קוד זה מעניק גישה לניהול הסניף המקומי בלבד</p>
-          </div>
+          <AdminCodeChange
+            field="admin_password"
+            label="קוד מנהל סניף מקומי"
+            hint="קוד זה מעניק גישה לניהול הסניף המקומי בלבד. הקוד נשמר ונבדק רק בשרת ולא מוצג כאן."
+          />
           <div>
             <Label className="flex items-center gap-2">
               <BarChart2 className="w-4 h-4" /> ממד ברירת מחדל בלוח הבקרה
@@ -160,7 +159,6 @@ export default function AdminSettings() {
           </div>
           <Button
             onClick={() => mutation.mutate({
-              admin_password: password,
               store_name: storeName,
               low_stock_threshold: lowStockThreshold,
               dashboard_default_dimension: defaultDimension || null,
@@ -169,7 +167,6 @@ export default function AdminSettings() {
               stock_mode_enabled: stockModeEnabled,
             })}
             className="bg-amber-500 hover:bg-amber-600 gap-2"
-            disabled={!password}
           >
             {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4" /> שמור הגדרות</>}
           </Button>
@@ -216,7 +213,6 @@ export default function AdminSettings() {
         allCategories={allCategories}
         onChange={setVirtualFolders}
         onSave={() => mutation.mutate({
-          admin_password: password,
           store_name: storeName,
           low_stock_threshold: lowStockThreshold,
           dashboard_default_dimension: defaultDimension || null,
