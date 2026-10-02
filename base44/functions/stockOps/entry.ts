@@ -269,8 +269,12 @@ export default async function (req) {
       // Branch sale: the caller must belong to that branch (403 otherwise), and only that branch's variants are deducted.
       // Single store: only variants the caller owns.
       const saleScope = sale.branch_id ? await branchScope(sale.branch_id) : null;
+      // A branch sells both catalog copies stamped with its branch_id and products the branch's
+      // own station account created itself (no branch_id, stamped with the station's email).
+      const sameEmail = (a, b) => !!a && !!b && String(a).toLowerCase() === String(b).toLowerCase();
       const canDeduct = (v) => !!v && (saleScope
-        ? v.branch_id === saleScope.branch_id
+        ? (v.branch_id === saleScope.branch_id ||
+           (!v.branch_id && (sameEmail(v.station_email, saleScope.station_email) || sameEmail(v.created_by, saleScope.station_email))))
         : (v.created_by_id === user.id || isMe(v.station_email) || isMe(v.tenant_email)));
       if (!op) op = await createOp(key, 'SALE', { tenant_email: sale.tenant_email, station_email: sale.station_email || user.email }, { sale_id: sale.id });
       const items = sale.items || [];
