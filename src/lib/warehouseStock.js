@@ -52,6 +52,6 @@ export async function stockOps(action, payload) {
     const res = await base44.functions.invoke('stockOps', { action, ...payload });
     return res.data;
   } catch (err) {
-    throw new Error(err?.response?.data?.error || err?.message || 'השרת לא ענה');
+    throw new Error(err?.data?.error || err?.message || 'השרת לא ענה');
   }
 }

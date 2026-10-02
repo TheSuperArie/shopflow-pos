@@ -266,14 +266,19 @@ export default async function (req) {
       const sale = await first(db.Sale, { client_sale_id: csid });
       if (!sale) throw httpError(404, 'המכירה לא נמצאה');
       if (!(sale.created_by_id === user.id || isMe(sale.station_email) || isMe(sale.tenant_email))) throw httpError(403, 'אין הרשאה למכירה הזו');
+      // Branch sale: the caller must belong to that branch (403 otherwise), and only that branch's variants are deducted.
+      // Single store: only variants the caller owns.
+      const saleScope = sale.branch_id ? await branchScope(sale.branch_id) : null;
+      const canDeduct = (v) => !!v && (saleScope
+        ? v.branch_id === saleScope.branch_id
+        : (v.created_by_id === user.id || isMe(v.station_email) || isMe(v.tenant_email)));
       if (!op) op = await createOp(key, 'SALE', { tenant_email: sale.tenant_email, station_email: sale.station_email || user.email }, { sale_id: sale.id });
       const items = sale.items || [];
       for (let i = 0; i < items.length; i++) {
         const it = items[i];
         if (!it?.variant_id || isApplied(op, i)) continue;
         const v = await first(db.ProductVariant, { id: it.variant_id });
-        const allowed = v && (v.created_by_id === sale.created_by_id || v.created_by_id === user.id ||
-          isMe(v.station_email) || isMe(v.tenant_email) || (sale.branch_id && v.branch_id === sale.branch_id));
+        const allowed = canDeduct(v);
         let removed = 0;
         if (allowed) {
           const before = Number(v.stock || 0);
@@ -287,7 +292,10 @@ export default async function (req) {
       // The cart reservation of this computer turns into the deduction
       if (body.device_id) {
         const sold = new Set(items.map(i => i?.variant_id).filter(Boolean));
-        const mine = await db.StockReservation.filter({ scope: 'BRANCH', device_id: String(body.device_id) }, undefined, 500);
+        const resScope = saleScope || (await branchScope(null));
+        const mine = await db.StockReservation.filter({
+          scope: 'BRANCH', device_id: String(body.device_id), station_email: resScope.station_email,
+        }, undefined, 500);
         await Promise.all(mine.filter(r => sold.has(r.variant_id)).map(r => db.StockReservation.delete(r.id)));
       }
       return Response.json({ ok: true });

@@ -316,10 +316,10 @@ export default function POS() {
         }
       }
 
-      const sale = await base44.entities.Sale.create({ ...saleData, client_sale_id: clientSaleId });
-      // Stock is deducted on the server in the background (keyed by client_sale_id, never below 0)
+      // Queued BEFORE saving — if the save reaches the server but the reply is lost (and the page is
+      // refreshed), the sale is still deducted. Deduction runs once on the server, keyed by client_sale_id.
       enqueueSaleStock(clientSaleId);
-      return sale;
+      return base44.entities.Sale.create({ ...saleData, client_sale_id: clientSaleId });
     },
     onSuccess: (sale) => {
       pendingSaleIdRef.current = null;

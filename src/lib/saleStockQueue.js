@@ -65,11 +65,11 @@ export async function flushSaleStock() {
         drop();
         done += 1;
       } catch (err) {
-        const status = err?.response?.status;
-        if (status === 403) { drop(); continue; } // not ours — never retried
-        if (status !== 404) continue; // network/server error — keep trying later
+        const status = err?.status ?? err?.originalError?.response?.status;
+        if (status !== 404 && status !== 403) continue; // network/server error — keep trying later
         const tries = (entry.tries || 0) + 1;
-        if (tries >= MAX_TRIES || Date.now() - (entry.since || Date.now()) > MAX_AGE) {
+        // No permission → straight to the manager's stuck list (never silently dropped)
+        if (status === 403 || tries >= MAX_TRIES || Date.now() - (entry.since || Date.now()) > MAX_AGE) {
           drop();
           save(STUCK_KEY, [...load(STUCK_KEY).filter(x => x.id !== entry.id), { ...entry, tries, stuck_at: Date.now() }]);
         } else {
