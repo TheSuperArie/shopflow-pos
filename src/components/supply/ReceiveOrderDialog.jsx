@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { ScanLine, X, Loader2, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useScanDetector } from '@/hooks/useScanDetector';
-import { nowIso, formatOrderDate } from '@/lib/supplyOrders';
+import { formatOrderDate } from '@/lib/supplyOrders';
 
 const CHUNK = 25;
 
@@ -19,7 +19,8 @@ const orderNumberFromCode = (code) => String(code || '').trim().replace(/^so/i, 
  * The stock is added on the server (stockOps → branchReceive) in rounds of CHUNK lines; every line
  * is recorded once added, so a retry or a second device never adds the same line twice.
  */
-export default function ReceiveOrderDialog({ orders, initialOrder = null, userEmail, onClose }) {
+// userEmail is kept for the callers; the server records who received (the signed-in user)
+export default function ReceiveOrderDialog({ orders, initialOrder = null, userEmail: _userEmail, onClose }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [order, setOrder] = useState(initialOrder);
