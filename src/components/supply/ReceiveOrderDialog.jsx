@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { stockOps } from '@/lib/warehouseStock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -8,7 +8,7 @@ import { ScanLine, X, Loader2, CheckCircle2, AlertTriangle, ArrowRight } from 'l
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { nowIso, formatOrderDate } from '@/lib/supplyOrders';
 
-const CHUNK = 10;
+const CHUNK = 25;
 
 /** "SO1001" (the printed barcode) or a typed "1001" → "1001" */
 const orderNumberFromCode = (code) => String(code || '').trim().replace(/^so/i, '');
@@ -16,8 +16,8 @@ const orderNumberFromCode = (code) => String(code || '').trim().replace(/^so/i, 
 /**
  * Branch receiving: scan the barcode printed on the delivery sheet → check / correct the
  * quantities → confirm → the branch stock (the same stock the POS sells from) goes up.
- * Stock is added in small batches, and every line is marked once added, so a retry after
- * a dropped connection never adds the same line twice.
+ * The stock is added on the server (stockOps → branchReceive) in rounds of CHUNK lines; every line
+ * is recorded once added, so a retry or a second device never adds the same line twice.
  */
 export default function ReceiveOrderDialog({ orders, initialOrder = null, userEmail, onClose }) {
   const queryClient = useQueryClient();
@@ -57,53 +57,27 @@ export default function ReceiveOrderDialog({ orders, initialOrder = null, userEm
     setApplying(true);
     setProgress(0);
     try {
-      const [fresh] = await base44.entities.SupplyOrder.filter({ id: order.id });
-      if (!fresh || fresh.status === 'RECEIVED') {
-        toast({ title: 'ההזמנה כבר נקלטה', variant: 'destructive' });
-        onClose();
-        return;
+      const sentLines = lines.map(l => ({ variant_id: l.variant_id || null, received_qty: Number(l.received_qty || 0) }));
+      let res = null;
+      // Each round adds up to CHUNK lines on the server; repeat until the whole order is in
+      for (let round = 0; round < 400; round++) {
+        res = await stockOps('branchReceive', { order_id: order.id, lines: sentLines, max_lines: CHUNK });
+        if (res?.done) break;
+        if (res?.total) setProgress(Math.round((res.applied / res.total) * 100));
       }
-      // Lines already added in an earlier (interrupted) attempt keep their flag
-      let items = lines.map((l, i) => ({ ...l, stock_applied: !!fresh.items?.[i]?.stock_applied }));
-      const toApply = items.map((l, i) => ({ l, i })).filter(({ l }) => !l.stock_applied && l.received_qty > 0);
-      const missing = [];
-
-      for (let start = 0; start < toApply.length; start += CHUNK) {
-        const chunk = toApply.slice(start, start + CHUNK);
-        const ids = [...new Set(chunk.map(({ l }) => l.variant_id))];
-        // Fresh stock values — the POS may have sold in the meantime
-        const variants = await base44.entities.ProductVariant.filter({ id: { $in: ids } }, undefined, ids.length);
-        const byId = new Map(variants.map(v => [v.id, v]));
-        const addBy = new Map();
-        chunk.forEach(({ l }) => addBy.set(l.variant_id, (addBy.get(l.variant_id) || 0) + l.received_qty));
-        await Promise.all([...addBy.entries()].map(([id, add]) => {
-          const v = byId.get(id);
-          if (!v) return null;
-          return base44.entities.ProductVariant.update(id, { stock: Number(v.stock || 0) + add });
-        }));
-        chunk.forEach(({ l, i }) => {
-          if (byId.has(l.variant_id)) items[i] = { ...items[i], stock_applied: true };
-          else missing.push(`${l.product_name} ${l.variant_label || ''}`.trim());
-        });
-        await base44.entities.SupplyOrder.update(order.id, { items });
-        setProgress(Math.round(((start + chunk.length) / toApply.length) * 100));
-      }
-
-      items = items.map(l => ({ ...l, received_qty: Number(l.received_qty || 0) }));
-      await base44.entities.SupplyOrder.update(order.id, {
-        items,
-        status: 'RECEIVED',
-        received_at: nowIso(),
-        received_by: userEmail || null,
-      });
+      if (!res?.done) throw new Error('הקליטה לא הסתיימה');
 
       queryClient.invalidateQueries({ queryKey: ['supply-orders-branch'] });
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
-      toast({ title: `הזמנה #${order.order_number} נקלטה והמלאי עודכן` });
-      if (missing.length) {
+      if (res.already) {
+        toast({ title: 'ההזמנה כבר נקלטה', description: 'המלאי לא עודכן פעם נוספת' });
+      } else {
+        toast({ title: `הזמנה #${order.order_number} נקלטה והמלאי עודכן` });
+      }
+      if (res.missing?.length) {
         toast({
           title: 'חלק מהמוצרים לא נמצאו בקטלוג של הסניף',
-          description: `${missing.join(', ')} — המלאי שלהם לא עודכן`,
+          description: `${res.missing.join(', ')} — המלאי שלהם לא עודכן`,
           variant: 'destructive',
           duration: 10000,
         });
