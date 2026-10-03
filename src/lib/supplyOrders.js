@@ -38,12 +38,15 @@ export const orderTotals = (items = []) => ({
   units: items.reduce((s, i) => s + lineQty(i), 0),
 });
 
-/** Running order number per network: 1001, 1002, ... */
+/**
+ * Running order number per network: 1001, 1002, ...
+ * Computed on the server — a branch can only read its own orders, not the whole network's.
+ */
 export async function nextOrderNumber(tenantEmail) {
   try {
-    const last = await base44.entities.SupplyOrder.filter({ tenant_email: tenantEmail }, '-created_date', 20);
-    const max = last.reduce((m, o) => Math.max(m, parseInt(o.order_number, 10) || 0), 1000);
-    return String(max + 1);
+    const res = await base44.functions.invoke('supplyOps', { action: 'nextOrderNumber', tenant_email: tenantEmail });
+    if (res.data?.order_number) return String(res.data.order_number);
+    throw new Error('no number');
   } catch {
     return String(Date.now()).slice(-6);
   }
