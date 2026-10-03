@@ -4,24 +4,24 @@
   "properties": {
     "branch_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)"
+      "description": "מזהה הסניף (FK to Branch)"
     },
     "variant_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05d5\u05e8\u05d9\u05d0\u05e0\u05d8 (FK to FlexibleVariant). \u05d4\u05de\u05dc\u05d0\u05d9 \u05d4\u05d2\u05dc\u05d5\u05d1\u05dc\u05d9 \u05e0\u05e9\u05d0\u05e8 \u05d1-FlexibleVariant.stock"
+      "description": "מזהה הוריאנט (FK to FlexibleVariant). המלאי הגלובלי נשאר ב-FlexibleVariant.stock"
     },
     "stock": {
       "type": "number",
       "default": 0,
-      "description": "\u05db\u05de\u05d5\u05ea \u05de\u05dc\u05d0\u05d9 \u05e9\u05dc \u05d5\u05e8\u05d9\u05d0\u05e0\u05d8 \u05d6\u05d4 \u05d1\u05e1\u05e0\u05d9\u05e3 \u05d4\u05e1\u05e4\u05e6\u05d9\u05e4\u05d9"
+      "description": "כמות מלאי של וריאנט זה בסניף הספציפי"
     },
     "tenant_email": {
       "type": "string",
-      "description": "\u05d4\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05e9\u05dc \u05d4\u05d8\u05e0\u05d0\u05e0\u05d8 \u2014 \u05dc\u05e1\u05d9\u05e0\u05d5\u05df \u05e0\u05ea\u05d5\u05e0\u05d9\u05dd \u05d1\u05e6\u05d3 \u05d4\u05e7\u05dc\u05d9\u05d9\u05e0\u05d8 \u05dc\u05dc\u05d0 JOIN"
+      "description": "האימייל של הטנאנט — לסינון נתונים בצד הקליינט ללא JOIN"
     },
     "station_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
     }
   },
   "required": [
@@ -29,5 +29,47 @@
     "variant_id",
     "stock",
     "tenant_email"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }

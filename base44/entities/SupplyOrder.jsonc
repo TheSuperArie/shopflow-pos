@@ -187,5 +187,50 @@
     "tenant_email",
     "branch_id",
     "status"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        },
+        {
+          "data.warehouse_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        },
+        {
+          "data.warehouse_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }

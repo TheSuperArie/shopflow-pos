@@ -4,15 +4,15 @@
   "properties": {
     "tenant_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05d8\u05e0\u05d0\u05e0\u05d8"
+      "description": "אימייל הטנאנט"
     },
     "branch_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "מזהה הסניף"
     },
     "branch_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05e1\u05e0\u05d9\u05e3 (denormalized)"
+      "description": "שם הסניף (denormalized)"
     },
     "status": {
       "type": "string",
@@ -23,24 +23,66 @@
         "partial"
       ],
       "default": "pending",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05db\u05d5\u05dc\u05dc \u05e9\u05dc \u05d4\u05d4\u05d6\u05de\u05e0\u05d4"
+      "description": "סטטוס כולל של ההזמנה"
     },
     "notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05db\u05dc\u05dc\u05d9\u05d5\u05ea \u05dc\u05d4\u05d6\u05de\u05e0\u05d4"
+      "description": "הערות כלליות להזמנה"
     },
     "total_items": {
       "type": "number",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05e4\u05e8\u05d9\u05d8\u05d9\u05dd \u05d1\u05d4\u05d6\u05de\u05e0\u05d4"
+      "description": "מספר פריטים בהזמנה"
     },
     "station_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea"
+      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
     }
   },
   "required": [
     "tenant_email",
     "branch_id",
     "status"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }
