@@ -4,27 +4,31 @@
   "properties": {
     "order_number": {
       "type": "string",
-      "description": "\u05de\u05e1\u05e4\u05e8 \u05d4\u05d6\u05de\u05e0\u05d4 \u05e8\u05e5 \u05dc\u05ea\u05e6\u05d5\u05d2\u05d4 \u05d5\u05dc\u05d1\u05e8\u05e7\u05d5\u05d3"
+      "description": "מספר הזמנה רץ לתצוגה ולברקוד"
     },
     "tenant_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea"
+      "description": "אימייל בעל הרשת"
     },
     "branch_id": {
       "type": "string",
-      "description": "\u05d4\u05e1\u05e0\u05d9\u05e3 \u05e9\u05d4\u05d6\u05de\u05d9\u05df (FK to Branch)"
+      "description": "הסניף שהזמין (FK to Branch)"
     },
     "branch_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05e1\u05e0\u05d9\u05e3 (\u05dc\u05ea\u05e6\u05d5\u05d2\u05d4)"
+      "description": "שם הסניף (לתצוגה)"
     },
     "station_email": {
       "type": "string",
-      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "אימייל חשבון העמדה של הסניף"
     },
     "warehouse_id": {
       "type": "string",
-      "description": "\u05d4\u05de\u05d7\u05e1\u05df \u05e9\u05d4\u05d4\u05d6\u05de\u05e0\u05d4 \u05e9\u05d5\u05ea\u05e4\u05d4 \u05d0\u05dc\u05d9\u05d5 (FK to Warehouse)"
+      "description": "המחסן שההזמנה שותפה אליו (FK to Warehouse)"
+    },
+    "warehouse_email": {
+      "type": "string",
+      "description": "אימייל חשבון המחסן שההזמנה שותפה אליו — שדה בעלות להרשאות (המחסן רואה ומלקט רק הזמנות שלו)"
     },
     "status": {
       "type": "string",
@@ -39,17 +43,17 @@
         "CANCELLED"
       ],
       "default": "SENT_TO_NETWORK",
-      "description": "SENT_TO_NETWORK = \u05de\u05de\u05ea\u05d9\u05e0\u05d4 \u05d0\u05e6\u05dc \u05d4\u05e8\u05e9\u05ea, SENT_TO_WAREHOUSE = \u05e9\u05d5\u05ea\u05e4\u05d4 \u05dc\u05de\u05d7\u05e1\u05df, PICKING = \u05d1\u05dc\u05d9\u05e7\u05d5\u05d8, PACKED = \u05d4\u05dc\u05d9\u05e7\u05d5\u05d8 \u05d4\u05e1\u05ea\u05d9\u05d9\u05dd \u05d5\u05e2\u05d5\u05d3 \u05dc\u05d0 \u05e0\u05e9\u05dc\u05d7\u05d4 \u05dc\u05e8\u05e9\u05ea, READY = \u05d4\u05de\u05d7\u05e1\u05df \u05e9\u05dc\u05d7 \u05dc\u05e8\u05e9\u05ea, SENT_TO_BRANCH = \u05e9\u05d5\u05ea\u05e4\u05d4 \u05dc\u05e1\u05e0\u05d9\u05e3, RECEIVED = \u05e0\u05e7\u05dc\u05d8\u05d4 \u05d1\u05e1\u05e0\u05d9\u05e3, CANCELLED = \u05d1\u05d5\u05d8\u05dc\u05d4"
+      "description": "SENT_TO_NETWORK = ממתינה אצל הרשת, SENT_TO_WAREHOUSE = שותפה למחסן, PICKING = בליקוט, PACKED = הליקוט הסתיים ועוד לא נשלחה לרשת, READY = המחסן שלח לרשת, SENT_TO_BRANCH = שותפה לסניף, RECEIVED = נקלטה בסניף, CANCELLED = בוטלה"
     },
     "items": {
       "type": "array",
-      "description": "\u05e9\u05d5\u05e8\u05d5\u05ea \u05d4\u05d4\u05d6\u05de\u05e0\u05d4 \u2014 \u05e9\u05d5\u05e8\u05d4 \u05dc\u05db\u05dc \u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d4 \u05de\u05d4\u05e7\u05d8\u05dc\u05d5\u05d2 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 (ProductVariant)",
+      "description": "שורות ההזמנה — שורה לכל וריאציה מהקטלוג של הסניף (ProductVariant)",
       "items": {
         "type": "object",
         "properties": {
           "variant_id": {
             "type": "string",
-            "description": "ProductVariant \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3"
+            "description": "ProductVariant של הסניף"
           },
           "group_id": {
             "type": "string",
@@ -66,61 +70,61 @@
           },
           "variant_label": {
             "type": "string",
-            "description": "\u05de\u05d9\u05d3\u05d5\u05ea / \u05e2\u05e8\u05db\u05d9 \u05d4\u05de\u05de\u05d3\u05d9\u05dd"
+            "description": "מידות / ערכי הממדים"
           },
           "category_name": {
             "type": "string"
           },
           "branch_stock": {
             "type": "number",
-            "description": "\u05d4\u05de\u05dc\u05d0\u05d9 \u05d1\u05e1\u05e0\u05d9\u05e3 \u05d1\u05e8\u05d2\u05e2 \u05d4\u05d4\u05d6\u05de\u05e0\u05d4"
+            "description": "המלאי בסניף ברגע ההזמנה"
           },
           "requested_qty": {
             "type": "number",
-            "description": "\u05d4\u05db\u05de\u05d5\u05ea \u05e9\u05d4\u05e1\u05e0\u05d9\u05e3 \u05d1\u05d9\u05e7\u05e9"
+            "description": "הכמות שהסניף ביקש"
           },
           "qty": {
             "type": "number",
-            "description": "\u05d4\u05db\u05de\u05d5\u05ea \u05dc\u05d4\u05d6\u05de\u05e0\u05d4 \u05d0\u05d7\u05e8\u05d9 \u05e2\u05e8\u05d9\u05db\u05ea \u05d4\u05e8\u05e9\u05ea \u2014 \u05d6\u05d4 \u05de\u05d4 \u05e9\u05d4\u05de\u05d7\u05e1\u05df \u05de\u05dc\u05e7\u05d8"
+            "description": "הכמות להזמנה אחרי עריכת הרשת — זה מה שהמחסן מלקט"
           },
           "picked_qty": {
             "type": "number",
-            "description": "\u05db\u05de\u05d4 \u05d4\u05de\u05d7\u05e1\u05df \u05dc\u05d9\u05e7\u05d8 \u05d1\u05e4\u05d5\u05e2\u05dc"
+            "description": "כמה המחסן ליקט בפועל"
           },
           "received_qty": {
             "type": "number",
-            "description": "\u05db\u05de\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05e7\u05dc\u05d8 \u05d1\u05e4\u05d5\u05e2\u05dc"
+            "description": "כמה הסניף קלט בפועל"
           },
           "group_barcode": {
             "type": "string",
-            "description": "\u05d1\u05e8\u05e7\u05d5\u05d3 \u05db\u05dc\u05dc\u05d9 \u05e9\u05dc \u05d4\u05de\u05d5\u05e6\u05e8 (ProductGroup)"
+            "description": "ברקוד כללי של המוצר (ProductGroup)"
           },
           "extra": {
             "type": "boolean",
-            "description": "\u05e9\u05d5\u05e8\u05d4 \u05e9\u05d4\u05de\u05d7\u05e1\u05df \u05d4\u05d5\u05e1\u05d9\u05e3 \u05d1\u05dc\u05d9\u05e7\u05d5\u05d8 \u2014 \u05dc\u05d0 \u05d4\u05d9\u05d9\u05ea\u05d4 \u05d1\u05d4\u05d6\u05de\u05e0\u05d4"
+            "description": "שורה שהמחסן הוסיף בליקוט — לא הייתה בהזמנה"
           },
           "picked_at": {
             "type": "string",
-            "description": "\u05de\u05ea\u05d9 \u05d4\u05e9\u05d5\u05e8\u05d4 \u05d0\u05d5\u05e9\u05e8\u05d4 \u05d1\u05dc\u05d9\u05e7\u05d5\u05d8"
+            "description": "מתי השורה אושרה בליקוט"
           },
           "stock_applied": {
             "type": "boolean",
-            "description": "\u05d4\u05db\u05de\u05d5\u05ea \u05e9\u05e0\u05e7\u05dc\u05d8\u05d4 \u05db\u05d1\u05e8 \u05e0\u05d5\u05e1\u05e4\u05d4 \u05dc\u05de\u05dc\u05d0\u05d9 \u05d4\u05e1\u05e0\u05d9\u05e3 (\u05de\u05d5\u05e0\u05e2 \u05db\u05e4\u05d9\u05dc\u05d5\u05ea \u05d1\u05e0\u05d9\u05e1\u05d9\u05d5\u05df \u05d7\u05d5\u05d6\u05e8)"
+            "description": "הכמות שנקלטה כבר נוספה למלאי הסניף (מונע כפילות בניסיון חוזר)"
           },
           "network_variant_id": {
             "type": "string",
-            "description": "\u05d4\u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d4 \u05d4\u05de\u05e7\u05d5\u05e8\u05d9\u05ea \u05e9\u05dc \u05d4\u05e8\u05e9\u05ea (source_id \u05e9\u05dc \u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d9\u05ea \u05d4\u05e1\u05e0\u05d9\u05e3, \u05d0\u05d5 \u05d4\u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d4 \u05e2\u05e6\u05de\u05d4) \u2014 \u05dc\u05e4\u05d9\u05d4 \u05de\u05e0\u05d5\u05d4\u05dc \u05de\u05dc\u05d0\u05d9 \u05d4\u05de\u05d7\u05e1\u05df"
+            "description": "הוריאציה המקורית של הרשת (source_id של וריאציית הסניף, או הוריאציה עצמה) — לפיה מנוהל מלאי המחסן"
           },
           "warehouse_deducted": {
             "type": "number",
-            "description": "\u05d9\u05e9\u05df \u2014 \u05db\u05de\u05d4 \u05d4\u05d5\u05e8\u05d3 \u05de\u05de\u05dc\u05d0\u05d9 \u05d4\u05de\u05d7\u05e1\u05df \u05e2\u05d1\u05d5\u05e8 \u05d4\u05e9\u05d5\u05e8\u05d4 \u05dc\u05e4\u05e0\u05d9 \u05e9\u05d4\u05e0\u05d9\u05db\u05d5\u05d9 \u05e2\u05d1\u05e8 \u05dc\u05e9\u05e8\u05ea. \u05d4\u05d9\u05d5\u05dd \u05e0\u05e9\u05de\u05e8 \u05d1-stock_deducted"
+            "description": "ישן — כמה הורד ממלאי המחסן עבור השורה לפני שהניכוי עבר לשרת. היום נשמר ב-stock_deducted"
           }
         }
       }
     },
     "pick_version": {
       "type": "number",
-      "description": "\u05d2\u05e8\u05e1\u05ea \u05d4\u05dc\u05d9\u05e7\u05d5\u05d8 \u2014 \u05e2\u05d5\u05dc\u05d4 \u05d1\u05db\u05dc '\u05e1\u05d9\u05d9\u05dd \u05d4\u05d6\u05de\u05e0\u05d4'. \u05de\u05d6\u05d4\u05d4 \u05d4\u05d6\u05de\u05e0\u05d4 + \u05d2\u05e8\u05e1\u05d4 = \u05de\u05e4\u05ea\u05d7 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u05dc\u05e0\u05d9\u05db\u05d5\u05d9"
+      "description": "גרסת הליקוט — עולה בכל 'סיים הזמנה'. מזהה הזמנה + גרסה = מפתח ייחודי לניכוי"
     },
     "stock_status": {
       "type": "string",
@@ -128,55 +132,55 @@
         "PENDING",
         "DONE"
       ],
-      "description": "PENDING = \u05de\u05de\u05ea\u05d9\u05df \u05dc\u05e2\u05d3\u05db\u05d5\u05df \u05de\u05dc\u05d0\u05d9 \u05d4\u05de\u05d7\u05e1\u05df (\u05d9\u05e9 \u05db\u05e4\u05ea\u05d5\u05e8 '\u05d4\u05e9\u05dc\u05dd \u05e2\u05d3\u05db\u05d5\u05df \u05de\u05dc\u05d0\u05d9'), DONE = \u05d4\u05de\u05dc\u05d0\u05d9 \u05e2\u05d5\u05d3\u05db\u05df. \u05e0\u05db\u05ea\u05d1 \u05e8\u05e7 \u05d1\u05e9\u05e8\u05ea"
+      "description": "PENDING = ממתין לעדכון מלאי המחסן (יש כפתור 'השלם עדכון מלאי'), DONE = המלאי עודכן. נכתב רק בשרת"
     },
     "stock_deducted": {
       "type": "object",
-      "description": "\u05db\u05de\u05d4 \u05db\u05d1\u05e8 \u05d4\u05d5\u05e8\u05d3 \u05de\u05de\u05dc\u05d0\u05d9 \u05d4\u05de\u05d7\u05e1\u05df \u05dc\u05db\u05dc \u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d9\u05ea \u05e1\u05e0\u05d9\u05e3 { variant_id: qty } \u2014 \u05e0\u05db\u05ea\u05d1 \u05e8\u05e7 \u05d1\u05e9\u05e8\u05ea \u05d0\u05d7\u05e8\u05d9 \u05e9\u05d4\u05de\u05dc\u05d0\u05d9 \u05e2\u05d5\u05d3\u05db\u05df"
+      "description": "כמה כבר הורד ממלאי המחסן לכל וריאציית סניף { variant_id: qty } — נכתב רק בשרת אחרי שהמלאי עודכן"
     },
     "branch_notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "הערות הסניף"
     },
     "network_notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05d4\u05e8\u05e9\u05ea \u05dc\u05de\u05d7\u05e1\u05df"
+      "description": "הערות הרשת למחסן"
     },
     "warehouse_notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05d4\u05de\u05d7\u05e1\u05df \u05d1\u05e1\u05d9\u05d5\u05dd \u05dc\u05d9\u05e7\u05d5\u05d8"
+      "description": "הערות המחסן בסיום ליקוט"
     },
     "picker_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05de\u05dc\u05e7\u05d8"
+      "description": "שם המלקט"
     },
     "sent_to_network_at": {
       "type": "string",
-      "description": "\u05de\u05ea\u05d9 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05e9\u05dc\u05d7"
+      "description": "מתי הסניף שלח"
     },
     "sent_to_warehouse_at": {
       "type": "string",
-      "description": "\u05de\u05ea\u05d9 \u05d4\u05e8\u05e9\u05ea \u05e9\u05d9\u05ea\u05e4\u05d4 \u05dc\u05de\u05d7\u05e1\u05df"
+      "description": "מתי הרשת שיתפה למחסן"
     },
     "ready_at": {
       "type": "string",
-      "description": "\u05de\u05ea\u05d9 \u05d4\u05de\u05d7\u05e1\u05df \u05e1\u05d9\u05d9\u05dd \u05dc\u05d9\u05e7\u05d5\u05d8"
+      "description": "מתי המחסן סיים ליקוט"
     },
     "sent_to_branch_at": {
       "type": "string",
-      "description": "\u05de\u05ea\u05d9 \u05d4\u05e8\u05e9\u05ea \u05e9\u05d9\u05ea\u05e4\u05d4 \u05dc\u05e1\u05e0\u05d9\u05e3"
+      "description": "מתי הרשת שיתפה לסניף"
     },
     "received_at": {
       "type": "string",
-      "description": "\u05de\u05ea\u05d9 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05e7\u05dc\u05d8"
+      "description": "מתי הסניף קלט"
     },
     "picking_started_at": {
       "type": "string",
-      "description": "\u05de\u05ea\u05d9 \u05d4\u05ea\u05d7\u05d9\u05dc \u05d4\u05dc\u05d9\u05e7\u05d5\u05d8"
+      "description": "מתי התחיל הליקוט"
     },
     "received_by": {
       "type": "string",
-      "description": "\u05d4\u05d7\u05e9\u05d1\u05d5\u05df \u05e9\u05e7\u05dc\u05d8 \u05d0\u05ea \u05d4\u05de\u05e9\u05dc\u05d5\u05d7 \u05d1\u05e1\u05e0\u05d9\u05e3"
+      "description": "החשבון שקלט את המשלוח בסניף"
     }
   },
   "required": [
