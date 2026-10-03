@@ -6,9 +6,9 @@ import { fetchNetworkCatalogRows, fetchWarehouseStock, fetchLocalProducts, fetch
 export function useWarehouseInventory(warehouse) {
   const id = warehouse?.id;
   const catalog = useQuery({
-    queryKey: ['warehouse-network-catalog', warehouse?.tenant_email],
-    queryFn: () => fetchNetworkCatalogRows(warehouse.tenant_email),
-    enabled: !!warehouse?.tenant_email,
+    queryKey: ['warehouse-network-catalog', warehouse?.id],
+    queryFn: () => fetchNetworkCatalogRows(warehouse),
+    enabled: !!warehouse?.id && !!warehouse?.tenant_email,
     staleTime: 300000,
   });
   const stock = useQuery({ queryKey: ['warehouse-stock', id], queryFn: () => fetchWarehouseStock(id), enabled: !!id });
