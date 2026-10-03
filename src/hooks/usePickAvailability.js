@@ -16,7 +16,9 @@ export function usePickAvailability(warehouse, order) {
 
   const networkIdOf = async (variantId) => {
     if (sources.current.has(variantId)) return sources.current.get(variantId);
-    // Whole order at once — one request instead of one per scanned line
+    // The order line usually carries it already
+    const line = (order?.items || []).find(i => i.variant_id === variantId && i.network_variant_id);
+    if (line) { sources.current.set(variantId, line.network_variant_id); return line.network_variant_id; }    // Otherwise ask the server — whole order at once, one request instead of one per scanned line
     const ids = [...new Set([variantId, ...(order?.items || []).map(i => i.variant_id)].filter(v => v && !sources.current.has(v)))];
     try {
       const res = await base44.functions.invoke('catalogAccess', { action: 'variantSources', warehouse_id: id, variant_ids: ids });
