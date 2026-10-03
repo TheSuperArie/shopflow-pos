@@ -20,7 +20,11 @@
     },
     "status": {
       "type": "string",
-      "enum": ["PENDING", "ACTIVE", "REJECTED"],
+      "enum": [
+        "PENDING",
+        "ACTIVE",
+        "REJECTED"
+      ],
       "default": "PENDING",
       "description": "PENDING = ממתין לאישור חשבון המחסן, ACTIVE = מחובר, REJECTED = נדחה"
     },
@@ -54,5 +58,51 @@
       "description": "קוד כניסה לדף הניהול של המחסן (ברירת מחדל 1234) — נקבע רק מתוך הגדרות המחסן"
     }
   },
-  "required": ["tenant_email", "name", "station_email"]
+  "required": [
+    "tenant_email",
+    "name",
+    "station_email"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }

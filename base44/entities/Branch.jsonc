@@ -4,36 +4,36 @@
   "properties": {
     "tenant_email": {
       "type": "string",
-      "description": "\u05d4\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05e9\u05dc \u05d1\u05e2\u05dc \u05d4\u05d7\u05e0\u05d5\u05ea (\u05d4\u05d8\u05e0\u05d0\u05e0\u05d8) \u05e9\u05d0\u05dc\u05d9\u05d5 \u05e9\u05d9\u05d9\u05da \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "האימייל של בעל החנות (הטנאנט) שאליו שייך הסניף"
     },
     "name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "שם הסניף"
     },
     "station_email": {
       "type": "string",
-      "description": "\u05d4\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05e9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df Google \u05e9\u05de\u05d5\u05e4\u05e2\u05dc \u05d1\u05de\u05db\u05e9\u05d9\u05e8 \u05d4\u05e7\u05d5\u05e4\u05d4 \u05d4\u05e4\u05d9\u05d6\u05d9\u05ea \u05d1\u05e1\u05e0\u05d9\u05e3"
+      "description": "האימייל של חשבון Google שמופעל במכשיר הקופה הפיזית בסניף"
     },
     "is_active": {
       "type": "boolean",
       "default": true,
-      "description": "\u05d4\u05d0\u05dd \u05d4\u05e1\u05e0\u05d9\u05e3 \u05e4\u05e2\u05d9\u05dc"
+      "description": "האם הסניף פעיל"
     },
     "address": {
       "type": "string",
-      "description": "\u05db\u05ea\u05d5\u05d1\u05ea \u05e4\u05d9\u05d6\u05d9\u05ea \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "כתובת פיזית של הסניף"
     },
     "manager_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05de\u05e0\u05d4\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "שם מנהל הסניף"
     },
     "manager_phone": {
       "type": "string",
-      "description": "\u05d8\u05dc\u05e4\u05d5\u05df \u05de\u05e0\u05d4\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "טלפון מנהל הסניף"
     },
     "notes": {
       "type": "string",
-      "description": "\u05d4\u05e2\u05e8\u05d5\u05ea \u05e4\u05e0\u05d9\u05de\u05d9\u05d5\u05ea \u05e2\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3"
+      "description": "הערות פנימיות על הסניף"
     },
     "status": {
       "type": "string",
@@ -43,7 +43,7 @@
         "REJECTED"
       ],
       "default": "ACTIVE",
-      "description": "\u05e1\u05d8\u05d8\u05d5\u05e1 \u05d4\u05d4\u05d6\u05de\u05e0\u05d4: PENDING=\u05de\u05de\u05ea\u05d9\u05df \u05dc\u05d0\u05d9\u05e9\u05d5\u05e8, ACTIVE=\u05e4\u05e2\u05d9\u05dc \u05d5\u05de\u05d0\u05d5\u05e9\u05e8, REJECTED=\u05e0\u05d3\u05d7\u05d4"
+      "description": "סטטוס ההזמנה: PENDING=ממתין לאישור, ACTIVE=פעיל ומאושר, REJECTED=נדחה"
     },
     "system_approval": {
       "type": "string",
@@ -52,7 +52,7 @@
         "APPROVED",
         "REJECTED"
       ],
-      "description": "\u05d0\u05d9\u05e9\u05d5\u05e8 \u05d4\u05de\u05e2\u05e8\u05db\u05ea (\u05d4\u05de\u05e4\u05ea\u05d7) \u05dc\u05d4\u05e6\u05e2\u05ea \u05d4\u05d4\u05e6\u05d8\u05e8\u05e4\u05d5\u05ea. PENDING_SYSTEM = \u05d4\u05d4\u05e6\u05e2\u05d4 \u05e2\u05d3\u05d9\u05d9\u05df \u05dc\u05d0 \u05d4\u05d5\u05e6\u05d2\u05d4 \u05dc\u05d1\u05e2\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3. \u05e8\u05d9\u05e7 = \u05e8\u05e9\u05d5\u05de\u05d4 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05ea \u2014 \u05de\u05d0\u05d5\u05e9\u05e8\u05ea \u05d0\u05d5\u05d8\u05d5\u05de\u05d8\u05d9\u05ea"
+      "description": "אישור המערכת (המפתח) להצעת ההצטרפות. PENDING_SYSTEM = ההצעה עדיין לא הוצגה לבעל הסניף. ריק = רשומה היסטורית — מאושרת אוטומטית"
     },
     "receipt_prefix": {
       "type": "number",
@@ -60,7 +60,7 @@
     },
     "network_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05e8\u05e9\u05ea \u05e9\u05d4\u05d6\u05de\u05d9\u05e0\u05d4 \u05d0\u05ea \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05de\u05d5\u05e6\u05d2 \u05d1\u05d4\u05d5\u05d3\u05e2\u05ea \u05d4\u05d4\u05d6\u05de\u05e0\u05d4"
+      "description": "שם הרשת שהזמינה את הסניף — מוצג בהודעת ההזמנה"
     },
     "business_model": {
       "type": "string",
@@ -69,70 +69,70 @@
         "IMPORTER"
       ],
       "default": "IMPORTER",
-      "description": "\u05de\u05d5\u05d3\u05dc \u05e2\u05e1\u05e7\u05d9: OWN_STOCK = \u05d4\u05de\u05dc\u05d0\u05d9 \u05e9\u05dc\u05e0\u05d5, IMPORTER = \u05de\u05db\u05d9\u05e8\u05d4 \u05e2\u05d1\u05d5\u05e8 \u05d4\u05de\u05d9\u05d9\u05d1\u05d0. \u05e8\u05d9\u05e7 = \u05de\u05db\u05d9\u05e8\u05d4 \u05e2\u05d1\u05d5\u05e8 \u05d4\u05de\u05d9\u05d9\u05d1\u05d0"
+      "description": "מודל עסקי: OWN_STOCK = המלאי שלנו, IMPORTER = מכירה עבור המייבא. ריק = מכירה עבור המייבא"
     },
     "catalog_share": {
       "type": "object",
-      "description": "\u05d4\u05d2\u05d3\u05e8\u05d5\u05ea \u05e9\u05d9\u05ea\u05d5\u05e3 \u05e7\u05d8\u05dc\u05d5\u05d2 \u05dc\u05e1\u05e0\u05d9\u05e3 \u05d6\u05d4 \u2014 \u05de\u05d4 \u05e1\u05d5\u05de\u05df \u05dc\u05d4\u05e2\u05d1\u05e8\u05d4 \u05d1\u05e9\u05d9\u05ea\u05d5\u05e3 \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05de\u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea",
+      "description": "הגדרות שיתוף קטלוג לסניף זה — מה סומן להעברה בשיתוף האחרון מבעל הרשת",
       "properties": {
         "category_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "\u05de\u05d6\u05d4\u05d9 \u05d4\u05e7\u05d8\u05d2\u05d5\u05e8\u05d9\u05d5\u05ea \u05d5\u05ea\u05ea\u05d9 \u05d4\u05e7\u05d8\u05d2\u05d5\u05e8\u05d9\u05d5\u05ea \u05e9\u05d0\u05d5\u05e9\u05e8\u05d5 \u05dc\u05d4\u05e2\u05d1\u05e8\u05d4"
+          "description": "מזהי הקטגוריות ותתי הקטגוריות שאושרו להעברה"
         },
         "group_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "\u05de\u05d6\u05d4\u05d9 \u05e7\u05d1\u05d5\u05e6\u05d5\u05ea \u05d4\u05de\u05d5\u05e6\u05e8\u05d9\u05dd \u05e9\u05d0\u05d5\u05e9\u05e8\u05d5 \u05dc\u05d4\u05e2\u05d1\u05e8\u05d4"
+          "description": "מזהי קבוצות המוצרים שאושרו להעברה"
         },
         "pv_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "\u05de\u05d6\u05d4\u05d9 \u05d4\u05d5\u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d5\u05ea (ProductVariant) \u05e9\u05d0\u05d5\u05e9\u05e8\u05d5 \u05dc\u05d4\u05e2\u05d1\u05e8\u05d4"
+          "description": "מזהי הווריאציות (ProductVariant) שאושרו להעברה"
         },
         "fv_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "\u05de\u05d6\u05d4\u05d9 \u05d4\u05d5\u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d5\u05ea \u05d4\u05d2\u05de\u05d9\u05e9\u05d5\u05ea (FlexibleVariant) \u05e9\u05d0\u05d5\u05e9\u05e8\u05d5 \u05dc\u05d4\u05e2\u05d1\u05e8\u05d4"
+          "description": "מזהי הווריאציות הגמישות (FlexibleVariant) שאושרו להעברה"
         },
         "dimension_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "\u05de\u05d6\u05d4\u05d9 \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea \u05d4\u05de\u05de\u05d3\u05d9\u05dd \u05dc\u05ea\u05e6\u05d5\u05d2\u05d4 \u2014 \u05e8\u05e7 \u05d0\u05dd \u05d0\u05d5\u05e9\u05e8\u05d4 \u05d4\u05e2\u05d1\u05e8\u05ea \u05d1\u05e8\u05d9\u05e8\u05d5\u05ea \u05de\u05d7\u05d3\u05dc"
+          "description": "מזהי הגדרות הממדים לתצוגה — רק אם אושרה העברת ברירות מחדל"
         },
         "include_sku": {
           "type": "boolean",
-          "description": "\u05d4\u05d0\u05dd \u05dc\u05d4\u05e2\u05d1\u05d9\u05e8 \u05d0\u05ea \u05d4\u05de\u05e7\u05d8\u05d9\u05dd"
+          "description": "האם להעביר את המקטים"
         },
         "include_cost": {
           "type": "boolean",
-          "description": "\u05d4\u05d0\u05dd \u05dc\u05d4\u05e2\u05d1\u05d9\u05e8 \u05d0\u05ea \u05de\u05d7\u05d9\u05e8 \u05d4\u05e2\u05dc\u05d5\u05ea"
+          "description": "האם להעביר את מחיר העלות"
         },
         "include_price": {
           "type": "boolean",
-          "description": "\u05d4\u05d0\u05dd \u05dc\u05d4\u05e2\u05d1\u05d9\u05e8 \u05d0\u05ea \u05de\u05d7\u05d9\u05e8 \u05d4\u05de\u05db\u05d9\u05e8\u05d4 \u2014 \u05d0\u05dd \u05dc\u05d0, \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d9\u05e7\u05d1\u05e2 \u05de\u05d7\u05d9\u05e8 \u05d1\u05e2\u05e6\u05de\u05d5"
+          "description": "האם להעביר את מחיר המכירה — אם לא, הסניף יקבע מחיר בעצמו"
         },
         "include_defaults": {
           "type": "boolean",
-          "description": "\u05d4\u05d0\u05dd \u05dc\u05d4\u05e2\u05d1\u05d9\u05e8 \u05d1\u05e8\u05d9\u05e8\u05d5\u05ea \u05de\u05d7\u05d3\u05dc \u05db\u05de\u05d5 \u05ea\u05e6\u05d5\u05d2\u05ea \u05d5\u05e8\u05d9\u05d0\u05e6\u05d9\u05d5\u05ea"
+          "description": "האם להעביר ברירות מחדל כמו תצוגת וריאציות"
         },
         "shared_at": {
           "type": "string",
-          "description": "\u05de\u05d5\u05e2\u05d3 \u05d4\u05e9\u05d9\u05ea\u05d5\u05e3 \u05d4\u05d0\u05d7\u05e8\u05d5\u05df"
+          "description": "מועד השיתוף האחרון"
         },
         "pulled_at": {
           "type": "string",
-          "description": "\u05de\u05d5\u05e2\u05d3 \u05e7\u05dc\u05d9\u05d8\u05ea \u05d4\u05e7\u05d8\u05dc\u05d5\u05d2 \u05d0\u05e6\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 null = \u05de\u05de\u05ea\u05d9\u05df \u05dc\u05e7\u05dc\u05d9\u05d8\u05d4"
+          "description": "מועד קליטת הקטלוג אצל הסניף — null = ממתין לקליטה"
         }
       }
     }
@@ -141,5 +141,35 @@
     "tenant_email",
     "name",
     "station_email"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }

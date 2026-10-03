@@ -4,7 +4,7 @@
   "properties": {
     "tenant_email": {
       "type": "string",
-      "description": "\u05d4\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05e9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea (Master Admin) \u05e9\u05e6\u05e8\u05d9\u05da \u05dc\u05e7\u05d1\u05dc \u05d0\u05ea \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4"
+      "description": "האימייל של בעל הרשת (Master Admin) שצריך לקבל את ההתראה"
     },
     "type": {
       "type": "string",
@@ -13,32 +13,32 @@
         "ORDER_PENDING",
         "WAREHOUSE_PRODUCT_PENDING"
       ],
-      "description": "\u05e1\u05d5\u05d2 \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4"
+      "description": "סוג ההתראה"
     },
     "title": {
       "type": "string",
-      "description": "\u05db\u05d5\u05ea\u05e8\u05ea \u05e7\u05e6\u05e8\u05d4"
+      "description": "כותרת קצרה"
     },
     "body": {
       "type": "string",
-      "description": "\u05ea\u05d5\u05db\u05df \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4"
+      "description": "תוכן ההתראה"
     },
     "branch_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d4\u05e8\u05dc\u05d5\u05d5\u05e0\u05d8\u05d9"
+      "description": "מזהה הסניף הרלוונטי"
     },
     "branch_name": {
       "type": "string",
-      "description": "\u05e9\u05dd \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d4\u05e8\u05dc\u05d5\u05d5\u05e0\u05d8\u05d9"
+      "description": "שם הסניף הרלוונטי"
     },
     "is_read": {
       "type": "boolean",
       "default": false,
-      "description": "\u05d4\u05d0\u05dd \u05e0\u05e7\u05e8\u05d0\u05d4"
+      "description": "האם נקראה"
     },
     "navigate_to": {
       "type": "string",
-      "description": "\u05d4\u05d8\u05d0\u05d1 \u05e9\u05d0\u05dc\u05d9\u05d5 \u05d9\u05e0\u05d5\u05d5\u05d8 \u05db\u05d0\u05e9\u05e8 \u05dc\u05d5\u05d7\u05e6\u05d9\u05dd \u05e2\u05dc \u05d4\u05d4\u05ea\u05e8\u05d0\u05d4 (e.g. branches, orders, warehouse-stock)"
+      "description": "הטאב שאליו ינווט כאשר לוחצים על ההתראה (e.g. branches, orders, warehouse-stock)"
     }
   },
   "required": [
@@ -46,5 +46,38 @@
     "type",
     "title",
     "body"
-  ]
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }
