@@ -199,7 +199,7 @@ export default function WarehouseHome() {
 
             {tab === 'chat' && (
               <div className="h-[70vh] rounded-2xl border bg-white overflow-hidden">
-                <GeneralChatDrawer open inline branchId={warehouse.id} tenantEmail={warehouse.tenant_email} senderRole="BRANCH" title="צ'אט עם הרשת" />
+                <GeneralChatDrawer open inline branchId={warehouse.id} tenantEmail={warehouse.tenant_email} stationEmail={warehouse.station_email} senderRole="BRANCH" title="צ'אט עם הרשת" />
               </div>
             )}
           </>
