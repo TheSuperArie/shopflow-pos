@@ -126,6 +126,7 @@ export default function NetworkSupplyCenter({ tenantEmail, networkName }) {
                     inline
                     branchId={chatBranchId}
                     tenantEmail={tenantEmail}
+                    stationEmail={activeBranches.find(b => b.id === chatBranchId)?.station_email}
                     senderRole="HQ"
                     title={`צ'אט עם ${activeBranches.find(b => b.id === chatBranchId)?.name || 'הסניף'}`}
                   />
@@ -152,7 +153,7 @@ export default function NetworkSupplyCenter({ tenantEmail, networkName }) {
           {warehouseTab === 'chat' && (
             warehouse?.status === 'ACTIVE' ? (
               <div className="h-[460px] rounded-2xl border overflow-hidden">
-                <GeneralChatDrawer open inline branchId={warehouse.id} tenantEmail={tenantEmail} senderRole="HQ" title={`צ'אט עם ${warehouse.name}`} />
+                <GeneralChatDrawer open inline branchId={warehouse.id} tenantEmail={tenantEmail} stationEmail={warehouse.station_email} senderRole="HQ" title={`צ'אט עם ${warehouse.name}`} />
               </div>
             ) : (
               <p className="py-10 text-center text-sm text-gray-400">הצ'אט ייפתח אחרי שהמחסן יאשר את החיבור</p>
