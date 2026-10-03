@@ -79,7 +79,7 @@ export default function NetworkSupplyOrderDialog({ order, branch, warehouse, onC
       toast({ title: 'אין שורות עם כמות בהזמנה', variant: 'destructive' });
       return;
     }
-    const ok = await save({ status: 'SENT_TO_WAREHOUSE', warehouse_id: warehouse.id, sent_to_warehouse_at: nowIso() }, 'warehouse');
+    const ok = await save({ status: 'SENT_TO_WAREHOUSE', warehouse_id: warehouse.id, warehouse_email: warehouse.station_email || null, sent_to_warehouse_at: nowIso() }, 'warehouse');
     if (ok) { toast({ title: `הזמנה #${order.order_number} שותפה למחסן` }); onClose(); }
   };
 
