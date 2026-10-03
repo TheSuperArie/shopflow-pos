@@ -209,6 +209,7 @@ export default function BranchCommandCenter({ branch, tenantEmail, onBack }) {
                 onClose={() => {}}
                 branchId={branch.id}
                 tenantEmail={tenantEmail}
+                stationEmail={branch.station_email}
                 senderRole="HQ"
                 inline={true}
               />
