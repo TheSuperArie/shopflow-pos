@@ -24,16 +24,16 @@ export const fetchWarehouseMovements = (warehouseId, limit = 1000) =>
 export const fetchLocalProducts = (warehouseId) =>
   base44.entities.WarehouseLocalProduct.filter({ warehouse_id: warehouseId }, '-created_date', 1000);
 
-/** The network catalog = products the network owner created for his own branch (or unstamped). */
-export async function fetchNetworkCatalogRows(tenantEmail) {
-  if (!tenantEmail) return [];
-  const [branches, variants, groups, categories] = await Promise.all([
-    base44.entities.Branch.filter({ tenant_email: tenantEmail, station_email: tenantEmail }),
-    base44.entities.ProductVariant.filter({ created_by: tenantEmail }, undefined, 5000),
-    base44.entities.ProductGroup.filter({ created_by: tenantEmail }, undefined, 5000),
-    base44.entities.Category.filter({ created_by: tenantEmail }, undefined, 2000),
-  ]);
-  const own = new Set(branches.map(b => b.id));
+/**
+ * The network catalog = products the network owner created for his own branch (or unstamped).
+ * Read through the server (catalogAccess) — the warehouse account can't read the owner's catalog
+ * tables directly.
+ */
+export async function fetchNetworkCatalogRows(warehouse) {
+  if (!warehouse?.id || !warehouse?.tenant_email) return [];
+  const res = await base44.functions.invoke('catalogAccess', { action: 'networkCatalog', warehouse_id: warehouse.id });
+  const { own_branch_ids = [], variants = [], groups = [], categories = [] } = res.data || {};
+  const own = new Set(own_branch_ids);
   const mine = (r) => !r.branch_id || own.has(r.branch_id);
   return buildCatalogRows(variants.filter(mine), groups.filter(mine), categories);
 }
