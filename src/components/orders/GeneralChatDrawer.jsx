@@ -11,7 +11,9 @@ import { parseServerDate } from '@/lib/serverDate';
 // inline: render as embedded panel instead of floating drawer
 // branchId may also be a Warehouse id — the network ↔ warehouse chat uses the same channel
 // (the warehouse writes as 'BRANCH', the network as 'HQ').
-export default function GeneralChatDrawer({ open, onClose, branchId, tenantEmail, senderRole, inline = false, title }) {
+// stationEmail: the account of the non-network party (branch station / warehouse account) —
+// saved on every message so both sides keep access when the chat is locked to its parties.
+export default function GeneralChatDrawer({ open, onClose, branchId, tenantEmail, stationEmail, senderRole, inline = false, title }) {
   const [text, setText] = useState('');
   const bottomRef = useRef(null);
   const queryClient = useQueryClient();
@@ -71,6 +73,7 @@ export default function GeneralChatDrawer({ open, onClose, branchId, tenantEmail
     sendMutation.mutate({
       branch_id: branchId,
       tenant_email: tenantEmail,
+      station_email: stationEmail || null,
       sender_role: senderRole,
       message_text: text.trim(),
       is_read: false,
