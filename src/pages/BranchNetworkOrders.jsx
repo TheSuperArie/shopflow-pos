@@ -270,6 +270,7 @@ export default function BranchNetworkOrders() {
           onClose={() => setShowGeneralChat(false)}
           branchId={myBranch.id}
           tenantEmail={myBranch.tenant_email}
+          stationEmail={myBranch.station_email}
           senderRole="BRANCH"
         />
       )}
