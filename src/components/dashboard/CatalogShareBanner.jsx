@@ -48,23 +48,13 @@ export default function CatalogShareBanner({ branch, userEmail }) {
       localPV.forEach(r => r.source_id && pvMap.set(r.source_id, r.id));
       localFV.forEach(r => r.source_id && fvMap.set(r.source_id, r.id));
 
-      // Fetch the source records by the exact ids the master embedded in the share
-      const fetchByIds = async (entity, ids) => {
-        const out = [];
-        for (let i = 0; i < ids.length; i += 100) {
-          out.push(...await entity.filter({ id: { $in: ids.slice(i, i + 100) } }));
-          if (i + 100 < ids.length) await new Promise(r => setTimeout(r, 150));
-        }
-        return out;
-      };
-
-      const [srcCats, srcDims, srcGroups, srcPV, srcFV] = await Promise.all([
-        fetchByIds(base44.entities.Category, share.category_ids || []),
-        fetchByIds(base44.entities.VariantDimension, share.dimension_ids || []),
-        fetchByIds(base44.entities.ProductGroup, share.group_ids || []),
-        fetchByIds(base44.entities.ProductVariant, share.pv_ids || []),
-        fetchByIds(base44.entities.FlexibleVariant, share.fv_ids || []),
-      ]);
+      // The shared records belong to the network owner — the server checks this station really is
+      // the branch and returns only what the owner shared with it (Branch.catalog_share)
+      const res = await base44.functions.invoke('catalogAccess', { action: 'sharedCatalog', branch_id: branch.id });
+      const src = res.data || {};
+      const [srcCats, srcDims, srcGroups, srcPV, srcFV] = [
+        src.categories || [], src.dimensions || [], src.groups || [], src.pv || [], src.fv || [],
+      ];
 
       const total =
         srcCats.filter(s => !catMap.has(s.id)).length +
