@@ -265,7 +265,7 @@ export default function BranchSupplyOrders() {
       </div>
 
       {chatOpen && (
-        <GeneralChatDrawer open onClose={() => setChatOpen(false)} branchId={branch.id} tenantEmail={branch.tenant_email} senderRole="BRANCH" />
+        <GeneralChatDrawer open onClose={() => setChatOpen(false)} branchId={branch.id} tenantEmail={branch.tenant_email} stationEmail={branch.station_email} senderRole="BRANCH" />
       )}
 
       {receiving && (
