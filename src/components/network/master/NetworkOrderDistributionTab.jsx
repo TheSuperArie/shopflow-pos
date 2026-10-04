@@ -23,7 +23,7 @@ export default function NetworkOrderDistributionTab({ tenantEmail }) {
     staleTime: 300000,
   });
   const branchIds = useMemo(
-    () => branches.filter(b => b.status === 'ACTIVE' || b.is_active).map(b => b.id).sort(),
+    () => branches.filter(b => (b.status ? b.status === 'ACTIVE' : !!b.is_active)).map(b => b.id).sort(),
     [branches]
   );
 
@@ -60,15 +60,32 @@ export default function NetworkOrderDistributionTab({ tenantEmail }) {
   const merged = useMemo(() => {
     const vById = new Map(allVariants.map(v => [v.id, v]));
     const gById = new Map(allGroups.map(g => [g.id, g]));
+    // Originals = the owner's own products (created by him, not a copy of something else).
+    // A copy whose original was deleted is matched to an original with the same name / size.
+    const isOriginal = (r) => !r.source_id || !(r.source_id in Object.fromEntries([[r.source_id, 1]])) && false;
+    const ownerGroups = allGroups.filter(g => String(g.created_by || '').toLowerCase() === String(tenantEmail || '').toLowerCase() && !gById.has(g.source_id));
+    const groupByName = new Map(ownerGroups.map(g => [String(g.name || '').trim(), g]));
+    const dimKey = (v) => JSON.stringify(Object.entries(v.dimensions || {}).sort());
     const groupOf = (gid) => {
       const g = gById.get(gid);
       if (!g) return null;
-      return (g.source_id && gById.get(g.source_id)) || g;
+      if (g.source_id && gById.get(g.source_id)) return gById.get(g.source_id);
+      if (g.source_id) return groupByName.get(String(g.name || '').trim()) || g; // original deleted
+      return g;
     };
     const variantOf = (vid) => {
       const v = vById.get(vid);
       if (!v) return null;
-      return (v.source_id && vById.get(v.source_id)) || v;
+      if (v.source_id && vById.get(v.source_id)) return vById.get(v.source_id);
+      if (v.source_id) {
+        // Original deleted — same size in the matching network product, if there is one
+        const g = groupOf(v.group_id);
+        const twin = g && g.id !== v.group_id
+          ? allVariants.find(x => x.group_id === g.id && dimKey(x) === dimKey(v))
+          : null;
+        return twin || v;
+      }
+      return v;
     };
     const groups = new Map();
     const variants = new Map();
@@ -90,7 +107,7 @@ export default function NetworkOrderDistributionTab({ tenantEmail }) {
       }).filter(Boolean),
     }));
     return { sales, groups: [...groups.values()], variants: [...variants.values()] };
-  }, [rawSales, allGroups, allVariants]);
+  }, [rawSales, allGroups, allVariants, tenantEmail]);
 
   return (
     <OrderDistributionView
