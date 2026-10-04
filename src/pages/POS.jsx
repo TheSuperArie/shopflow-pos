@@ -24,6 +24,12 @@ import { usePosReservations } from '@/hooks/usePosReservations';
 import StuckStockBanner from '@/components/pos/StuckStockBanner';
 import { enqueueSaleStock, flushSaleStock } from '@/lib/saleStockQueue';
 
+// A credit charge that went through (Nedarim) but whose sale wasn't saved yet — kept on the device so
+// the next "save" reuses it instead of charging the customer again, even after a page refresh.
+const PAID_CHARGE_KEY = 'pos_paid_unsaved_charge';
+const loadPaidCharge = () => { try { return JSON.parse(localStorage.getItem(PAID_CHARGE_KEY) || 'null'); } catch { return null; } };
+const savePaidCharge = (c) => { try { c ? localStorage.setItem(PAID_CHARGE_KEY, JSON.stringify(c)) : localStorage.removeItem(PAID_CHARGE_KEY); } catch { /* ignore */ } };
+
 // Offline selling is disabled: a sale is recorded ONLY when it reaches the server.
 // (The offline code in offlineManager / OnlineStatus / useOfflineSync is kept but no longer wired in.)
 const NO_INTERNET = 'NO_INTERNET';
@@ -53,6 +59,16 @@ export default function POS() {
   // Id of the sale currently being checked out — kept across retries of the same cart,
   // so a retry after an unclear failure never records the sale twice
   const pendingSaleIdRef = useRef(null);
+  const [paidCharge, setPaidChargeState] = useState(loadPaidCharge);
+  const setPaidCharge = (c) => { savePaidCharge(c); setPaidChargeState(c); };
+
+  // Nedarim Plus settings (this store's, or its network's) — read on the server, key included
+  const { data: nedarim = null } = useQuery({
+    queryKey: ['nedarim-config'],
+    queryFn: async () => (await base44.functions.invoke('adminAuth', { action: 'nedarimConfig' })).data,
+    staleTime: 300000,
+    retry: false,
+  });
   // Out-of-stock warning popup: { title, description, onConfirm } — the seller can still sell after confirming
   const [stockConfirm, setStockConfirm] = useState(null);
 
@@ -293,6 +309,12 @@ export default function POS() {
         // Split payment (cash + credit): record how much went to each method
         cash_amount: cashDetails?.cashAmount,
         credit_amount: cashDetails?.creditAmount,
+        // Charged through Nedarim in the POS → keep the approval with the sale
+        credit_provider: cashDetails?.credit?.provider || null,
+        credit_ref: cashDetails?.credit?.ref || null,
+        credit_details: cashDetails?.credit
+          ? { ...(cashDetails.credit.details || {}), amount: cashDetails.credit.amount, tashlumim: cashDetails.credit.tashlumim }
+          : null,
         seller_email: user?.email,
         seller_name: user?.full_name,
         created_date: new Date().toISOString(),
@@ -323,6 +345,7 @@ export default function POS() {
     },
     onSuccess: (sale) => {
       pendingSaleIdRef.current = null;
+      if (saleMutation.variables?.cashDetails?.credit) setPaidCharge(null);
       flushStock();
       queryClient.invalidateQueries({ queryKey: ['product-variants'] });
       queryClient.invalidateQueries({ queryKey: ['branch-dashboard-sales', activeBranch?.id] });
@@ -338,7 +361,9 @@ export default function POS() {
           : sale?._stockWarning ? 'שים לב: עדכון המלאי נכשל' : undefined,
       });
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      // The card was already charged — remember it so the retry saves without charging again
+      if (variables?.cashDetails?.credit) setPaidCharge({ ...variables.cashDetails.credit, at: new Date().toISOString() });
       const noInternet = error?.message === NO_INTERNET || !navigator.onLine;
       toast({
         title: noInternet ? '📡 אין חיבור לאינטרנט' : '❌ המכירה לא נשמרה',
@@ -548,6 +573,21 @@ export default function POS() {
     <div dir="rtl" className="h-screen flex flex-col bg-gray-50">
       {/* Sales the old offline mode left on this device */}
       <StuckStockBanner onRetry={flushStock} />
+      {paidCharge && (
+        <div className="mx-3 mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-900" dir="rtl">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            חיוב אשראי של ₪{Number(paidCharge.amount || 0).toFixed(2)}{paidCharge.ref ? ` (אישור ${paidCharge.ref})` : ''} עבר בנדרים, אבל המכירה עוד לא נשמרה.
+            לחצו שוב על תשלום — הוא לא יחויב שוב.
+          </span>
+          <button
+            onClick={() => { if (window.confirm('להסיר את ההודעה? אם המכירה לא נשמרה — צריך לרשום אותה או לבטל את העסקה בנדרים ידנית.')) setPaidCharge(null); }}
+            className="text-xs underline text-amber-700 hover:text-amber-900"
+          >
+            טופל — הסר הודעה
+          </button>
+        </div>
+      )}
       {unsentSales.length > 0 && (
         <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-3 text-sm shrink-0">
           <span className="flex items-center gap-2 text-amber-900">
@@ -761,6 +801,9 @@ export default function POS() {
         onConfirm={(method, cashDetails, printReceipt) => saleMutation.mutate({ paymentMethod: method, cashDetails, printReceipt })}
         onClose={() => setShowCheckout(false)}
         isProcessing={saleMutation.isPending}
+        nedarim={nedarim}
+        paidCharge={paidCharge}
+        chargeComment={`ShopFlow · ${appSettingsList[0]?.store_name || 'קופה'}`}
       />
 
       <ReceiptModal
