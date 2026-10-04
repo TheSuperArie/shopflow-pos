@@ -10,7 +10,6 @@ import {
   Settings,
   LogOut,
   X,
-  Menu,
   ShoppingCart,
   AlertTriangle,
   RotateCcw,

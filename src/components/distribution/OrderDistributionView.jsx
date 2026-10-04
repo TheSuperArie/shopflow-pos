@@ -17,12 +17,6 @@ const PRESETS = [
   { label: 'שנה', days: 365 },
 ];
 
-function toISODate(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
 /**
  * Largest remainder method — distributes `total` across items by their weights
  * so the sum of rounded results equals `total` exactly.
