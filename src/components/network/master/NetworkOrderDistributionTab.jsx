@@ -60,9 +60,7 @@ export default function NetworkOrderDistributionTab({ tenantEmail }) {
   const merged = useMemo(() => {
     const vById = new Map(allVariants.map(v => [v.id, v]));
     const gById = new Map(allGroups.map(g => [g.id, g]));
-    // Originals = the owner's own products (created by him, not a copy of something else).
-    // A copy whose original was deleted is matched to an original with the same name / size.
-    const isOriginal = (r) => !r.source_id || !(r.source_id in Object.fromEntries([[r.source_id, 1]])) && false;
+    // A copy whose original was deleted is matched to an owner's product with the same name / size.
     const ownerGroups = allGroups.filter(g => String(g.created_by || '').toLowerCase() === String(tenantEmail || '').toLowerCase() && !gById.has(g.source_id));
     const groupByName = new Map(ownerGroups.map(g => [String(g.name || '').trim(), g]));
     const dimKey = (v) => JSON.stringify(Object.entries(v.dimensions || {}).sort());
