@@ -15,6 +15,7 @@ import DangerZone from '@/components/admin/DangerZone';
 import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
 import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
 import AdminCodeChange from '@/components/admin/AdminCodeChange';
+import NedarimSettingsCard from '@/components/admin/NedarimSettingsCard';
 
 export default function AdminSettings() {
   const [storeName, setStoreName] = useState('');
@@ -172,6 +173,7 @@ export default function AdminSettings() {
           </Button>
         </CardContent>
       </Card>
+      <NedarimSettingsCard />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Crown, Save, Loader2, Settings, Network } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import AdminCodeChange from '@/components/admin/AdminCodeChange';
+import NedarimSettingsCard from '@/components/admin/NedarimSettingsCard';
 
 export default function NetworkSettingsTab({ tenantEmail }) {
   const [networkName, setNetworkName] = useState('');
@@ -102,6 +103,8 @@ export default function NetworkSettingsTab({ tenantEmail }) {
           />
         </CardContent>
       </Card>
+
+      <NedarimSettingsCard network />
     </div>
   );
 }
