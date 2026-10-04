@@ -8,6 +8,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
  *  status       {}                           → { custom_admin, custom_network } (is a non-default code set)
  *  setPasswords { current, admin_password?, network_admin_password? }
  *               — `current` must be one of this account's valid codes
+ *  nedarimConfig {}                          → { enabled, mosad, api_valid, source } — the Nedarim Plus
+ *               payment settings the POS uses: this account's own, or else its network owner's
+ *  nedarimStatus {}                          → same without the key (settings screens)
+ *  setNedarim   { current, enabled, mosad, api_valid? } — needs a valid admin code; an empty
+ *               api_valid keeps the saved key
  *
  * Same rules as the old login screen: no code set → defaults (1234 branch / 8888 network);
  * an account that is a branch station of someone else's network can't open the network dashboard.
@@ -127,6 +132,53 @@ export default async function (req) {
         return Response.json({ error: 'קוד הסניף וקוד הרשת חייבים להיות שונים' }, { status: 400 });
       }
       if (Object.keys(patch).length) await db.AdminSecret.update(secret.id, patch);
+      return Response.json({ ok: true });
+    }
+
+    // ── Nedarim Plus (credit card payments in the POS) ──
+    const hasNedarim = (s) => !!(s && s.nedarim_mosad);
+    const networkSecret = async () => {
+      // A branch station without its own settings uses its network owner's
+      const branches = await db.Branch.filter({ station_email: user.email, status: 'ACTIVE' }, undefined, 10);
+      const tenant = branches.map(b => String(b.tenant_email || '').toLowerCase()).find(t => t && t !== email);
+      if (!tenant) return null;
+      const [s] = await db.AdminSecret.filter({ owner_email: tenant }, 'created_date', 1);
+      return s || null;
+    };
+    const nedarimFor = async () => {
+      if (hasNedarim(secret)) return { s: secret, source: 'own' };
+      const n = await networkSecret();
+      if (hasNedarim(n)) return { s: n, source: 'network' };
+      return { s: null, source: null };
+    };
+
+    if (action === 'nedarimConfig' || action === 'nedarimStatus') {
+      const { s, source } = await nedarimFor();
+      const out = {
+        ok: true,
+        enabled: !!(s && s.nedarim_enabled && s.nedarim_mosad && s.nedarim_api_valid),
+        mosad: s?.nedarim_mosad || '',
+        has_key: !!s?.nedarim_api_valid,
+        source,
+        own_enabled: !!secret.nedarim_enabled,
+        own_mosad: secret.nedarim_mosad || '',
+        own_has_key: !!secret.nedarim_api_valid,
+      };
+      if (action === 'nedarimConfig' && out.enabled) out.api_valid = s.nedarim_api_valid;
+      return Response.json(out);
+    }
+
+    if (action === 'setNedarim') {
+      const res = await checkCode(secret, body.current);
+      if (res.blocked) return Response.json({ error: res.blocked }, { status: 429 });
+      if (!res.role) return Response.json({ error: 'קוד המנהל שגוי' }, { status: 403 });
+      const mosad = String(body.mosad ?? '').trim();
+      if (mosad && !/^\d{4,10}$/.test(mosad)) return Response.json({ error: 'מספר מוסד חייב להיות מספרים בלבד' }, { status: 400 });
+      const patch = { nedarim_enabled: !!body.enabled && !!mosad, nedarim_mosad: mosad };
+      const key = String(body.api_valid ?? '').trim();
+      if (key) patch.nedarim_api_valid = key;
+      if (body.clear_key) patch.nedarim_api_valid = '';
+      await db.AdminSecret.update(secret.id, patch);
       return Response.json({ ok: true });
     }
 
