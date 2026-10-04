@@ -163,11 +163,6 @@ export default function OrderDistributionView({
     return stats.groups.filter(g => selectedGroupIds.has(g.group.id));
   }, [stats.groups, selectedGroupIds]);
 
-  const visibleTotalUnits = useMemo(
-    () => visibleGroups.reduce((s, g) => s + g.groupTotalSold, 0),
-    [visibleGroups]
-  );
-
   // Compute suggested distribution across the selected variants only (minus the removed rows)
   const allRows = useMemo(() => {
     const rows = [];
