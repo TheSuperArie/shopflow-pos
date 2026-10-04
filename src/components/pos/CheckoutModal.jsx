@@ -330,18 +330,18 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
             )}
           </div>
         )}
+        {/* Nested inside the checkout dialog, so it stacks on top of it */}
+        {useNedarim && (
+          <NedarimPaymentDialog
+            open={!!charging}
+            amount={charging?.amount || 0}
+            config={nedarim}
+            comment={chargeComment}
+            onSuccess={onCharged}
+            onCancel={() => setCharging(null)}
+          />
+        )}
       </DialogContent>
-
-      {useNedarim && (
-        <NedarimPaymentDialog
-          open={!!charging}
-          amount={charging?.amount || 0}
-          config={nedarim}
-          comment={chargeComment}
-          onSuccess={onCharged}
-          onCancel={() => setCharging(null)}
-        />
-      )}
     </Dialog>
   );
 }
