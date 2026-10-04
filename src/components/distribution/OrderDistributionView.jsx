@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Calendar, Package, TrendingUp, Calculator, CheckCheck, Eraser } from 'lucide-react';
+import { Loader2, Calendar, Package, TrendingUp, Calculator, CheckCheck, Eraser, X, RotateCcw, Warehouse } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { israelDateKey } from '@/lib/serverDate';
 
@@ -49,12 +50,42 @@ function distributeByWeight(total, items) {
  *   sales    — sales whose items point at variant ids / group ids found in `variants` / `groups`
  *   startDate/endDate + setters — 'YYYY-MM-DD' (the caller may load sales by this range)
  */
+/**
+ * Distribution that tops up what's already in stock: aims for the stock AFTER the order arrives to
+ * follow the sales shares. Finds a level L where sum(max(0, share*L - stock)) = total, so a product
+ * with plenty in stock gets less (or 0) and a short one gets more. Rounded like distributeByWeight.
+ */
+function distributeWithStock(total, items) {
+  const weightSum = items.reduce((s, i) => s + i.weight, 0);
+  if (weightSum <= 0 || total <= 0) return items.map(i => ({ ...i, qty: 0 }));
+  const need = (L) => items.reduce((s, i) => s + Math.max(0, (i.weight / weightSum) * L - Math.max(0, i.stock || 0)), 0);
+  const stockSum = items.reduce((s, i) => s + Math.max(0, i.stock || 0), 0);
+  let lo = 0;
+  let hi = total + stockSum;
+  for (let k = 0; k < 80; k++) {
+    const mid = (lo + hi) / 2;
+    if (need(mid) < total) lo = mid; else hi = mid;
+  }
+  const raw = items.map(i => ({ ...i, gap: Math.max(0, (i.weight / weightSum) * hi - Math.max(0, i.stock || 0)) }));
+  const rounded = distributeByWeight(total, raw.map(r => ({ ...r, weight: r.gap })));
+  // keep each item's real sales weight for display
+  return rounded.map((r, idx) => ({ ...r, weight: items[idx].weight }));
+}
+
 export default function OrderDistributionView({
   title = 'חלוקת הזמנה לפי סטטיסטיקה',
   description = 'בחר מוצרים וטווח תאריכים, הזן כמות כוללת להזמנה — והמערכת תחלק אותה לפי אחוזי המכירה בטווח שנבחר.',
   sales = [], salesLoading = false, groups = [], variants = [],
   startDate, endDate, setStartDate, setEndDate,
+  // Optional: Map variant id → quantity in the warehouse (network dashboard). Enables the
+  // "take warehouse stock into account" switch and the stock column.
+  stockByVariant = null, stockLoading = false,
 }) {
+  // Rows removed from the order by hand (the rest is re-split)
+  const [excluded, setExcluded] = useState(() => new Set());
+  const [useStock, setUseStock] = useState(true);
+  const hasStock = !!stockByVariant;
+  const stockOf = (variantId) => Number(stockByVariant?.get(variantId) || 0);
   const [totalToOrder, setTotalToOrder] = useState(1000);
   // null = all groups selected; otherwise a Set of selected group ids
   const [selectedGroupIds, setSelectedGroupIds] = useState(null);
@@ -137,32 +168,49 @@ export default function OrderDistributionView({
     [visibleGroups]
   );
 
-  // Compute suggested distribution across the selected variants only
-  const distribution = useMemo(() => {
-    const allVariants = [];
+  // Compute suggested distribution across the selected variants only (minus the removed rows)
+  const allRows = useMemo(() => {
+    const rows = [];
     for (const g of visibleGroups) {
       for (const v of g.variants) {
-        allVariants.push({
+        rows.push({
           key: v.variant.id,
           groupId: g.group.id,
           groupName: g.group.name,
           label: v.label,
           weight: v.sold,
+          stock: hasStock ? stockOf(v.variant.id) : 0,
         });
       }
     }
-    const dist = distributeByWeight(Number(totalToOrder) || 0, allVariants);
+    return rows;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleGroups, stockByVariant]);
+
+  const activeRows = useMemo(() => allRows.filter(r => !excluded.has(r.key)), [allRows, excluded]);
+  const removedRows = useMemo(() => allRows.filter(r => excluded.has(r.key)), [allRows, excluded]);
+  const activeSold = useMemo(() => activeRows.reduce((s, r) => s + r.weight, 0), [activeRows]);
+
+  const distribution = useMemo(() => {
+    const total = Number(totalToOrder) || 0;
+    const dist = hasStock && useStock
+      ? distributeWithStock(total, activeRows)
+      : distributeByWeight(total, activeRows);
     // regroup by group
     const byGroup = {};
     for (const d of dist) {
-      if (!byGroup[d.groupId]) byGroup[d.groupId] = { groupName: d.groupName, items: [], groupQty: 0 };
+      if (!byGroup[d.groupId]) byGroup[d.groupId] = { groupId: d.groupId, groupName: d.groupName, items: [], groupQty: 0, groupSold: 0 };
       byGroup[d.groupId].items.push(d);
       byGroup[d.groupId].groupQty += d.qty;
+      byGroup[d.groupId].groupSold += d.weight;
     }
     return Object.values(byGroup)
-      .sort((a, b) => b.groupQty - a.groupQty)
-      .map(g => ({ ...g, items: g.items.sort((a, b) => b.qty - a.qty) }));
-  }, [visibleGroups, totalToOrder]);
+      .sort((a, b) => b.groupSold - a.groupSold)
+      .map(g => ({ ...g, items: g.items.sort((a, b) => b.weight - a.weight) }));
+  }, [activeRows, totalToOrder, hasStock, useStock]);
+
+  const removeRow = (key) => setExcluded(prev => new Set(prev).add(key));
+  const restoreRow = (key) => setExcluded(prev => { const next = new Set(prev); next.delete(key); return next; });
 
   const toggleGroup = (gid) => {
     setSelectedGroupIds(prev => {
@@ -338,12 +386,27 @@ export default function OrderDistributionView({
               <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
               לא נבחרו מוצרים — סמן לפחות מוצר אחד למעלה כדי לקבל הצעת חלוקה.
             </div>
-          ) : distribution.length === 0 ? (
+          ) : distribution.length === 0 && removedRows.length === 0 ? (
             <div className="text-center py-10 text-gray-500 text-sm">
               הזן כמות להזמנה כדי לקבל הצעת חלוקה.
             </div>
           ) : (
             <div className="space-y-4">
+              {hasStock && (
+                <div className="flex items-start justify-between gap-3 bg-sky-50 border border-sky-200 rounded-lg px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-sky-900 flex items-center gap-1.5">
+                      <Warehouse className="w-4 h-4" /> קח בחשבון את מלאי המחסן
+                      {stockLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    </p>
+                    <p className="text-xs text-sky-700 mt-0.5">
+                      ההזמנה משלימה חוסרים: אחרי שהסחורה תגיע, המלאי במחסן יתחלק לפי אחוזי המכירה. מוצר שיש ממנו מספיק במחסן יקבל פחות או 0.
+                    </p>
+                  </div>
+                  <Switch checked={useStock} onCheckedChange={setUseStock} />
+                </div>
+              )}
+
               <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
                 <span className="text-sm text-emerald-800">סה"כ מוצע להזמנה:</span>
                 <Badge className="bg-emerald-600 text-white text-sm px-3 py-1">
@@ -352,12 +415,11 @@ export default function OrderDistributionView({
               </div>
 
               {distribution.map(g => {
-                const groupSold = visibleGroups.find(sg => sg.group.id === g.items[0]?.groupId)?.groupTotalSold || 0;
-                const groupPercent = visibleTotalUnits > 0
-                  ? (groupSold / visibleTotalUnits * 100).toFixed(1)
+                const groupPercent = activeSold > 0
+                  ? (g.groupSold / activeSold * 100).toFixed(1)
                   : '0';
                 return (
-                  <div key={g.groupName} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div key={g.groupId} className="border border-gray-200 rounded-lg overflow-hidden">
                     <div className="bg-gray-50 px-4 py-2 flex items-center justify-between">
                       <div>
                         <span className="font-semibold text-gray-800">{g.groupName}</span>
@@ -369,20 +431,30 @@ export default function OrderDistributionView({
                     </div>
                     <div className="divide-y divide-gray-100">
                       {g.items.map(item => {
-                        const percent = visibleTotalUnits > 0
-                          ? (item.weight / visibleTotalUnits * 100).toFixed(1)
+                        const percent = activeSold > 0
+                          ? (item.weight / activeSold * 100).toFixed(1)
                           : '0';
                         return (
                           <div key={item.key} className="flex items-center justify-between px-4 py-2 text-sm">
                             <div className="flex items-center gap-3">
                               <span className="text-gray-700">{item.label}</span>
                               <span className="text-xs text-gray-400">נמכרו {item.weight}</span>
+                              {hasStock && (
+                                <span className="text-xs text-sky-700">במחסן {item.stock.toLocaleString()}</span>
+                              )}
                             </div>
                             <div className="flex items-center gap-3">
                               <Badge variant="outline" className="text-xs">{percent}%</Badge>
-                              <span className="font-bold text-emerald-700 w-16 text-left">
+                              <span className={`font-bold w-16 text-left ${item.qty > 0 ? 'text-emerald-700' : 'text-gray-300'}`}>
                                 {item.qty.toLocaleString()}
                               </span>
+                              <button
+                                onClick={() => removeRow(item.key)}
+                                title="הורד מההזמנה"
+                                className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                         );
@@ -391,6 +463,29 @@ export default function OrderDistributionView({
                   </div>
                 );
               })}
+
+              {removedRows.length > 0 && (
+                <div className="border border-dashed border-gray-300 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">הורדו מההזמנה ({removedRows.length})</span>
+                    <Button variant="ghost" size="sm" onClick={() => setExcluded(new Set())}>
+                      <RotateCcw className="w-3.5 h-3.5 ml-1" /> החזר הכל
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {removedRows.map(r => (
+                      <button
+                        key={r.key}
+                        onClick={() => restoreRow(r.key)}
+                        title="החזר להזמנה"
+                        className="px-2.5 py-1 rounded-full text-xs border border-gray-200 bg-gray-50 text-gray-500 hover:border-emerald-300 hover:text-emerald-700"
+                      >
+                        {r.groupName} · {r.label} <RotateCcw className="w-3 h-3 inline mr-1" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
