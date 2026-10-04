@@ -4,6 +4,7 @@ import { addDays, format, subDays } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 import { fetchAllPages } from '@/lib/fetchAllPages';
 import { fetchNetworkSales } from '@/lib/networkScope';
+import { fetchWarehouseStock } from '@/lib/warehouseStock';
 import OrderDistributionView, { localDay } from '@/components/distribution/OrderDistributionView';
 
 /**
@@ -107,6 +108,30 @@ export default function NetworkOrderDistributionTab({ tenantEmail }) {
     return { sales, groups: [...groups.values()], variants: [...variants.values()] };
   }, [rawSales, allGroups, allVariants, tenantEmail]);
 
+  // Current warehouse stock per network variant (all the network's warehouses together)
+  const { data: warehouses = [], isFetched: warehousesLoaded } = useQuery({
+    queryKey: ['order-dist-warehouses', tenantEmail],
+    queryFn: () => base44.entities.Warehouse.filter({ tenant_email: tenantEmail }),
+    enabled: !!tenantEmail,
+    staleTime: 300000,
+  });
+  const activeWarehouseIds = useMemo(
+    () => warehouses.filter(w => w.status === 'ACTIVE').map(w => w.id).sort(),
+    [warehouses]
+  );
+  const { data: stockRows = [], isLoading: stockLoading } = useQuery({
+    queryKey: ['order-dist-warehouse-stock', activeWarehouseIds.join(',')],
+    queryFn: async () => (await Promise.all(activeWarehouseIds.map(fetchWarehouseStock))).flat(),
+    enabled: activeWarehouseIds.length > 0,
+    staleTime: 60000,
+  });
+  const stockByVariant = useMemo(() => {
+    if (!warehousesLoaded || activeWarehouseIds.length === 0) return null; // no warehouse → no stock column
+    const m = new Map();
+    stockRows.forEach(r => { if (r.variant_id) m.set(r.variant_id, (m.get(r.variant_id) || 0) + Number(r.qty || 0)); });
+    return m;
+  }, [stockRows, warehousesLoaded, activeWarehouseIds.length]);
+
   return (
     <OrderDistributionView
       title="חלוקת הזמנה — כל הרשת"
@@ -119,6 +144,8 @@ export default function NetworkOrderDistributionTab({ tenantEmail }) {
       endDate={endDate}
       setStartDate={setStartDate}
       setEndDate={setEndDate}
+      stockByVariant={stockByVariant}
+      stockLoading={stockLoading}
     />
   );
 }
