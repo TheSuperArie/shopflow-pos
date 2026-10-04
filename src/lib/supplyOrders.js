@@ -68,6 +68,8 @@ export function buildCatalogRows(variants = [], groups = [], categories = []) {
         sku: v.sku || '',
         barcode: v.barcode || '',
         group_barcode: group.barcode || '',
+        carton_number: v.carton_number || '',
+        carton_barcode: v.carton_barcode || '',
         product_name: group.name || '',
         variant_label: variantLabel(v),
         category_name: parent ? `${parent.name} › ${cat.name}` : (cat?.name || ''),
