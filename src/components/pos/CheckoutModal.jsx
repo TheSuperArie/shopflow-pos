@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Banknote, CreditCard, Loader2, RotateCcw, Receipt, SplitSquareHorizontal } from 'lucide-react';
+import { Banknote, CreditCard, Loader2, RotateCcw, Receipt, SplitSquareHorizontal, CheckCircle2 } from 'lucide-react';
+import NedarimPaymentDialog from '@/components/pos/NedarimPaymentDialog';
 
 const BANKNOTES = [200, 100, 50, 20];
 const COINS = [10, 5, 2, 1];
@@ -25,11 +26,18 @@ function CurrencyButton({ value, type, onClick }) {
   );
 }
 
-export default function CheckoutModal({ open, total, onConfirm, onClose, isProcessing }) {
+// nedarim: Nedarim Plus settings ({ enabled, mosad, api_valid }) — when enabled, credit is charged
+//          here through Nedarim's window; otherwise credit is confirmed by hand as before.
+// paidCharge: a credit charge that went through but whose sale wasn't saved — reused, never re-charged.
+export default function CheckoutModal({ open, total, onConfirm, onClose, isProcessing, nedarim = null, paidCharge = null, chargeComment = '' }) {
   const [method, setMethod] = useState(null); // null | 'מזומן' | 'אשראי' | 'פיצול'
   const [received, setReceived] = useState(0);
   const [cashAmount, setCashAmount] = useState(0); // for split: how much cash
   const [printReceipt, setPrintReceipt] = useState(false);
+  // Open Nedarim window: { amount, method, details }
+  const [charging, setCharging] = useState(null);
+  const useNedarim = !!nedarim?.enabled;
+  const samePaid = (amount) => !!paidCharge && Math.abs(Number(paidCharge.amount) - Number(amount)) < 0.01;
 
   const safeTotal = total || 0;
 
@@ -71,7 +79,43 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
     resetState();
   };
 
-  const handleClose = () => { resetState(); onClose(); };
+  const handleClose = () => { if (charging) return; resetState(); onClose(); };
+
+  // Credit through Nedarim: charge first, then save the sale with the approval attached.
+  // A charge that already went through for this amount is reused instead of charging again.
+  const chargeThenConfirm = (methodName, details, amount) => {
+    if (samePaid(amount)) {
+      onConfirm(methodName, { ...(details || {}), credit: paidCharge }, printReceipt);
+      resetState();
+      return;
+    }
+    setCharging({ amount, methodName, details });
+  };
+  const onCharged = (credit) => {
+    const c = charging;
+    setCharging(null);
+    if (!c) return;
+    onConfirm(c.methodName, { ...(c.details || {}), credit }, printReceipt);
+    resetState();
+  };
+
+  const creditButtons = (methodName, details, amount, disabled, color) => {
+    if (!useNedarim) {
+      return (
+        <Button onClick={handleConfirm} disabled={disabled || isProcessing}
+          className={`flex-1 h-12 text-lg font-bold ${color}`}>
+          {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'אשר תשלום'}
+        </Button>
+      );
+    }
+    return (
+      <Button onClick={() => chargeThenConfirm(methodName, details, amount)} disabled={disabled || isProcessing}
+        className={`flex-1 h-12 text-lg font-bold ${color}`}>
+        {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" />
+          : samePaid(amount) ? 'שמור מכירה (כבר חויב)' : `חייב ₪${Number(amount).toFixed(2)} באשראי`}
+      </Button>
+    );
+  };
 
   const isWide = method === 'מזומן' || method === 'פיצול';
 
@@ -133,13 +177,21 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
               <CreditCard className="w-5 h-5 text-blue-600" />
               <span className="font-semibold text-blue-700">תשלום באשראי</span>
             </div>
+            {useNedarim && samePaid(safeTotal) && (
+              <p className="flex items-center justify-center gap-1.5 text-sm text-green-700">
+                <CheckCircle2 className="w-4 h-4" /> הסכום כבר חויב בנדרים{paidCharge?.ref ? ` (אישור ${paidCharge.ref})` : ''} — לא יחויב שוב
+              </p>
+            )}
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setMethod(null)} className="flex-1">חזור</Button>
-              <Button onClick={handleConfirm} disabled={isProcessing}
-                className="flex-1 h-12 text-lg font-bold bg-blue-500 hover:bg-blue-600">
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'אשר תשלום'}
-              </Button>
+              {creditButtons('אשראי', null, safeTotal, false, 'bg-blue-500 hover:bg-blue-600')}
             </div>
+            {useNedarim && (
+              <button onClick={handleConfirm} disabled={isProcessing}
+                className="w-full text-xs text-gray-400 hover:text-gray-600 underline">
+                חויב במכשיר אחר (טאבלט / מסוף) — רק לשמור את המכירה
+              </button>
+            )}
           </div>
         )}
 
@@ -266,14 +318,30 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { setMethod(null); setCashAmount(0); setReceived(0); }} className="flex-1">חזור</Button>
-              <Button onClick={handleConfirm} disabled={!splitValid || isProcessing}
-                className="flex-1 h-12 text-lg font-bold bg-purple-600 hover:bg-purple-700">
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'אשר תשלום'}
-              </Button>
+              {creditButtons('מזומן + אשראי', {
+                cashAmount, creditAmount, received, change: Math.max(0, cashChange),
+              }, creditAmount, !splitValid, 'bg-purple-600 hover:bg-purple-700')}
             </div>
+            {useNedarim && (
+              <button onClick={handleConfirm} disabled={!splitValid || isProcessing}
+                className="w-full text-xs text-gray-400 hover:text-gray-600 underline">
+                האשראי חויב במכשיר אחר (טאבלט / מסוף) — רק לשמור את המכירה
+              </button>
+            )}
           </div>
         )}
       </DialogContent>
+
+      {useNedarim && (
+        <NedarimPaymentDialog
+          open={!!charging}
+          amount={charging?.amount || 0}
+          config={nedarim}
+          comment={chargeComment}
+          onSuccess={onCharged}
+          onCancel={() => setCharging(null)}
+        />
+      )}
     </Dialog>
   );
 }
