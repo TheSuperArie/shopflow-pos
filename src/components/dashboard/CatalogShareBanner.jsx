@@ -127,6 +127,8 @@ export default function CatalogShareBanner({ branch, userEmail }) {
         sell_price: share.include_price ? (s.sell_price ?? 0) : 0,
         cost_price: share.include_cost ? (s.cost_price ?? 0) : 0,
         sku: share.include_sku ? (s.sku || null) : null,
+        carton_number: s.carton_number || null,
+        carton_barcode: s.carton_barcode || null,
         source_id: s.id,
       });
       await chunkCreate(base44.entities.ProductVariant, srcPV.filter(s => groupMap.get(s.group_id)), pvMap, variantBuild, 'וריאציות');
