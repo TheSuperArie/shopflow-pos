@@ -34,6 +34,8 @@ async function createForBranch(branch, product, rows, initialStock) {
       stock: initialStock,
       sell_price: r.sell_price === null || r.sell_price === '' ? null : Number(r.sell_price),
       cost_price: r.cost_price === null || r.cost_price === '' ? null : Number(r.cost_price),
+      carton_number: String(r.carton_number ?? '').trim() || null,
+      carton_barcode: String(r.carton_barcode ?? '').trim() || null,
       group_id: group.id,
       branch_id: branch.id,
     })));
