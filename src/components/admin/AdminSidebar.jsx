@@ -48,7 +48,8 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
   // A store that belongs to a network orders through the network — "order distribution" lives in
   // the network dashboard (all branches together). Independent stores keep it here.
   const { branch } = useCurrentBranch();
-  const inNetwork = !!branch?.tenant_email && (branch.status === 'ACTIVE' || branch.is_active);
+  // Only a branch that actually joined (status ACTIVE) — a pending invite keeps the page
+  const inNetwork = !!branch?.tenant_email && (branch.status ? branch.status === 'ACTIVE' : !!branch.is_active);
   const branchItems = inNetwork
     ? BRANCH_MANAGER_ITEMS.filter(i => i.path !== '/AdminOrderDistribution')
     : BRANCH_MANAGER_ITEMS;
