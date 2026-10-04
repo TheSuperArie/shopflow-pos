@@ -1208,7 +1208,7 @@ function SimpleProductFormModal({ open, categories, onClose, queryClient, toast 
 
 function VariantFormModal({ variant, group, onClose, queryClient, toast, allCategories = [] }) {
   const [form, setForm] = useState({
-    dimensions: {}, stock: 0, sell_price: 0, cost_price: 0, sku: '',
+    dimensions: {}, stock: 0, sell_price: 0, cost_price: 0, sku: '', carton_number: '', carton_barcode: '',
   });
 
   const { dimensions: allDimensions } = useInheritedDimensions(group?.category_id, allCategories);
@@ -1225,9 +1225,11 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast, allCate
         sell_price: variant.sell_price || 0,
         cost_price: variant.cost_price || 0,
         sku: variant.sku || '',
+        carton_number: variant.carton_number || '',
+        carton_barcode: variant.carton_barcode || '',
       });
     } else {
-      setForm({ dimensions: {}, stock: 0, sell_price: 0, cost_price: 0, sku: '' });
+      setForm({ dimensions: {}, stock: 0, sell_price: 0, cost_price: 0, sku: '', carton_number: '', carton_barcode: '' });
     }
   }, [variant]);
 
@@ -1235,7 +1237,9 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast, allCate
     mutationFn: (data) => {
       const dataToSave = {
         ...data,
-        sku: data.sku || `SKU${Date.now()}`
+        sku: data.sku || `SKU${Date.now()}`,
+        carton_number: String(data.carton_number ?? '').trim() || null,
+        carton_barcode: String(data.carton_barcode ?? '').trim() || null,
       };
       return variant.id
         ? base44.entities.ProductVariant.update(variant.id, dataToSave)
@@ -1308,6 +1312,27 @@ function VariantFormModal({ variant, group, onClose, queryClient, toast, allCate
               onChange={e => setForm({ ...form, sku: e.target.value })} 
               placeholder="יוצר אוטומטית"
             />
+          </div>
+
+          <div className="grid grid-cols-[110px_1fr] gap-3">
+            <div>
+              <Label>מס' קרטון</Label>
+              <Input
+                value={form.carton_number}
+                onChange={e => setForm({ ...form, carton_number: e.target.value })}
+                placeholder="למשל 9"
+              />
+            </div>
+            <div>
+              <Label>ברקוד קרטון</Label>
+              <Input
+                value={form.carton_barcode}
+                onChange={e => setForm({ ...form, carton_barcode: e.target.value })}
+                placeholder="אופציונלי"
+                dir="ltr"
+                className="font-mono"
+              />
+            </div>
           </div>
 
           <DialogFooter>
