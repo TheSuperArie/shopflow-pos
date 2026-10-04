@@ -1,5 +1,4 @@
 import { useShortageCount } from '@/hooks/useShortageCount';
-import { useCurrentBranch } from '@/hooks/useCurrentBranch';
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -29,7 +28,7 @@ const BRANCH_MANAGER_ITEMS = [
   { path: '/AdminLowStock', label: 'חוסרים', icon: AlertTriangle },
   { path: '/AdminOrders', label: 'הזמנות לרשת', icon: ShoppingCart },
   { path: '/AdminSales', label: 'היסטוריית מכירות', icon: History },
-  { path: '/AdminOrderDistribution', label: 'חלוקת הזמנה', icon: BarChart3 },
+  // "חלוקת הזמנה" moved to the network dashboard (only the network owner orders, for all branches)
   { path: '/AdminReturns', label: 'החזרות', icon: RotateCcw },
   { path: '/AdminExpenses', label: 'הוצאות', icon: Wallet },
   { path: '/AdminEmployees', label: 'ניהול עובדים', icon: Users },
@@ -45,17 +44,9 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
   const location = useLocation();
   const navigate = useNavigate();
   const isNetworkMaster = adminRole === 'NETWORK_MASTER';
-  // A store that belongs to a network orders through the network — "order distribution" lives in
-  // the network dashboard (all branches together). Independent stores keep it here.
-  const { branch } = useCurrentBranch();
-  // Only a branch that actually joined (status ACTIVE) — a pending invite keeps the page
-  const inNetwork = !!branch?.tenant_email && (branch.status ? branch.status === 'ACTIVE' : !!branch.is_active);
-  const branchItems = inNetwork
-    ? BRANCH_MANAGER_ITEMS.filter(i => i.path !== '/AdminOrderDistribution')
-    : BRANCH_MANAGER_ITEMS;
   const navItems = isNetworkMaster
-    ? [...branchItems.slice(0, -1), ...NETWORK_MASTER_EXTRA, branchItems[branchItems.length - 1]]
-    : branchItems;
+    ? [...BRANCH_MANAGER_ITEMS.slice(0, -1), ...NETWORK_MASTER_EXTRA, BRANCH_MANAGER_ITEMS[BRANCH_MANAGER_ITEMS.length - 1]]
+    : BRANCH_MANAGER_ITEMS;
 
   const handleLogout = () => {
     sessionStorage.removeItem('admin_auth');
