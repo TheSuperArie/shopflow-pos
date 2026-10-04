@@ -179,7 +179,6 @@ export default function OrderDistributionView({
       }
     }
     return rows;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleGroups, stockByVariant]);
 
   const activeRows = useMemo(() => allRows.filter(r => !excluded.has(r.key)), [allRows, excluded]);
