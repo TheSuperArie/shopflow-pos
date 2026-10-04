@@ -71,6 +71,8 @@ export default function BranchProductFormModal({ open, onClose, branch, categori
             stock: Number(r.stock) || 0,
             sell_price: r.sell_price === null || r.sell_price === '' ? null : Number(r.sell_price),
             cost_price: r.cost_price === null || r.cost_price === '' ? null : Number(r.cost_price),
+            carton_number: String(r.carton_number ?? '').trim() || null,
+            carton_barcode: String(r.carton_barcode ?? '').trim() || null,
           };
           return r.id
             ? base44.entities.ProductVariant.update(r.id, vp)
