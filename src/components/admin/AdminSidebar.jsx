@@ -18,7 +18,6 @@ import {
   DollarSign,
   GitBranch,
   Crown,
-  BarChart3,
 } from 'lucide-react';
 
 const BRANCH_MANAGER_ITEMS = [

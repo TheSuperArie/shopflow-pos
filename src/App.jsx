@@ -32,7 +32,6 @@ const AdminEmployees = lazy(() => import('./pages/AdminEmployees'));
 const AdminCashReport = lazy(() => import('./pages/AdminCashReport'));
 const AdminCategoryInsights = lazy(() => import('./pages/AdminCategoryInsights'));
 const AdminNetwork = lazy(() => import('./pages/AdminNetwork'));
-const AdminOrderDistribution = lazy(() => import('./pages/AdminOrderDistribution'));
 const NetworkMasterDashboard = lazy(() => import('./pages/NetworkMasterDashboard'));
 const BatchShipmentEntry = lazy(() => import('./pages/BatchShipmentEntry'));
 const BranchSupplyOrders = lazy(() => import('./pages/BranchSupplyOrders'));
@@ -96,7 +95,6 @@ const AuthenticatedApp = () => {
               <Route path="/AdminCashReport" element={<AdminCashReport />} />
               <Route path="/admin/reports/category/:id" element={<AdminCategoryInsights />} />
               <Route path="/AdminNetwork" element={<AdminNetwork />} />
-              <Route path="/AdminOrderDistribution" element={<AdminOrderDistribution />} />
             </Route>
           </Route>
           <Route path="/UsageAnalytics" element={<UsageAnalytics />} />
