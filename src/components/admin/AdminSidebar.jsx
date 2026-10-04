@@ -1,4 +1,5 @@
 import { useShortageCount } from '@/hooks/useShortageCount';
+import { useCurrentBranch } from '@/hooks/useCurrentBranch';
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -44,9 +45,16 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
   const location = useLocation();
   const navigate = useNavigate();
   const isNetworkMaster = adminRole === 'NETWORK_MASTER';
-  const navItems = isNetworkMaster
-    ? [...BRANCH_MANAGER_ITEMS.slice(0, -1), ...NETWORK_MASTER_EXTRA, BRANCH_MANAGER_ITEMS[BRANCH_MANAGER_ITEMS.length - 1]]
+  // A store that belongs to a network orders through the network — "order distribution" lives in
+  // the network dashboard (all branches together). Independent stores keep it here.
+  const { branch } = useCurrentBranch();
+  const inNetwork = !!branch?.tenant_email && (branch.status === 'ACTIVE' || branch.is_active);
+  const branchItems = inNetwork
+    ? BRANCH_MANAGER_ITEMS.filter(i => i.path !== '/AdminOrderDistribution')
     : BRANCH_MANAGER_ITEMS;
+  const navItems = isNetworkMaster
+    ? [...branchItems.slice(0, -1), ...NETWORK_MASTER_EXTRA, branchItems[branchItems.length - 1]]
+    : branchItems;
 
   const handleLogout = () => {
     sessionStorage.removeItem('admin_auth');
