@@ -4,11 +4,11 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowRight, ScanLine, UserRound, CheckCircle2, Loader2, PackageCheck, AlertTriangle } from 'lucide-react';
+import { ArrowRight, ScanLine, UserRound, CheckCircle2, Loader2, PackageCheck, AlertTriangle, Package } from 'lucide-react';
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { fetchBranchCatalogRecords } from '@/lib/branchCatalog';
 import {
-  buildCatalogRows, lineQty, matchScannedCode, pickedPercent, isOverPicked, nowIso,
+  buildCatalogRows, lineQty, matchScannedCode, matchCartonCode, pickedPercent, isOverPicked, nowIso,
 } from '@/lib/supplyOrders';
 import { stockOps } from '@/lib/warehouseStock';
 import { usePickAvailability } from '@/hooks/usePickAvailability';
@@ -18,6 +18,8 @@ import PickerSelectDialog from './PickerSelectDialog';
 
 /**
  * Warehouse picking: tap a line (or scan a product) → popup → type how many were packed → confirm.
+ * Scanning a carton label opens the same popup with a whole carton counted; every further scan
+ * of a carton of that size adds one more carton.
  * Confirmed lines move up to "בוצע" with picked qty and % of the order. Progress is saved on every
  * confirm, so a refresh or another tablet continues where it stopped.
  */
@@ -38,6 +40,7 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
   const [active, setActive] = useState(null); // { index } | { extraRow }
   const [qty, setQty] = useState('');
   const [choices, setChoices] = useState(null); // several sizes matched one scan
+  const [cartonSize, setCartonSize] = useState({}); // variant_id → shirts per carton (read from scanned labels)
   const [notes, setNotes] = useState(order.warehouse_notes || '');
   const [saving, setSaving] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -59,6 +62,13 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
     },
     staleTime: 600000,
   });
+
+  // Carton number / carton barcode come from the branch catalog (order lines saved before they existed)
+  const catalogById = new Map(catalogRows.map(r => [r.variant_id, r]));
+  const withCatalog = (it) => {
+    const c = catalogById.get(it.variant_id);
+    return c ? { ...it, carton_number: c.carton_number, carton_barcode: c.carton_barcode } : it;
+  };
 
   const isDone = (it) => it.picked_qty != null;
   const done = items.map((it, index) => ({ it, index })).filter(x => isDone(x.it))
@@ -148,9 +158,44 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
   };
 
   // ── Scanner ──
+  // A carton label → the order line (or a catalog product not in the order) + shirts per carton
+  const findCarton = (code) => {
+    const inOrder = matchCartonCode(code, items.map((it, index) => ({ ...withCatalog(it), index })));
+    if (inOrder.length === 1) return { index: inOrder[0].row.index, variant_id: inOrder[0].row.variant_id, units: inOrder[0].units };
+    if (inOrder.length > 1) return null;
+    const inCatalog = matchCartonCode(code, catalogRows);
+    if (inCatalog.length === 1) return { extraRow: inCatalog[0].row, variant_id: inCatalog[0].row.variant_id, units: inCatalog[0].units };
+    return null;
+  };
+
+  // One carton = its units (or 1 when the label doesn't say). Same line already open → one more carton.
+  const addCarton = async (hit) => {
+    const step = hit.units || 1;
+    if (hit.units) setCartonSize(s => ({ ...s, [hit.variant_id]: hit.units }));
+    const isOpen = active && (hit.extraRow
+      ? active.extraRow?.variant_id === hit.variant_id
+      : !active.extraRow && active.index === hit.index);
+    if (isOpen) {
+      setQty(q => String((parseInt(snapshot.current || q, 10) || 0) + step));
+      return;
+    }
+    // A different line is open → save it first (if a qty was typed), like a product scan
+    if (active && snapshot.current !== '') await confirm(snapshot.current);
+    else if (active) setActive(null);
+    if (hit.extraRow) {
+      openExtra(hit.extraRow);
+      setQty(String(step));
+      return;
+    }
+    openLine(hit.index);
+    setQty(String(Number(items[hit.index].picked_qty || 0) + step));
+  };
+
   const handleScan = async (code) => {
     // Digits the scanner "typed" into the open popup are undone
     if (active) setQty(snapshot.current);
+    const carton = findCarton(code);
+    if (carton) return addCarton(carton);
     const inOrder = matchScannedCode(code, items.map((it, index) => ({ ...it, index })));
     const target = inOrder.length === 1 ? inOrder[0] : null;
 
@@ -244,7 +289,7 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
         </div>
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <span className="flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-green-700 font-medium">
-            <ScanLine className="w-4 h-4" /> הסורק פעיל — סרוק מוצר או לחץ על שורה
+            <ScanLine className="w-4 h-4" /> הסורק פעיל — סרוק מוצר, קרטון או לחץ על שורה
           </span>
           <span className="text-gray-600">שורות: <strong>{doneLines}/{orderLines}</strong></span>
           <span className="text-gray-600">יחידות: <strong>{pickedUnits}/{orderedUnits}</strong></span>
@@ -298,6 +343,11 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
                   <p className="text-lg font-semibold text-gray-900 truncate">{it.product_name} · {it.variant_label || '—'}</p>
                   <p className="text-sm text-gray-500 font-mono">{it.sku || '—'}{it.category_name ? ` · ${it.category_name}` : ''}</p>
                 </div>
+                {catalogById.get(it.variant_id)?.carton_number && (
+                  <span className="flex items-center gap-1 rounded-xl bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-amber-800 text-sm font-bold shrink-0">
+                    <Package className="w-4 h-4" /> קרטון {catalogById.get(it.variant_id).carton_number}
+                  </span>
+                )}
                 <span className="text-center rounded-xl bg-blue-50 px-4 py-2">
                   <span className="block text-xs text-blue-700">צריך</span>
                   <span className="block text-2xl font-bold text-blue-900">{lineQty(it)}</span>
@@ -360,6 +410,8 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
         <PickLineDialog
           line={activeLine}
           qty={qty}
+          cartonSize={cartonSize[activeLine.variant_id]}
+          cartonNumber={catalogById.get(activeLine.variant_id)?.carton_number}
           onQtyChange={setQty}
           onConfirm={() => confirm()}
           onCancel={() => { setActive(null); setQty(''); }}
