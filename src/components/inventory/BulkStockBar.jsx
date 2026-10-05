@@ -11,7 +11,7 @@ import { X, Loader2, Plus, Equal, ShoppingCart } from 'lucide-react';
  * Bottom bar for everything selected across categories / products / sizes:
  * add to stock, set stock, or (branch side) put into the order to the network.
  */
-export default function BulkStockBar({ count, units, onApply, onOrder, onClear, busy, progress }) {
+export default function BulkStockBar({ count, units, onApply, onOrder, onClear, busy, progress, stockNote }) {
   const [mode, setMode] = useState('add');
   const [value, setValue] = useState('');
   const [confirm, setConfirm] = useState(null); // 'stock' | 'order'
@@ -82,7 +82,7 @@ export default function BulkStockBar({ count, units, onApply, onOrder, onClear, 
             <AlertDialogDescription>
               {confirm === 'order'
                 ? 'המידות ייכנסו לטיוטת ההזמנה בדף "הזמנות לרשת", ושם אפשר לערוך ולשלוח.'
-                : 'המלאי מתעדכן באותו מלאי שהקופה עובדת איתו, וכל שינוי נרשם בהיסטוריה.'}
+                : (stockNote || 'המלאי מתעדכן באותו מלאי שהקופה עובדת איתו, וכל שינוי נרשם בהיסטוריה.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
