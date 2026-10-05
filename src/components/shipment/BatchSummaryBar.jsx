@@ -10,7 +10,7 @@ export default function BatchSummaryBar() {
   if (selectedItems.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-2xl border-t-2 border-blue-800">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#1F3A5F] text-white shadow-2xl border-t-2 border-[#162B47]">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">

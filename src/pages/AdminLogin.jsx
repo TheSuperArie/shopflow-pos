@@ -69,7 +69,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4" dir="rtl">
       <div className="w-full max-w-sm">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
           <div className="flex justify-center mb-6">

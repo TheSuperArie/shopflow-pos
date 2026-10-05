@@ -413,7 +413,7 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
               const maxPct = topHours.best.pct || 1;
               return (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 rounded-xl bg-gradient-to-l from-orange-50 to-amber-50 border border-orange-100 px-4 py-3">
+                  <div className="flex items-center gap-3 rounded-xl bg-[#FBF0D9] border border-[#E3C98F] px-4 py-3">
                     <span className="text-2xl">🔥</span>
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-800">

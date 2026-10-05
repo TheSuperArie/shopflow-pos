@@ -54,7 +54,7 @@ export default function AdminOrders() {
       </div>
 
       {/* Summary Card */}
-      <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+      <Card className="bg-[#FBF0D9] border-[#E3C98F]">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center">
