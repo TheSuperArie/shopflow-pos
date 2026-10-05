@@ -630,6 +630,7 @@ export default function POS() {
   const cartTotal = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
   const cartUnits = cartItems.reduce((s, i) => s + i.quantity, 0);
   const branchName = activeBranch?.name || appSettingsList[0]?.store_name || '';
+  const watermarkUrl = appSettingsList[0]?.pos_watermark_url || '';
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const catName = (id) => categories.find(c => c.id === id)?.name || '';
   const topCategories = Array.from(new Map(categories.map(c => [c.id, c])).values()).filter(c => !c.parent_id);
@@ -726,8 +727,14 @@ export default function POS() {
       <CatalogShareBanner branch={activeBranch} userEmail={user?.email} />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* ── Products side ── */}
-        <div className={`flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 ${cartItems.length > 0 ? 'pb-28 lg:pb-5' : ''}`}>
+        {/* ── Products side (the store's logo sits faint behind it, if set in the settings) ── */}
+        <div className="relative flex-1 min-w-0 flex">
+        {watermarkUrl && (
+          <div aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-no-repeat bg-center opacity-[0.08] mix-blend-multiply"
+            style={{ backgroundImage: `url("${watermarkUrl}")`, backgroundSize: 'min(62%, 520px) auto' }} />
+        )}
+        <div className={`relative flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 ${cartItems.length > 0 ? 'pb-28 lg:pb-5' : ''}`}>
           <SmartSearch
             stockModeEnabled={stockModeEnabled}
             groups={allGroups}
@@ -824,6 +831,7 @@ export default function POS() {
               onSelect={handleGroupSelect}
             />
           )}
+        </div>
         </div>
 
         {/* ── Cart (desktop) ── */}
