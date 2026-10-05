@@ -78,7 +78,7 @@ export default function AdminLogin() {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-white text-center mb-2">ניהול החנות</h1>
-          <p className="text-gray-400 text-center mb-8">הזן קוד גישה לכניסה</p>
+          <p className="text-gray-300 text-center mb-8">הזן קוד גישה לכניסה</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -86,7 +86,7 @@ export default function AdminLogin() {
               placeholder="קוד גישה"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(''); }}
-              className="h-12 bg-white/10 border-white/20 text-white placeholder:text-gray-400 rounded-xl text-center text-lg"
+              className="h-12 bg-white/10 border-white/20 text-white placeholder:text-gray-300 rounded-xl text-center text-lg"
               autoFocus
             />
             {error && <p className="text-red-400 text-center text-sm">{error}</p>}
@@ -101,7 +101,7 @@ export default function AdminLogin() {
 
           <button
             onClick={() => navigate('/POS')}
-            className="w-full mt-4 text-gray-400 hover:text-white text-sm transition-colors"
+            className="w-full mt-4 text-gray-300 hover:text-white text-sm transition-colors"
           >
             חזרה לקופה →
           </button>

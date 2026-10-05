@@ -66,7 +66,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
             </div>
           )}
         </div>
-        <button onClick={() => setMobileOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
+        <button onClick={() => setMobileOpen(false)} className="lg:hidden text-gray-300 hover:text-white">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -82,7 +82,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 isActive
                   ? 'bg-amber-500/20 text-amber-400'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                  : 'text-gray-300 hover:bg-white/5 hover:text-white'
               }`}
             >
               <Icon className="w-5 h-5" />
@@ -96,7 +96,7 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
       <div className="p-3 border-t border-white/10 space-y-1">
         <Link
           to="/POS"
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:bg-white/5 hover:text-white"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-300 hover:bg-white/5 hover:text-white"
         >
           <LogOut className="w-5 h-5" />
           חזרה לקופה

@@ -37,7 +37,7 @@ export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpe
             </div>
             <p className="text-xs text-amber-300/70">בעל הרשת</p>
           </div>
-          <button onClick={() => setMobileOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
+          <button onClick={() => setMobileOpen(false)} className="lg:hidden text-gray-300 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -52,7 +52,7 @@ export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpe
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-right ${
               activeTab === tab
                 ? 'bg-amber-500/20 text-amber-400'
-                : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white'
             }`}
           >
             <NavIcon className="w-5 h-5 shrink-0" />
@@ -65,7 +65,7 @@ export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpe
       <div className="p-3 border-t border-white/10 space-y-1">
         <button
           onClick={() => navigate('/POS')}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:bg-white/5 hover:text-white"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-300 hover:bg-white/5 hover:text-white"
         >
           <ShoppingCart className="w-5 h-5" />
           חזרה לקופה
