@@ -121,6 +121,14 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
 
   const availableValues = getAvailableValues();
 
+  // On the last step, show how many are in stock for each value (helps the seller)
+  const stockForValue = (value) => {
+    if (!isLastDimension) return null;
+    const sel = { ...selectedValues, [currentDimension.name]: value };
+    const v = allVariants.find(x => x.dimensions && enabledDimensions.every(d => x.dimensions[d.name] === sel[d.name]));
+    return v ? Number(v.stock || 0) : null;
+  };
+
   const handleValueSelect = (value) => {
     const newSelections = { ...selectedValues, [currentDimension.name]: value };
     setSelectedValues(newSelections);
@@ -155,9 +163,9 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent dir="rtl" className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">{group.name}</DialogTitle>
+          <DialogTitle className="text-2xl" style={{ fontFamily: "'Frank Ruhl Libre', Georgia, serif" }}>{group.name}</DialogTitle>
           {group.has_uniform_price && (
-            <p className="text-sm text-gray-500">מחיר: ₪{group.uniform_sell_price}</p>
+            <p className="text-lg font-bold text-[#7A5418]">₪{group.uniform_sell_price}</p>
           )}
         </DialogHeader>
 
@@ -173,9 +181,9 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
               {enabledDimensions.map((dim, idx) => (
                 <React.Fragment key={dim.id}>
                   {idx > 0 && <div className="w-8 h-0.5 bg-gray-300 flex-shrink-0"></div>}
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${
-                    idx === currentDimensionIndex ? 'bg-amber-500 text-white' : 
-                    idx < currentDimensionIndex ? 'bg-green-500 text-white' : 'bg-gray-200'
+                  <div className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 ${
+                    idx === currentDimensionIndex ? 'bg-[#1E2433] text-[#F5EFE3]' :
+                    idx < currentDimensionIndex ? 'bg-[#2E6B4C] text-white' : 'bg-[#EDE4D2] text-[#5E5A52]'
                   }`}>
                     {idx + 1}. {dim.name}
                   </div>
@@ -193,15 +201,23 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
               )}
               
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {availableValues.map(value => (
-                  <button
-                    key={value}
-                    onClick={() => handleValueSelect(value)}
-                    className="relative p-6 text-lg font-bold rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 transition-all"
-                  >
-                    {value}
-                  </button>
-                ))}
+                {availableValues.map(value => {
+                  const stock = stockForValue(value);
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => handleValueSelect(value)}
+                      className="relative min-h-[76px] px-3 py-4 flex flex-col items-center justify-center gap-1 rounded-2xl border-[1.5px] border-[#E2D8C4] bg-[#FFFDF8] hover:border-[#1E2433] hover:shadow-md active:scale-[0.98] transition-all"
+                    >
+                      <span className="text-2xl font-bold leading-none">{value}</span>
+                      {stock != null && (
+                        <span className={`text-xs ${stock <= 0 ? 'text-[#A23B2A] font-semibold' : 'text-[#5E5A52]'}`}>
+                          {stock <= 0 ? 'אזל במלאי' : `במלאי: ${stock}`}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               {availableValues.length === 0 && (
@@ -213,7 +229,7 @@ export default function DynamicVariantSelector({ open, group, variants, allVaria
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button onClick={currentDimensionIndex === 0 ? handleClose : handleBack} variant="outline" className="flex-1">
+              <Button onClick={currentDimensionIndex === 0 ? handleClose : handleBack} variant="outline" className="flex-1 h-12 text-base">
                 {currentDimensionIndex === 0 ? 'ביטול' : 'חזור'}
               </Button>
             </div>
