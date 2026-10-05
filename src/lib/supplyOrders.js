@@ -70,6 +70,7 @@ export function buildCatalogRows(variants = [], groups = [], categories = []) {
         group_barcode: group.barcode || '',
         carton_number: v.carton_number || '',
         carton_barcode: v.carton_barcode || '',
+        size: v.dimensions?.['מידה'] ?? '',
         product_name: group.name || '',
         variant_label: variantLabel(v),
         category_name: parent ? `${parent.name} › ${cat.name}` : (cat?.name || ''),
@@ -178,6 +179,26 @@ export function matchCartonCode(code, rows = []) {
     });
   });
   return hits;
+}
+
+/** "קרטון 8 · מידה 14.5" — where in the warehouse a row is taken from ('' when it has no carton). */
+export function cartonLocation(row) {
+  if (!row?.carton_number) return '';
+  const size = String(row.size ?? '').trim() || row.variant_label || '';
+  return `קרטון ${row.carton_number}${size ? ` · מידה ${size}` : ''}`;
+}
+
+/** Sort rows the way the picker walks: by carton, then size; rows without a carton last. */
+export function compareCartonLocation(a, b) {
+  const ca = String(a?.carton_number || '');
+  const cb = String(b?.carton_number || '');
+  if (!ca || !cb) return ca ? -1 : cb ? 1 : 0;
+  const byCarton = ca.localeCompare(cb, 'he', { numeric: true });
+  if (byCarton) return byCarton;
+  const sa = parseFloat(a.size);
+  const sb = parseFloat(b.size);
+  if (!Number.isNaN(sa) && !Number.isNaN(sb) && sa !== sb) return sa - sb;
+  return String(a.size || a.variant_label || '').localeCompare(String(b.size || b.variant_label || ''), 'he', { numeric: true });
 }
 
 /** "2 קרטונים + 6 בודדות" for a quantity, given the units per carton ('' when unknown). */
