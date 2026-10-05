@@ -18,12 +18,18 @@ export default function WarehouseStockPanel({ warehouse }) {
   const [form, setForm] = useState(emptyForm);
   const [openedByScan, setOpenedByScan] = useState(false);
   const [cartonSize, setCartonSize] = useState({}); // item key → shirts per carton (read from scanned labels)
+  // item key → what was counted for it on this page so far, so returning to a size continues
+  // from that number instead of starting over (and overwriting the earlier count)
+  const [counted, setCounted] = useState({});
   const opKey = useRef(null); // one key per opened dialog — a retried save is applied once
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const openItem = (item, { value = '', byScan = false } = {}) => {
+  // A size counted earlier on this page opens with that count, ready to add to
+  const openItem = (item, { add = 0, byScan = false } = {}) => {
     opKey.current = newOpKey();
+    const before = counted[item.key];
+    const value = before != null || add ? String((before || 0) + add) : '';
     setForm({ ...emptyForm, value });
     setOpenedByScan(byScan);
     setEditing(item);
@@ -41,7 +47,8 @@ export default function WarehouseStockPanel({ warehouse }) {
       });
       queryClient.invalidateQueries({ queryKey: ['warehouse-stock', warehouse.id] });
       queryClient.invalidateQueries({ queryKey: ['warehouse-movements', warehouse.id] });
-      toast({ title: `המלאי עודכן${target.variant_label ? ` · ${target.variant_label}` : ''}` });
+      if (type === 'COUNT' || counted[target.key] != null) setCounted(c => ({ ...c, [target.key]: newQty }));
+      toast({ title: `המלאי עודכן${target.variant_label ? ` · ${target.variant_label}` : ''} → ${newQty}` });
       setEditing(null);
       return true;
     } catch (e) {
@@ -66,7 +73,7 @@ export default function WarehouseStockPanel({ warehouse }) {
         setEditing(null);
       }
     }
-    openItem(item, { value: String(step), byScan: true });
+    openItem(item, { add: step, byScan: true });
   };
 
   const handleScan = (code) => {
@@ -97,6 +104,7 @@ export default function WarehouseStockPanel({ warehouse }) {
           onFormChange={setForm}
           cartonSize={cartonSize[editing.key]}
           openedByScan={openedByScan}
+          previouslyCounted={counted[editing.key]}
           onClose={() => setEditing(null)}
           onSave={(data) => save(data)}
         />
