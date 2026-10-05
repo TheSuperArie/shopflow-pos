@@ -10,7 +10,7 @@ import { lineQty, cartonBreakdown } from '@/lib/supplyOrders';
  * cartonSize (shirts per carton, known after a carton label was scanned) adds the
  * "how many cartons" breakdown; every further carton scan adds one more carton.
  */
-export default function PickLineDialog({ line, qty, onQtyChange, onConfirm, onCancel, saving, cartonSize, cartonNumber }) {
+export default function PickLineDialog({ line, qty, onQtyChange, onConfirm, onCancel, saving, cartonSize, cartonLocation }) {
   if (!line) return null;
   const needed = lineQty(line);
   const n = Number(qty || 0);
@@ -34,15 +34,14 @@ export default function PickLineDialog({ line, qty, onQtyChange, onConfirm, onCa
             <p className="text-lg text-gray-700 mt-0.5">{line.variant_label || '—'}</p>
             <p className="text-sm text-gray-500 font-mono mt-0.5">מק"ט {line.sku || '—'}</p>
           </div>
-          <div className="flex items-start gap-2 shrink-0">
-            {cartonNumber && (
-              <span className="flex items-center gap-1 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-amber-800 font-bold">
-                <Package className="w-5 h-5" /> קרטון {cartonNumber}
-              </span>
-            )}
-            <button onClick={onCancel} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-6 h-6 text-gray-500" /></button>
-          </div>
+          <button onClick={onCancel} className="p-2 rounded-xl hover:bg-gray-100 shrink-0"><X className="w-6 h-6 text-gray-500" /></button>
         </div>
+
+        {cartonLocation && (
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-amber-50 border-2 border-amber-300 px-4 py-3 text-amber-900 text-2xl font-bold">
+            <Package className="w-7 h-7" /> {cartonLocation}
+          </div>
+        )}
 
         {line.extra ? (
           <div className="flex items-center gap-2 rounded-2xl bg-red-50 border-2 border-red-300 px-4 py-3 text-red-700 font-semibold">
