@@ -23,6 +23,9 @@ import { usePosBranch } from '@/hooks/usePosCatalog';
 import { usePosReservations } from '@/hooks/usePosReservations';
 import StuckStockBanner from '@/components/pos/StuckStockBanner';
 import { enqueueSaleStock, flushSaleStock } from '@/lib/saleStockQueue';
+// Built-in logos, inlined into the page (no separate image request, so a filtered connection still shows them)
+import tomcheiTorahLogo from '@/assets/brand/tomchei-torah.webp?inline';
+const BUILTIN_WATERMARKS = { '/brand/tomchei-torah.webp': tomcheiTorahLogo };
 
 // Shared look of the POS screen (ink / paper / brass)
 const SERIF = { fontFamily: "'Frank Ruhl Libre', Georgia, serif" };
@@ -630,7 +633,12 @@ export default function POS() {
   const cartTotal = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
   const cartUnits = cartItems.reduce((s, i) => s + i.quantity, 0);
   const branchName = activeBranch?.name || appSettingsList[0]?.store_name || '';
-  const watermarkUrl = appSettingsList[0]?.pos_watermark_url || '';
+  const savedWatermark = appSettingsList[0]?.pos_watermark_url || '';
+  const watermarkUrl = BUILTIN_WATERMARKS[savedWatermark] || savedWatermark;
+  // The network's name in the header (a branch gets it from its network); a lone store shows its own name
+  const networkName = activeBranch?.network_name || appSettingsList[0]?.network_name || '';
+  const headerTitle = networkName || appSettingsList[0]?.store_name || 'קופה';
+  const headerSub = branchName && branchName !== headerTitle ? branchName : '';
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const catName = (id) => categories.find(c => c.id === id)?.name || '';
   const topCategories = Array.from(new Map(categories.map(c => [c.id, c])).values()).filter(c => !c.parent_id);
@@ -659,8 +667,8 @@ export default function POS() {
             <Shirt className="w-6 h-6" strokeWidth={1.6} />
           </div>
           <div className="min-w-0">
-            <p className="text-xl font-bold leading-tight" style={SERIF}>ShopFlow · קופה</p>
-            {branchName && <p className="text-[13px] text-[#D9D1C1] truncate">{branchName}</p>}
+            <p className="text-xl font-bold leading-tight truncate" style={SERIF}>{headerTitle}</p>
+            {headerSub && <p className="text-[13px] text-[#D9D1C1] truncate">{headerSub}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -731,8 +739,8 @@ export default function POS() {
         <div className="relative flex-1 min-w-0 flex">
         {watermarkUrl && (
           <div aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-no-repeat bg-center opacity-[0.08] mix-blend-multiply"
-            style={{ backgroundImage: `url("${watermarkUrl}")`, backgroundSize: 'min(62%, 520px) auto' }} />
+            className="pointer-events-none absolute inset-0 bg-no-repeat opacity-[0.12] mix-blend-multiply"
+            style={{ backgroundImage: `url("${watermarkUrl}")`, backgroundSize: 'min(48%, 420px) auto', backgroundPosition: 'center calc(100% - 32px)' }} />
         )}
         <div className={`relative flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 ${cartItems.length > 0 ? 'pb-28 lg:pb-5' : ''}`}>
           <SmartSearch
