@@ -137,6 +137,62 @@ export function matchScannedCode(code, rows = []) {
   return rows.filter(r => eq(r.group_barcode));
 }
 
+/* ── Carton labels (as they come from the factory) ──
+ * The label barcode = the shirt's SKU + "9" + units in the carton, zero-padded to 15 characters:
+ *   1851S14 + 9 + 0000012  → 1851S1490000012  (12 shirts of 1851S14)
+ *   14423511 + 9 + 000012  → 144235119000012  (12 shirts of 14423511)
+ * A carton barcode saved on the variant (carton_barcode) always wins over the rule. */
+export const CARTON_CODE_LENGTH = 15;
+
+const cartonUnitsFor = (code, prefix) => {
+  const p = String(prefix || '').trim().toLowerCase();
+  if (!p || code.length <= p.length + 1 || !code.startsWith(p) || code[p.length] !== '9') return null;
+  const rest = code.slice(p.length + 1);
+  if (!/^\d+$/.test(rest)) return null;
+  const units = parseInt(rest, 10);
+  return units > 0 && units < 10000 ? units : null;
+};
+
+/**
+ * Rows a scanned carton label belongs to → [{ row, units }] (units = shirts per carton, null if unknown).
+ * Rows need: sku, barcode, carton_barcode. With the rule, the longest matching SKU wins
+ * (so 1851S145's carton is never read as 1851S14).
+ */
+export function matchCartonCode(code, rows = []) {
+  const c = String(code || '').trim().toLowerCase();
+  if (!c) return [];
+  const saved = rows.filter(r => r.carton_barcode && String(r.carton_barcode).trim().toLowerCase() === c);
+  if (saved.length) {
+    return saved.map(r => ({ row: r, units: cartonUnitsFor(c, r.sku) || cartonUnitsFor(c, r.barcode) }));
+  }
+  if (c.length !== CARTON_CODE_LENGTH) return [];
+  let best = 0;
+  let hits = [];
+  rows.forEach(r => {
+    [r.sku, r.barcode].forEach(prefix => {
+      const units = cartonUnitsFor(c, prefix);
+      if (!units) return;
+      const len = String(prefix).trim().length;
+      if (len > best) { best = len; hits = []; }
+      if (len === best && !hits.some(h => h.row === r)) hits.push({ row: r, units });
+    });
+  });
+  return hits;
+}
+
+/** "2 קרטונים + 6 בודדות" for a quantity, given the units per carton ('' when unknown). */
+export function cartonBreakdown(units, perCarton) {
+  const n = Math.max(0, Number(units) || 0);
+  const size = Number(perCarton) || 0;
+  if (!size) return '';
+  const full = Math.floor(n / size);
+  const rest = n % size;
+  const parts = [];
+  if (full) parts.push(full === 1 ? 'קרטון אחד' : `${full} קרטונים`);
+  if (rest) parts.push(rest === 1 ? 'יחידה אחת' : `${rest} בודדות`);
+  return parts.join(' + ') || '0';
+}
+
 /* ── Draft of the branch's next order (kept on the device until sent) ── */
 
 export const supplyDraftKey = (branchId) => `supply-draft:${branchId}`;
