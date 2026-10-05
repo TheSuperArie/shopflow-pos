@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Loader2 } from 'lucide-react';
 import { useWarehouseInventory } from '@/hooks/useWarehouseInventory';
-import StockTable from '@/components/warehouse/stock/StockTable';
+import WarehouseStockPanel from '@/components/warehouse/stock/WarehouseStockPanel';
 import ReceiptHistory from '@/components/warehouse/stock/ReceiptHistory';
 import MovementsList from '@/components/warehouse/stock/MovementsList';
 import PendingLocalProducts from './PendingLocalProducts';
@@ -51,7 +51,7 @@ export default function NetworkWarehouseStockTab({ tenantEmail }) {
           </button>
         ))}
       </div>
-      {tab === 'stock' && <StockTable items={inv.items} isLoading={inv.isLoading} />}
+      {tab === 'stock' && <WarehouseStockPanel warehouse={warehouse} readOnly />}
       {tab === 'receipts' && <ReceiptHistory warehouseId={warehouse.id} />}
       {tab === 'movements' && <MovementsList warehouseId={warehouse.id} />}
       {tab === 'pending' && (
