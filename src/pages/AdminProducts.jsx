@@ -10,13 +10,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, ChevronDown, Settings, Zap, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, FolderPlus, Loader2, Folder, FolderOpen, ChevronDown, Settings, Zap, Download, Shirt, ArrowUp } from 'lucide-react';
 import VariantDimensionsManager from '@/components/admin/VariantDimensionsManager';
 import VariantDimensionFolders from '@/components/admin/VariantDimensionFolders';
 import BarcodePrintModal from '@/components/admin/BarcodePrintModal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useInheritedDimensions } from '@/hooks/useInheritedDimensions';
 import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
+
+// Same colour per top-level category as in the POS (by order), so a category looks the same everywhere
+const CATEGORY_TONES = [
+  { tone: '#1F3A5F', soft: '#E4EAF2' }, { tone: '#2E6B4C', soft: '#E3EFE7' }, { tone: '#8A5A2B', soft: '#F2E6D8' },
+  { tone: '#6B3E6E', soft: '#EFE4F0' }, { tone: '#2A7F7F', soft: '#E0F0F0' }, { tone: '#8C3B2E', soft: '#F4E3DF' },
+  { tone: '#4F5A23', soft: '#ECEFDD' }, { tone: '#4B4A8C', soft: '#E7E6F4' },
+];
+const SERIF = { fontFamily: "'Frank Ruhl Libre', Georgia, serif" };
 
 
 
@@ -60,12 +68,12 @@ export default function AdminProducts() {
                 {group.image_url ? (
                   <img src={group.image_url} alt="" className="w-16 h-16 rounded-xl object-cover" />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center">
-                    <Folder className="w-8 h-8 text-amber-400" />
+                  <div className="w-16 h-16 rounded-xl bg-[#F1EADB] flex items-center justify-center">
+                    <Shirt className="w-8 h-8 text-gray-500" strokeWidth={1.5} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{group.name}</p>
+                  <p className="font-bold text-[15px] truncate">{group.name}</p>
                   <p className="text-sm text-gray-500">
                     {group.has_uniform_price ? (
                       <>עלות: ₪{group.uniform_cost_price || 0} | מכירה: ₪{group.uniform_sell_price}</>
@@ -97,7 +105,7 @@ export default function AdminProducts() {
           <Button onClick={() => { setEditingCategory(null); setNewCatDefaultParentId(null); setShowCatForm(true); }} variant="outline" className="gap-2">
             <FolderPlus className="w-4 h-4" /> קטגוריה
           </Button>
-          <Button onClick={() => setShowSimpleProductForm(true)} variant="outline" className="gap-2 border-green-300 text-green-600 hover:bg-green-50">
+          <Button onClick={() => setShowSimpleProductForm(true)} variant="outline" className="gap-2">
             <Plus className="w-4 h-4" /> מוצר בודד
           </Button>
           <Button onClick={() => { setEditingGroup(null); setShowGroupForm(true); }} className="gap-2 bg-amber-500 hover:bg-amber-600">
@@ -118,37 +126,38 @@ export default function AdminProducts() {
             // Count all groups: direct + in sub-cats
             const allCatGroups = [...directGroups, ...subCats.flatMap(sc => groupsForCategory(sc.id))];
             const totalVariants = allCatGroups.reduce((sum, g) => sum + variants.filter(v => v.group_id === g.id).length, 0);
+            const tone = CATEGORY_TONES[topLevelCategories.indexOf(category) % CATEGORY_TONES.length];
 
             return (
-              <div key={category.id} className="border-2 border-amber-200 rounded-xl overflow-hidden">
+              <div key={category.id} className="border-[1.5px] border-[#E2D8C4] rounded-2xl overflow-hidden bg-[#FFFDF8]">
                 {/* Category Header */}
                 <button
                   onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
-                  className="sticky top-0 z-10 w-full bg-amber-100 p-4 flex items-center justify-between border-b-2 border-amber-200 hover:bg-amber-150 transition-colors"
+                  className={`sticky top-0 z-10 w-full bg-[#FFFDF8] p-4 flex items-center justify-between hover:bg-[#F7F2E8] transition-colors ${isExpanded ? 'border-b-[1.5px] border-[#E2D8C4]' : ''}`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
-                      <Folder className="w-5 h-5 text-white" />
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: tone.soft, color: tone.tone }}>
+                      <Shirt className="w-6 h-6" strokeWidth={1.6} />
                     </div>
                     <div className="text-right">
-                      <h3 className="font-bold text-amber-900 text-lg">{category.name}</h3>
-                      <p className="text-sm text-amber-700">
+                      <h3 className="font-bold text-gray-900 text-xl" style={SERIF}>{category.name}</h3>
+                      <p className="text-sm text-gray-500">
                         {subCats.length > 0 ? `${subCats.length} תת-קטגוריות • ` : ''}{allCatGroups.length} מוצרים • {totalVariants} וריאציות
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={(e) => { e.stopPropagation(); setManagingDimensions(category); }}
-                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors" title="ממדי וריאציות">
-                      <Settings className="w-5 h-5 text-amber-700" />
+                      className="p-2 rounded-lg hover:bg-[#EDE4D2] transition-colors" title="ממדי וריאציות">
+                      <Settings className="w-5 h-5 text-gray-600" />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); setNewCatDefaultParentId(category.id); setEditingCategory(null); setShowCatForm(true); }}
-                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors" title="הוסף תת-קטגוריה">
-                      <FolderPlus className="w-5 h-5 text-amber-700" />
+                      className="p-2 rounded-lg hover:bg-[#EDE4D2] transition-colors" title="הוסף תת-קטגוריה">
+                      <FolderPlus className="w-5 h-5 text-gray-600" />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); setEditingCategory(category); setNewCatDefaultParentId(null); setShowCatForm(true); }}
-                      className="p-2 rounded-lg hover:bg-amber-200 transition-colors">
-                      <Pencil className="w-5 h-5 text-amber-700" />
+                      className="p-2 rounded-lg hover:bg-[#EDE4D2] transition-colors">
+                      <Pencil className="w-5 h-5 text-gray-600" />
                     </button>
                     <DeleteCategoryButton categoryId={category.id} queryClient={queryClient} toast={toast} />
                     <ChevronDown className={`w-5 h-5 ml-2 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -156,50 +165,50 @@ export default function AdminProducts() {
                 </button>
 
                 {isExpanded && (
-                  <div className="bg-white p-4 space-y-4">
+                  <div className="bg-[#FBF8F1] p-4 space-y-4">
                     {/* Sub-categories */}
                     {subCats.map(subCat => {
                       const isSubExpanded = expandedSubCategory === subCat.id;
                       const subGroups = groupsForCategory(subCat.id);
                       const subVariants = subGroups.reduce((sum, g) => sum + variants.filter(v => v.group_id === g.id).length, 0);
                       return (
-                        <div key={subCat.id} className="border-2 border-blue-200 rounded-xl overflow-hidden">
+                        <div key={subCat.id} className="border-[1.5px] border-[#E2D8C4] rounded-xl overflow-hidden bg-[#FFFDF8]">
                           <button
                             onClick={() => setExpandedSubCategory(isSubExpanded ? null : subCat.id)}
-                            className="w-full bg-blue-50 px-4 py-3 flex items-center justify-between hover:bg-blue-100 transition-colors"
+                            className="w-full bg-[#FFFDF8] px-4 py-3 flex items-center justify-between hover:bg-[#F7F2E8] transition-colors"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center">
-                                <Folder className="w-4 h-4 text-white" />
+                              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: tone.soft, color: tone.tone }}>
+                                <FolderOpen className="w-5 h-5" strokeWidth={1.7} />
                               </div>
                               <div className="text-right">
-                                <p className="font-semibold text-blue-900">{subCat.name}</p>
-                                <p className="text-xs text-blue-600">{subGroups.length} מוצרים • {subVariants} וריאציות</p>
+                                <p className="font-semibold text-gray-900">{subCat.name}</p>
+                                <p className="text-xs text-gray-500">{subGroups.length} מוצרים • {subVariants} וריאציות</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
                               {subCat.inherit_dimensions !== false && (
-                                <span className="text-xs bg-blue-100 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5 font-medium hidden sm:inline">
-                                  ⬆ ירושה
+                                <span className="text-xs bg-[#EDE4D2] text-gray-600 rounded-full px-2 py-0.5 font-medium hidden sm:inline-flex items-center gap-1">
+                                  <ArrowUp className="w-3 h-3" /> יורש ממדים
                                 </span>
                               )}
                               {subCat.inherit_dimensions === false && (
                                 <button onClick={(e) => { e.stopPropagation(); setManagingDimensions(subCat); }}
-                                  className="p-1.5 rounded-lg hover:bg-blue-200" title="ממדי וריאציות">
-                                  <Settings className="w-4 h-4 text-blue-600" />
+                                  className="p-1.5 rounded-lg hover:bg-[#EDE4D2]" title="ממדי וריאציות">
+                                  <Settings className="w-4 h-4 text-gray-600" />
                                 </button>
                               )}
                               <PullParentVariantsButton subCategory={subCat} categories={categories} queryClient={queryClient} toast={toast} user={user} />
                               <button onClick={(e) => { e.stopPropagation(); setEditingCategory(subCat); setNewCatDefaultParentId(null); setShowCatForm(true); }}
-                                className="p-1.5 rounded-lg hover:bg-blue-200">
-                                <Pencil className="w-4 h-4 text-blue-600" />
+                                className="p-1.5 rounded-lg hover:bg-[#EDE4D2]">
+                                <Pencil className="w-4 h-4 text-gray-600" />
                               </button>
                               <DeleteCategoryButton categoryId={subCat.id} queryClient={queryClient} toast={toast} />
                               <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isSubExpanded ? 'rotate-180' : ''}`} />
                             </div>
                           </button>
                           {isSubExpanded && (
-                            <div className="bg-white p-4">
+                            <div className="bg-[#FBF8F1] p-4 border-t-[1.5px] border-[#E2D8C4]">
                               {subGroups.length === 0
                                 ? <p className="text-center text-gray-400 py-4 text-sm">אין מוצרים בתת-קטגוריה זו</p>
                                 : renderGroupsGrid(subGroups)}
