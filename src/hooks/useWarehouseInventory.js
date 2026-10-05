@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchNetworkCatalogRows, fetchWarehouseStock, fetchLocalProducts, fetchWarehouseReservations, stockKey } from '@/lib/warehouseStock';
+import { fetchNetworkCatalog, fetchWarehouseStock, fetchLocalProducts, fetchWarehouseReservations, stockKey } from '@/lib/warehouseStock';
 
 /** Network catalog + warehouse-local products + current stock, merged into one list. */
 export function useWarehouseInventory(warehouse) {
   const id = warehouse?.id;
   const catalog = useQuery({
     queryKey: ['warehouse-network-catalog', warehouse?.id],
-    queryFn: () => fetchNetworkCatalogRows(warehouse),
+    queryFn: () => fetchNetworkCatalog(warehouse),
     enabled: !!warehouse?.id && !!warehouse?.tenant_email,
     staleTime: 300000,
   });
@@ -24,7 +24,7 @@ export function useWarehouseInventory(warehouse) {
   const items = useMemo(() => {
     const stockBy = new Map((stock.data || []).map(s => [stockKey(s), s]));
     const out = new Map();
-    (catalog.data || []).forEach(r => {
+    (catalog.data?.rows || []).forEach(r => {
       const key = `v:${r.variant_id}`;
       out.set(key, { ...r, key, local_product_id: null, qty: Number(stockBy.get(key)?.qty || 0) });
     });
@@ -61,7 +61,9 @@ export function useWarehouseInventory(warehouse) {
 
   return {
     items,
-    catalogRows: catalog.data || [],
+    catalogRows: catalog.data?.rows || [],
+    groups: catalog.data?.groups || [],
+    categories: catalog.data?.categories || [],
     localProducts: locals.data || [],
     isLoading: catalog.isLoading || stock.isLoading || locals.isLoading,
   };
