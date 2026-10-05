@@ -1,82 +1,86 @@
 {
   "name": "AppSettings",
-  "type": "object",
   "properties": {
     "admin_password": {
-      "type": "string",
-      "description": "לא בשימוש — קוד מנהל הסניף עבר לשרת (AdminSecret / adminAuth). נשאר רק סימון."
+      "description": "\u05dc\u05d0 \u05d1\u05e9\u05d9\u05de\u05d5\u05e9 \u2014 \u05e7\u05d5\u05d3 \u05de\u05e0\u05d4\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u05e2\u05d1\u05e8 \u05dc\u05e9\u05e8\u05ea (AdminSecret / adminAuth). \u05e0\u05e9\u05d0\u05e8 \u05e8\u05e7 \u05e1\u05d9\u05de\u05d5\u05df.",
+      "type": "string"
     },
-    "network_admin_password": {
-      "type": "string",
-      "description": "לא בשימוש — קוד המאסטר של הרשת עבר לשרת (AdminSecret / adminAuth). נשאר רק סימון."
-    },
-    "store_name": {
-      "type": "string",
-      "default": "החנות שלי"
-    },
-    "network_name": {
-      "type": "string",
-      "description": "שם הרשת המוצג בראש כל דף בדשבורד מנהל הרשת"
-    },
-    "low_stock_threshold": {
-      "type": "number",
-      "default": 5,
-      "description": "סף מלאי נמוך - מתחתיו מוצג אזהרה"
+    "branch_id": {
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 (FK to Branch)",
+      "type": "string"
     },
     "dashboard_default_dimension": {
-      "type": "string",
-      "description": "שם הממד שיוצג כברירת מחדל בפילוח P3+ בלוח הבקרה (למשל: גודל, צבע)"
+      "description": "\u05e9\u05dd \u05d4\u05de\u05de\u05d3 \u05e9\u05d9\u05d5\u05e6\u05d2 \u05db\u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc \u05d1\u05e4\u05d9\u05dc\u05d5\u05d7 P3+ \u05d1\u05dc\u05d5\u05d7 \u05d4\u05d1\u05e7\u05e8\u05d4 (\u05dc\u05de\u05e9\u05dc: \u05d2\u05d5\u05d3\u05dc, \u05e6\u05d1\u05e2)",
+      "type": "string"
+    },
+    "low_stock_threshold": {
+      "default": 5,
+      "description": "\u05e1\u05e3 \u05de\u05dc\u05d0\u05d9 \u05e0\u05de\u05d5\u05da - \u05de\u05ea\u05d7\u05ea\u05d9\u05d5 \u05de\u05d5\u05e6\u05d2 \u05d0\u05d6\u05d4\u05e8\u05d4",
+      "type": "number"
+    },
+    "network_admin_password": {
+      "description": "\u05dc\u05d0 \u05d1\u05e9\u05d9\u05de\u05d5\u05e9 \u2014 \u05e7\u05d5\u05d3 \u05d4\u05de\u05d0\u05e1\u05d8\u05e8 \u05e9\u05dc \u05d4\u05e8\u05e9\u05ea \u05e2\u05d1\u05e8 \u05dc\u05e9\u05e8\u05ea (AdminSecret / adminAuth). \u05e0\u05e9\u05d0\u05e8 \u05e8\u05e7 \u05e1\u05d9\u05de\u05d5\u05df.",
+      "type": "string"
+    },
+    "network_name": {
+      "description": "\u05e9\u05dd \u05d4\u05e8\u05e9\u05ea \u05d4\u05de\u05d5\u05e6\u05d2 \u05d1\u05e8\u05d0\u05e9 \u05db\u05dc \u05d3\u05e3 \u05d1\u05d3\u05e9\u05d1\u05d5\u05e8\u05d3 \u05de\u05e0\u05d4\u05dc \u05d4\u05e8\u05e9\u05ea",
+      "type": "string"
     },
     "notifications_enabled": {
-      "type": "boolean",
       "default": true,
-      "description": "האם להציג התראות ולהשמיע צליל כשמגיעה הודעה מהרשת. ברירת מחדל: פעיל."
-    },
-    "stock_mode_enabled": {
-      "type": "boolean",
-      "default": true,
-      "description": "האם החנות פועלת על פי מלאי. כבוי — ניתן למכור בקופה גם מוצרים שאין במלאי, ומכירות אינן מורידות פריטים מהמלאי. דפי הדוחות ממשיכים כרגיל."
+      "description": "\u05d4\u05d0\u05dd \u05dc\u05d4\u05e6\u05d9\u05d2 \u05d4\u05ea\u05e8\u05d0\u05d5\u05ea \u05d5\u05dc\u05d4\u05e9\u05de\u05d9\u05e2 \u05e6\u05dc\u05d9\u05dc \u05db\u05e9\u05de\u05d2\u05d9\u05e2\u05d4 \u05d4\u05d5\u05d3\u05e2\u05d4 \u05de\u05d4\u05e8\u05e9\u05ea. \u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc: \u05e4\u05e2\u05d9\u05dc.",
+      "type": "boolean"
     },
     "pos_virtual_folders": {
-      "type": "array",
-      "description": "תיקיות וירטואליות בקופה — לנוחות הקופאים בלבד, ללא השפעה על מסד הנתונים",
+      "default": [],
+      "description": "\u05ea\u05d9\u05e7\u05d9\u05d5\u05ea \u05d5\u05d9\u05e8\u05d8\u05d5\u05d0\u05dc\u05d9\u05d5\u05ea \u05d1\u05e7\u05d5\u05e4\u05d4 \u2014 \u05dc\u05e0\u05d5\u05d7\u05d5\u05ea \u05d4\u05e7\u05d5\u05e4\u05d0\u05d9\u05dd \u05d1\u05dc\u05d1\u05d3, \u05dc\u05dc\u05d0 \u05d4\u05e9\u05e4\u05e2\u05d4 \u05e2\u05dc \u05de\u05e1\u05d3 \u05d4\u05e0\u05ea\u05d5\u05e0\u05d9\u05dd",
       "items": {
-        "type": "object",
         "properties": {
+          "category_id": {
+            "description": "\u05d0\u05dd \u05de\u05d5\u05d2\u05d3\u05e8 \u2014 \u05d4\u05ea\u05e7\u05d9\u05d9\u05d4 \u05ea\u05d5\u05e4\u05d9\u05e2 \u05e8\u05e7 \u05d1\u05ea\u05ea-\u05e7\u05d8\u05d2\u05d5\u05e8\u05d9\u05d4/\u05e7\u05d8\u05d2\u05d5\u05e8\u05d9\u05d4 \u05d6\u05d5 \u05d1\u05e7\u05d5\u05e4\u05d4",
+            "type": "string"
+          },
+          "group_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "id": {
             "type": "string"
           },
           "name": {
             "type": "string"
-          },
-          "category_id": {
-            "type": "string",
-            "description": "אם מוגדר — התקייה תופיע רק בתת-קטגוריה/קטגוריה זו בקופה"
-          },
-          "group_ids": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
-        }
+        },
+        "type": "object"
       },
-      "default": []
+      "type": "array"
     },
-    "branch_id": {
-      "type": "string",
-      "description": "מזהה הסניף (FK to Branch)"
+    "pos_watermark_url": {
+      "description": "\u05dc\u05d5\u05d2\u05d5 \u05e9\u05e7\u05d5\u05e3 \u05d1\u05e8\u05e7\u05e2 \u05d4\u05e7\u05d5\u05e4\u05d4 (\u05db\u05ea\u05d5\u05d1\u05ea \u05ea\u05de\u05d5\u05e0\u05d4). \u05e8\u05d9\u05e7 = \u05d1\u05dc\u05d9 \u05dc\u05d5\u05d2\u05d5",
+      "type": "string"
     },
     "station_email": {
-      "type": "string",
-      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
+    },
+    "stock_mode_enabled": {
+      "default": true,
+      "description": "\u05d4\u05d0\u05dd \u05d4\u05d7\u05e0\u05d5\u05ea \u05e4\u05d5\u05e2\u05dc\u05ea \u05e2\u05dc \u05e4\u05d9 \u05de\u05dc\u05d0\u05d9. \u05db\u05d1\u05d5\u05d9 \u2014 \u05e0\u05d9\u05ea\u05df \u05dc\u05de\u05db\u05d5\u05e8 \u05d1\u05e7\u05d5\u05e4\u05d4 \u05d2\u05dd \u05de\u05d5\u05e6\u05e8\u05d9\u05dd \u05e9\u05d0\u05d9\u05df \u05d1\u05de\u05dc\u05d0\u05d9, \u05d5\u05de\u05db\u05d9\u05e8\u05d5\u05ea \u05d0\u05d9\u05e0\u05df \u05de\u05d5\u05e8\u05d9\u05d3\u05d5\u05ea \u05e4\u05e8\u05d9\u05d8\u05d9\u05dd \u05de\u05d4\u05de\u05dc\u05d0\u05d9. \u05d3\u05e4\u05d9 \u05d4\u05d3\u05d5\u05d7\u05d5\u05ea \u05de\u05de\u05e9\u05d9\u05db\u05d9\u05dd \u05db\u05e8\u05d2\u05d9\u05dc.",
+      "type": "boolean"
+    },
+    "store_name": {
+      "default": "\u05d4\u05d7\u05e0\u05d5\u05ea \u05e9\u05dc\u05d9",
+      "type": "string"
     },
     "tenant_email": {
-      "type": "string",
-      "description": "אימייל בעל הרשת. ריק = חנות יחידה — שדה בעלות להרשאות"
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
+      "type": "string"
     }
   },
   "required": [],
+  "type": "object",
   "rls": {
     "create": true,
     "read": true,
