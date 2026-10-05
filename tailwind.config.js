@@ -10,6 +10,13 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
+  			// Warm paper greys + ink for the whole app (same look as the POS)
+  			gray: {
+  				50: '#F7F2E8', 100: '#EFE8DA', 200: '#E2D8C4', 300: '#CFC5B2', 400: '#A39B8C',
+  				500: '#736D61', 600: '#5E5A52', 700: '#46423B', 800: '#2E2B27', 900: '#1E2433', 950: '#151A26'
+  			},
+  			// Brass instead of bright amber for the main action colour (white text reads well on it)
+  			amber: { 500: '#A5752A', 600: '#8A611F' },
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
