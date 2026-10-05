@@ -358,7 +358,7 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
                   <p className="text-lg font-semibold text-gray-900 truncate">{it.product_name} · {it.variant_label || '—'}</p>
                   <p className="text-sm text-gray-500 font-mono">{it.sku || '—'}{it.category_name ? ` · ${it.category_name}` : ''}</p>
                   {partial && (
-                    <p className="mt-0.5 text-sm font-semibold text-orange-700">יש במחסן רק {free} — לקחת {free}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-orange-700">יש במחסן רק {free}</p>
                   )}
                 </div>
                 {locationOf(it) && (
