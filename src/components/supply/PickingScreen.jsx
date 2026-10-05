@@ -78,6 +78,12 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
   // To pick: in the order the picker walks the warehouse — carton, then size (no carton → last)
   const todo = items.map((it, index) => ({ it, index })).filter(x => !isDone(x.it) && !x.it.extra)
     .sort((a, b) => compareCartonLocation(withCatalog(a.it), withCatalog(b.it)));
+  // Lines with nothing free in the warehouse stay out of the picker's way (collapsed at the bottom);
+  // they come back by themselves when stock arrives. Unknown availability counts as "there".
+  const freeOf = (it) => availableFor.freeOf?.(it.variant_id) ?? null;
+  const todoReady = todo.filter(x => { const f = freeOf(x.it); return f == null || f > 0; });
+  const todoMissing = todo.filter(x => { const f = freeOf(x.it); return f != null && f <= 0; });
+  const [showMissing, setShowMissing] = useState(false);
   const orderedUnits = items.reduce((s, i) => s + lineQty(i), 0);
   const pickedUnits = items.reduce((s, i) => s + Number(i.picked_qty || 0), 0);
   const orderLines = items.filter(i => !i.extra).length;
@@ -335,17 +341,25 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
 
       {/* To pick */}
       <section className="space-y-2">
-        <h3 className="text-lg font-bold text-gray-800">ללקט ({todo.length})</h3>
-        {todo.length === 0 ? (
-          <p className="rounded-2xl border bg-white py-8 text-center text-gray-400">כל השורות לוקטו 🎉</p>
+        <h3 className="text-lg font-bold text-gray-800">ללקט ({todoReady.length})</h3>
+        {todoReady.length === 0 ? (
+          <p className="rounded-2xl border bg-white py-8 text-center text-gray-400">
+            {todoMissing.length ? 'כל מה שיש במחסן לוקט' : 'כל השורות לוקטו 🎉'}
+          </p>
         ) : (
           <div className="rounded-2xl border bg-white divide-y">
-            {todo.map(({ it, index }) => (
+            {todoReady.map(({ it, index }) => {
+              const free = freeOf(it);
+              const partial = free != null && free < lineQty(it);
+              return (
               <button key={`${it.variant_id}-${index}`} onClick={() => openLine(index)}
                 className="w-full text-right flex items-center gap-3 px-4 py-3 min-h-[68px] hover:bg-blue-50 active:bg-blue-100">
                 <div className="flex-1 min-w-0">
                   <p className="text-lg font-semibold text-gray-900 truncate">{it.product_name} · {it.variant_label || '—'}</p>
                   <p className="text-sm text-gray-500 font-mono">{it.sku || '—'}{it.category_name ? ` · ${it.category_name}` : ''}</p>
+                  {partial && (
+                    <p className="mt-0.5 text-sm font-semibold text-orange-700">יש במחסן רק {free} — לקחת {free}</p>
+                  )}
                 </div>
                 {locationOf(it) && (
                   <span className="flex items-center gap-1.5 rounded-xl bg-amber-50 border-2 border-amber-300 px-3 py-2 text-amber-900 text-lg font-bold shrink-0">
@@ -357,7 +371,35 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
                   <span className="block text-2xl font-bold text-blue-900">{lineQty(it)}</span>
                 </span>
               </button>
-            ))}
+              );
+            })}
+          </div>
+        )}
+
+        {/* Ordered but nothing in the warehouse right now — collapsed, so the picker isn't sent looking */}
+        {todoMissing.length > 0 && (
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50">
+            <button onClick={() => setShowMissing(v => !v)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-right">
+              <span className="font-semibold text-gray-700">אין כרגע במחסן ({todoMissing.length} שורות)</span>
+              <span className="text-sm text-gray-500">{showMissing ? 'הסתר' : 'הצג'}</span>
+            </button>
+            {showMissing && (
+              <div className="divide-y border-t">
+                {todoMissing.map(({ it, index }) => (
+                  <button key={`${it.variant_id}-${index}`} onClick={() => openLine(index)}
+                    className="w-full text-right flex items-center gap-3 px-4 py-2.5 text-gray-500 hover:bg-gray-100">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{it.product_name} · {it.variant_label || '—'}</p>
+                      <p className="text-xs font-mono">{it.sku || '—'}</p>
+                    </div>
+                    {locationOf(it) && <span className="text-sm shrink-0">{locationOf(it)}</span>}
+                    <span className="text-sm shrink-0">הוזמנו {lineQty(it)}</span>
+                  </button>
+                ))}
+                <p className="px-4 py-2 text-xs text-gray-500">אם תיקלט סחורה למחסן — השורה תחזור לבד לרשימה. מה שלא ילוקט יירשם כ-0 שנארז בסיום.</p>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -370,7 +412,7 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
           <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 space-y-3">
             {todo.length > 0 && (
               <p className="flex items-center gap-2 text-amber-800 font-medium">
-                <AlertTriangle className="w-5 h-5" /> {todo.length} שורות לא לוקטו — יירשמו כ-0 שנארז.
+                <AlertTriangle className="w-5 h-5" /> {todo.length} שורות לא לוקטו{todoMissing.length ? ` (מהן ${todoMissing.length} שאין במחסן)` : ''} — יירשמו כ-0 שנארז.
               </p>
             )}
             <p className="text-gray-700">לסיים את ההזמנה? {pickedUnits} יחידות נארזו מתוך {orderedUnits}.</p>
