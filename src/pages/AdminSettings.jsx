@@ -16,6 +16,7 @@ import SaleMigrationTool from '@/components/admin/SaleMigrationTool';
 import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
 import AdminCodeChange from '@/components/admin/AdminCodeChange';
 import NedarimSettingsCard from '@/components/admin/NedarimSettingsCard';
+import PosWatermarkCard from '@/components/admin/PosWatermarkCard';
 
 export default function AdminSettings() {
   const [storeName, setStoreName] = useState('');
@@ -174,6 +175,7 @@ export default function AdminSettings() {
         </CardContent>
       </Card>
       <NedarimSettingsCard />
+      <PosWatermarkCard settings={settings[0]} />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
