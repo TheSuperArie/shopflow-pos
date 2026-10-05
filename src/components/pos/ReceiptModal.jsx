@@ -59,14 +59,14 @@ export default function ReceiptModal({ open, sale, onClose }) {
       `).join('');
 
       const emailBody = `
-        <div style="direction: rtl; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="direction: rtl; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #F5EFE3;">
           <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #f59e0b; margin: 0;">${storeName}</h1>
+              <h1 style="color: #1E2433; margin: 0; font-family: Georgia, serif;">${storeName}</h1>
               <p style="color: #666; margin: 5px 0;">קבלה דיגיטלית</p>
             </div>
             
-            <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="background-color: #F5EFE3; border: 1px solid #E2D8C4; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
               <p style="margin: 5px 0;"><strong>מספר קבלה:</strong> ${receipt.receipt_number}</p>
               <p style="margin: 5px 0;"><strong>תאריך:</strong> ${receiptDate}</p>
               <p style="margin: 5px 0;"><strong>שם לקוח:</strong> ${customerName || 'לקוח'}</p>
@@ -75,7 +75,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
 
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
               <thead>
-                <tr style="background-color: #f3f4f6;">
+                <tr style="background-color: #EFE8DA;">
                   <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">פריט</th>
                   <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">כמות</th>
                   <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #ddd;">מחיר יחידה</th>
@@ -87,12 +87,12 @@ export default function ReceiptModal({ open, sale, onClose }) {
               </tbody>
             </table>
 
-            <div style="text-align: left; padding: 15px; background-color: #f59e0b; color: white; border-radius: 8px;">
+            <div style="text-align: left; padding: 15px; background-color: #1E2433; color: #F5EFE3; border-radius: 8px;">
               <h2 style="margin: 0; font-size: 24px;">סה"כ לתשלום: ₪${sale.total.toFixed(2)}</h2>
             </div>
 
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 14px;">
-              <p>תודה שקנית אצלנו! 🙏</p>
+              <p>תודה שקנית אצלנו!</p>
               <p style="margin: 5px 0;">לשירות ותמיכה, צור קשר עם ${storeName}</p>
             </div>
           </div>
@@ -143,15 +143,15 @@ export default function ReceiptModal({ open, sale, onClose }) {
         <head>
           <title>קבלה ${receiptNumber}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #f59e0b; padding-bottom: 20px; }
-            .header h1 { color: #f59e0b; margin: 0; font-size: 32px; }
-            .info { background: #fef3c7; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+            body { font-family: Arial, sans-serif; color: #1E2433; padding: 40px; max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 3px double #1E2433; padding-bottom: 20px; }
+            .header h1 { color: #1E2433; margin: 0; font-size: 32px; font-family: Georgia, serif; }
+            .info { background: #F7F2E8; border: 1px solid #E2D8C4; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
             .info p { margin: 8px 0; font-size: 16px; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { background: #f3f4f6; padding: 12px; text-align: right; border-bottom: 2px solid #ddd; }
+            th { background: #EFE8DA; padding: 12px; text-align: right; border-bottom: 2px solid #ddd; }
             td { padding: 12px; border-bottom: 1px solid #eee; }
-            .total { background: #f59e0b; color: white; padding: 20px; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; }
+            .total { background: #1E2433; color: #F5EFE3; padding: 20px; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; }
             .footer { margin-top: 40px; text-align: center; color: #666; border-top: 1px solid #ddd; padding-top: 20px; }
             @media print { body { padding: 20px; } }
           </style>
@@ -191,7 +191,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
             סה"כ לתשלום: ₪${sale.total.toFixed(2)}
           </div>
           <div class="footer">
-            <p>תודה שקנית אצלנו! 🙏</p>
+            <p>תודה שקנית אצלנו!</p>
             <p>${storeName}</p>
           </div>
         </body>
@@ -216,16 +216,16 @@ export default function ReceiptModal({ open, sale, onClose }) {
       <DialogContent dir="rtl" className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
-            <ReceiptIcon className="w-6 h-6 text-amber-500" />
+            <ReceiptIcon className="w-6 h-6 text-[#7A5418]" />
             הפקת קבלה
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Receipt Preview */}
-          <Card className="p-6 bg-gradient-to-br from-amber-50 to-white">
-            <div className="text-center mb-4 pb-4 border-b-2 border-amber-200">
-              <h2 className="text-2xl font-bold text-amber-600">{storeName}</h2>
+          <Card className="p-6 bg-[#FFFDF8]">
+            <div className="text-center mb-4 pb-4 border-b-[3px] border-double border-[#1E2433]">
+              <h2 className="text-2xl font-bold text-[#1E2433]" style={{ fontFamily: "'Frank Ruhl Libre', Georgia, serif" }}>{storeName}</h2>
               <p className="text-sm text-gray-500">קבלה דיגיטלית</p>
             </div>
 
@@ -236,14 +236,14 @@ export default function ReceiptModal({ open, sale, onClose }) {
 
             <div className="space-y-2 mb-4">
               {sale.items?.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-sm bg-white p-2 rounded">
+                <div key={idx} className="flex justify-between text-sm p-2 border-b border-dashed border-[#E2D8C4]">
                   <span>{item.product_name}</span>
                   <span>x{item.quantity} - ₪{(item.quantity * item.sell_price).toFixed(2)}</span>
                 </div>
               ))}
             </div>
 
-            <div className="bg-amber-500 text-white p-4 rounded-lg text-center">
+            <div className="bg-[#1E2433] text-[#F5EFE3] p-4 rounded-lg text-center">
               <p className="text-2xl font-bold">סה"כ: ₪{sale.total?.toFixed(2)}</p>
             </div>
           </Card>
