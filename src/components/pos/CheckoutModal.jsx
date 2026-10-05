@@ -15,11 +15,11 @@ function CurrencyButton({ value, type, onClick }) {
       onClick={() => onClick(value)}
       className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 transition-all active:scale-95 hover:shadow-md select-none
         ${isBanknote
-          ? 'border-green-300 bg-gradient-to-br from-green-50 to-green-100 hover:border-green-500 h-14'
-          : 'border-yellow-300 bg-gradient-to-br from-yellow-50 to-yellow-100 hover:border-yellow-500 h-12'
+          ? 'border-[#B9D3C2] bg-[#EEF5F0] hover:border-[#2E6B4C] h-14'
+          : 'border-[#E3C98F] bg-[#FBF3E1] hover:border-[#A5752A] h-12'
         }`}
     >
-      <span className={`font-bold ${isBanknote ? 'text-green-800 text-base' : 'text-yellow-800 text-sm'}`}>
+      <span className={`font-bold ${isBanknote ? 'text-[#1F4D36] text-base' : 'text-[#5A3E0E] text-sm'}`}>
         ₪{value}
       </span>
     </button>
@@ -123,12 +123,12 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className={`${isWide ? 'max-w-lg' : 'max-w-sm'}`} dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-xl text-center">תשלום</DialogTitle>
+          <DialogTitle className="text-2xl text-center" style={{ fontFamily: "'Frank Ruhl Libre', Georgia, serif" }}>תשלום</DialogTitle>
         </DialogHeader>
 
         <div className="text-center py-2">
           <p className="text-gray-500 text-sm">סכום לתשלום</p>
-          <p className="text-4xl font-bold text-amber-600 mt-1">₪{safeTotal.toFixed(2)}</p>
+          <p className="text-5xl font-bold text-[#1E2433] mt-1 tabular-nums" style={{ fontFamily: "'Frank Ruhl Libre', Georgia, serif" }}>₪{safeTotal.toFixed(2)}</p>
         </div>
 
         {/* Receipt checkbox */}
@@ -148,24 +148,24 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
           <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => setMethod('מזומן')}
-              className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-gray-200 text-gray-600 hover:border-green-300 hover:bg-green-50 transition-all active:scale-95"
+              className="flex flex-col items-center gap-2 p-5 min-h-[112px] justify-center rounded-2xl border-2 border-[#E2D8C4] bg-[#FFFDF8] text-[#2E6B4C] hover:border-[#2E6B4C] hover:bg-[#EEF5F0] transition-all active:scale-95"
             >
               <Banknote className="w-8 h-8" />
-              <span className="font-bold">מזומן</span>
+              <span className="font-bold text-lg">מזומן</span>
             </button>
             <button
               onClick={() => setMethod('אשראי')}
-              className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50 transition-all active:scale-95"
+              className="flex flex-col items-center gap-2 p-5 min-h-[112px] justify-center rounded-2xl border-2 border-[#E2D8C4] bg-[#FFFDF8] text-[#1F3A5F] hover:border-[#1F3A5F] hover:bg-[#E4EAF2] transition-all active:scale-95"
             >
               <CreditCard className="w-8 h-8" />
-              <span className="font-bold">אשראי</span>
+              <span className="font-bold text-lg">אשראי</span>
             </button>
             <button
               onClick={() => setMethod('פיצול')}
-              className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50 transition-all active:scale-95"
+              className="flex flex-col items-center gap-2 p-5 min-h-[112px] justify-center rounded-2xl border-2 border-[#E2D8C4] bg-[#FFFDF8] text-[#6B3E6E] hover:border-[#6B3E6E] hover:bg-[#EFE4F0] transition-all active:scale-95"
             >
               <SplitSquareHorizontal className="w-8 h-8" />
-              <span className="font-bold">פיצול</span>
+              <span className="font-bold text-lg">פיצול</span>
             </button>
           </div>
         )}
@@ -183,8 +183,8 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
               </p>
             )}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setMethod(null)} className="flex-1">חזור</Button>
-              {creditButtons('אשראי', null, safeTotal, false, 'bg-blue-500 hover:bg-blue-600')}
+              <Button variant="outline" onClick={() => setMethod(null)} className="flex-1 h-12 text-base">חזור</Button>
+              {creditButtons('אשראי', null, safeTotal, false, 'bg-[#1F3A5F] hover:bg-[#162B47]')}
             </div>
             {useNedarim && (
               <button onClick={handleConfirm} disabled={isProcessing}
@@ -237,9 +237,9 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
               {!isShort && received > 0 && <><p className="text-green-600 text-sm font-medium">עודף להחזיר</p><p className="text-4xl font-bold text-green-700">₪{change.toFixed(2)}</p></>}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setMethod(null); setReceived(0); }} className="flex-1">חזור</Button>
+              <Button variant="outline" onClick={() => { setMethod(null); setReceived(0); }} className="flex-1 h-12 text-base">חזור</Button>
               <Button onClick={handleConfirm} disabled={!hasEnough || isProcessing}
-                className="flex-1 h-12 text-lg font-bold bg-green-600 hover:bg-green-700">
+                className="flex-1 h-12 text-lg font-bold bg-[#2E6B4C] hover:bg-[#25573D]">
                 {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'אשר תשלום'}
               </Button>
             </div>
@@ -317,10 +317,10 @@ export default function CheckoutModal({ open, total, onConfirm, onClose, isProce
             )}
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setMethod(null); setCashAmount(0); setReceived(0); }} className="flex-1">חזור</Button>
+              <Button variant="outline" onClick={() => { setMethod(null); setCashAmount(0); setReceived(0); }} className="flex-1 h-12 text-base">חזור</Button>
               {creditButtons('מזומן + אשראי', {
                 cashAmount, creditAmount, received, change: Math.max(0, cashChange),
-              }, creditAmount, !splitValid, 'bg-purple-600 hover:bg-purple-700')}
+              }, creditAmount, !splitValid, 'bg-[#6B3E6E] hover:bg-[#563157]')}
             </div>
             {useNedarim && (
               <button onClick={handleConfirm} disabled={!splitValid || isProcessing}
