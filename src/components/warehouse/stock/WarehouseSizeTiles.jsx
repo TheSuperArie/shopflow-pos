@@ -7,7 +7,7 @@ import { Check, Pencil, Package } from 'lucide-react';
  * Shows the carton the size sits in, and what is reserved for open pickings.
  * showProduct: also print the product name (search results mix products).
  */
-export default function WarehouseSizeTiles({ items, selected, onToggle, onEdit, showProduct = false }) {
+export default function WarehouseSizeTiles({ items, selected, onToggle, onEdit, showProduct = false, readOnly = false }) {
   if (items.length === 0) return <p className="py-12 text-center text-gray-400">לא נמצאו מידות</p>;
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -18,17 +18,19 @@ export default function WarehouseSizeTiles({ items, selected, onToggle, onEdit, 
         return (
           <div
             key={it.key}
-            onClick={() => onToggle([it.key], !isSel)}
-            className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 p-2 cursor-pointer transition-all ${isSel ? 'ring-4 ring-amber-400 border-amber-500' : tone}`}
+            onClick={readOnly ? undefined : () => onToggle([it.key], !isSel)}
+            className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 p-2 transition-all ${readOnly ? '' : 'cursor-pointer'} ${isSel ? 'ring-4 ring-amber-400 border-amber-500' : tone}`}
           >
             {isSel && <span className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center"><Check className="w-3.5 h-3.5" /></span>}
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(it); }}
-              className="absolute top-1 right-1 p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600"
-              title="ספירה / עדכון"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
+            {!readOnly && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(it); }}
+                className="absolute top-1 right-1 p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                title="ספירה / עדכון"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
             {showProduct && <span className="text-[11px] text-gray-500 line-clamp-1 px-5 text-center">{it.product_name}</span>}
             <span className="text-sm text-gray-700 font-semibold line-clamp-2 text-center">{it.variant_label || 'רגיל'}</span>
             <span className={`text-2xl font-bold leading-none ${out ? 'text-red-600' : 'text-gray-900'}`}>{it.qty}</span>
