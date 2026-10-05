@@ -52,6 +52,9 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
   // from that number instead of starting over (and overwriting the earlier count)
   const [counted, setCounted] = useState({});
   const opKey = useRef(null); // one key per opened dialog — a retried save is applied once
+  // What the qty box / search box held when a key burst began — a scan typed into them is undone
+  const snapshot = useRef({ value: '', search: '' });
+  const scanBusy = useRef(false); // a scan is saving the previous size — the next one waits
 
   // ── Tiles index: network catalog groups + one pseudo product per warehouse-only item ──
   const { index, itemByKey } = useMemo(() => {
@@ -167,14 +170,21 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
   const addScanned = async (item, step, units) => {
     if (units) setCartonSize(s => ({ ...s, [item.key]: units }));
     if (editing && editing.key === item.key) {
-      setForm(f => ({ ...f, value: String((parseInt(f.value, 10) || 0) + step) }));
+      // Start from what the box held before the scanner typed into it
+      setForm(f => ({ ...f, value: String((parseInt(snapshot.current.value ?? f.value, 10) || 0) + step) }));
       return;
     }
     // Another size is open → save its count first (if one was entered), then open this one
     if (editing) {
-      if (countFormValid(form)) {
-        const ok = await save({ type: form.mode, newQty: countAfter(editing, form), notes: form.notes.trim() }, editing);
-        if (!ok) return;
+      const prev = { ...form, value: snapshot.current.value ?? form.value };
+      if (countFormValid(prev)) {
+        scanBusy.current = true;
+        try {
+          const ok = await save({ type: prev.mode, newQty: countAfter(editing, prev), notes: prev.notes.trim() }, editing);
+          if (!ok) return;
+        } finally {
+          scanBusy.current = false;
+        }
       } else {
         setEditing(null);
       }
@@ -183,6 +193,13 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
   };
 
   const handleScan = (code) => {
+    // Undo whatever the scanner typed into a focused box
+    setSearch(snapshot.current.search);
+    if (editing) setForm(f => ({ ...f, value: snapshot.current.value }));
+    if (scanBusy.current) {
+      toast({ title: 'רגע — שומר את המידה הקודמת', description: 'סרוק שוב בעוד שנייה', variant: 'destructive' });
+      return;
+    }
     const carton = matchCartonCode(code, items);
     if (carton.length === 1) return addScanned(carton[0].row, carton[0].units || 1, carton[0].units);
     const hits = matchScannedCode(code, items);
@@ -194,7 +211,11 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
     toast({ title: 'ברקוד לא נמצא', description: code, variant: 'destructive' });
   };
 
-  useScanDetector({ enabled: !readOnly && !!warehouse?.id && tab === 'stock', onScan: handleScan });
+  useScanDetector({
+    enabled: !readOnly && !!warehouse?.id && tab === 'stock',
+    onScan: handleScan,
+    onBurstStart: () => { snapshot.current = { value: form.value, search }; },
+  });
 
   // ── What the tiles show ──
   const q = search.trim().toLowerCase();
@@ -251,14 +272,14 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
         <div className="space-y-4">
           {!readOnly && (
             <p className="flex items-center gap-1.5 w-fit rounded-full bg-green-50 border border-green-200 px-3 py-1 text-sm text-green-700 font-medium">
-              <ScanLine className="w-4 h-4" /> הסורק פעיל — סרוק קרטון או חולצה כדי לספור (קרטון מוסיף קרטון שלם, חולצה מוסיפה 1)
+              <ScanLine className="w-4 h-4" /> הסורק פעיל — סריקה פותחת ספירה של המידה: כל קרטון שנסרק נספר (חולצה = 1), והכמות שנספרה מחליפה את מה שרשום
             </p>
           )}
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder='חיפוש לפי מוצר, מידה, מק"ט או קרטון' className="pr-9" />
+              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder='חיפוש לפי מוצר, מידה, מק"ט או קרטון' className="pr-9" data-scan-capture />
             </div>
             <button onClick={() => setOnlyOut(v => !v)}
               className={`rounded-full border px-3 py-1.5 text-sm ${onlyOut ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600'}`}>
@@ -300,7 +321,7 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
               {!readOnly && <p className="text-xs text-gray-400">לחיצה על מידה מסמנת אותה (לעדכון כמה יחד מהסרגל התחתון). העיפרון פותח ספירה למידה אחת.</p>}
             </div>
           ) : (
-            <CatalogTiles index={index} path={path} setPath={setPath} onOpenProduct={setProductId} selected={selected} onToggle={onToggle} />
+            <CatalogTiles index={index} path={path} setPath={setPath} onOpenProduct={setProductId} selected={selected} onToggle={onToggle} hideChecks={readOnly} />
           )}
         </div>
       )}
