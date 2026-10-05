@@ -23,7 +23,7 @@ export const countFormValid = (form) => {
  * a carton label adds a whole carton, a single shirt adds 1.
  * openedByScan: don't focus the number box — the scanner would type into it.
  */
-export default function StockCountDialog({ item, form, onFormChange, onClose, onSave, cartonSize, openedByScan }) {
+export default function StockCountDialog({ item, form, onFormChange, onClose, onSave, cartonSize, openedByScan, previouslyCounted }) {
   const [saving, setSaving] = useState(false);
   const n = parseInt(form.value, 10);
   const valid = countFormValid(form);
@@ -46,7 +46,12 @@ export default function StockCountDialog({ item, form, onFormChange, onClose, on
             <Package className="w-6 h-6" /> {location}
           </div>
         )}
-        <p className="text-sm text-gray-500">כמות נוכחית: <strong className={item.qty < 0 ? 'text-red-600' : ''}>{item.qty}</strong></p>
+        <p className="text-sm text-gray-500">כמות נוכחית במערכת: <strong className={item.qty < 0 ? 'text-red-600' : ''}>{item.qty}</strong></p>
+        {previouslyCounted != null && (
+          <p className="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-1.5 text-sm text-blue-900">
+            כבר נספרו <strong>{previouslyCounted}</strong> קודם בספירה הזו — ממשיכים מהמספר הזה, לא מאפס
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-2">
           {[['COUNT', 'ספירת מלאי'], ['ADJUST', 'תיקון +/-']].map(([k, l]) => (
             <button key={k} onClick={() => set({ mode: k })} className={`rounded-xl border-2 py-2 text-sm font-medium ${form.mode === k ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200'}`}>{l}</button>
@@ -55,7 +60,21 @@ export default function StockCountDialog({ item, form, onFormChange, onClose, on
         <div>
           <Label>{form.mode === 'COUNT' ? 'הכמות שנספרה' : 'שינוי (למשל 5 או -3)'}</Label>
           <Input type="number" value={form.value} onChange={e => set({ value: e.target.value })} className="h-11 text-lg" autoFocus={!openedByScan} />
-          {valid && <p className="text-xs text-gray-500 mt-1">אחרי העדכון: <strong>{after}</strong></p>}
+          {valid && (
+            <div className={`mt-2 rounded-xl border-2 px-3 py-2 text-center ${form.mode === 'COUNT' ? 'border-blue-300 bg-blue-50 text-blue-900' : 'border-green-300 bg-green-50 text-green-900'}`}>
+              {form.mode === 'COUNT' ? (
+                <>
+                  <p className="text-lg font-bold">המלאי יוגדר ל־{after}</p>
+                  <p className="text-sm">מחליף את מה שרשום (היה {item.qty})</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-bold">{n > 0 ? `יתווסף ${n}` : `יורד ${Math.abs(n)}`} → יהיה {after}</p>
+                  <p className="text-sm">נוסף על מה שרשום (היה {item.qty})</p>
+                </>
+              )}
+            </div>
+          )}
           {counted && (
             <p className="mt-1.5 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-sm font-semibold text-amber-900">
               נספרו: {counted} <span className="font-normal text-amber-700">({cartonSize} בקרטון)</span>
