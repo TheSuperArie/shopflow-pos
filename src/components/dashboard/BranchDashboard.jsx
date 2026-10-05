@@ -181,7 +181,7 @@ export default function BranchDashboard({ branchId, tenantEmail, stationEmail, i
     <div className="space-y-6" dir="rtl">
       {/* Date range filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-bold text-gray-800">לוח בקרה</h2>
+        <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Frank Ruhl Libre', Georgia, serif" }}>לוח בקרה</h2>
         <div className="flex items-center gap-2">
           <Input type="date" value={dateFrom} onChange={e => handleDateFrom(e.target.value)} className="w-40" />
           <span className="text-gray-400">עד</span>
@@ -292,7 +292,7 @@ function StatCard({ title, value, subValue, icon: Icon, color, bg }) {
             <Icon className={`w-5 h-5 ${color}`} />
           </div>
         </div>
-        <p className={`text-2xl font-bold ${color}`}>{value}</p>
+        <p className={`text-3xl font-bold tabular-nums ${color}`} style={{ fontFamily: "'Frank Ruhl Libre', Georgia, serif" }}>{value}</p>
         {subValue && <p className="text-sm font-semibold text-gray-500 mt-0.5">{subValue}</p>}
       </CardContent>
     </Card>
