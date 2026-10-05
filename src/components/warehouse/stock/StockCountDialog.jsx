@@ -59,7 +59,7 @@ export default function StockCountDialog({ item, form, onFormChange, onClose, on
         </div>
         <div>
           <Label>{form.mode === 'COUNT' ? 'הכמות שנספרה' : 'שינוי (למשל 5 או -3)'}</Label>
-          <Input type="number" value={form.value} onChange={e => set({ value: e.target.value })} className="h-11 text-lg" autoFocus={!openedByScan} />
+          <Input type="number" value={form.value} onChange={e => set({ value: e.target.value })} className="h-11 text-lg" autoFocus={!openedByScan} data-scan-capture />
           {valid && (
             <div className={`mt-2 rounded-xl border-2 px-3 py-2 text-center ${form.mode === 'COUNT' ? 'border-blue-300 bg-blue-50 text-blue-900' : 'border-green-300 bg-green-50 text-green-900'}`}>
               {form.mode === 'COUNT' ? (
@@ -82,7 +82,7 @@ export default function StockCountDialog({ item, form, onFormChange, onClose, on
           )}
           <p className="mt-1.5 flex items-center gap-1 text-xs text-green-700">
             <ScanLine className="w-3.5 h-3.5" />
-            אפשר להמשיך לסרוק: קרטון מוסיף {cartonSize || 'קרטון שלם'}, חולצה מוסיפה 1 (כשהתיבה לא מסומנת)
+            אפשר להמשיך לסרוק: קרטון מוסיף {cartonSize || 'קרטון שלם'} לספירה, חולצה מוסיפה 1
           </p>
         </div>
         <div><Label>הערה</Label><Input value={form.notes} onChange={e => set({ notes: e.target.value })} placeholder="אופציונלי" /></div>
