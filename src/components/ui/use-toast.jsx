@@ -110,7 +110,13 @@ function dispatch(action) {
   });
 }
 
+// One calm look for every message: drop a leading emoji (✅ ❌ ⚠️ 🗑️ ⛔ …) from titles —
+// the toast's own style already says success / error.
+const LEADING_EMOJI = /^(?:[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]\u{FE0F}?\s*)+/u;
+const cleanTitle = (t) => (typeof t === 'string' ? t.replace(LEADING_EMOJI, '') : t);
+
 function toast({ ...props }) {
+  if (props.title) props.title = cleanTitle(props.title);
   const id = genId();
 
   const update = (props) =>
