@@ -27,8 +27,9 @@ const sizeCollator = new Intl.Collator('he', { numeric: true });
  * multi-select + bottom bar), plus a table view and the movements history.
  * The scanner is always on: a carton label adds a whole carton, a single shirt adds 1.
  * Every change goes through the server (stockOps) so picking reservations stay correct.
+ * readOnly: the network owner's view — same tiles, no scanner, no selection, no editing.
  */
-export default function WarehouseStockPanel({ warehouse }) {
+export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
   const { items, groups, categories, isLoading } = useWarehouseInventory(warehouse);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -83,11 +84,14 @@ export default function WarehouseStockPanel({ warehouse }) {
     out: items.filter(i => i.qty <= 0).length,
   }), [items, index]);
 
-  const onToggle = (ids, on) => setSelected(prev => {
-    const next = new Set(prev);
-    ids.forEach(id => (on ? next.add(id) : next.delete(id)));
-    return next;
-  });
+  const onToggle = (ids, on) => {
+    if (readOnly) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => (on ? next.add(id) : next.delete(id)));
+      return next;
+    });
+  };
 
   // ── Count window (one size) ──
   const openItem = (item, { add = 0, byScan = false } = {}) => {
@@ -190,7 +194,7 @@ export default function WarehouseStockPanel({ warehouse }) {
     toast({ title: 'ברקוד לא נמצא', description: code, variant: 'destructive' });
   };
 
-  useScanDetector({ enabled: !!warehouse?.id && tab === 'stock', onScan: handleScan });
+  useScanDetector({ enabled: !readOnly && !!warehouse?.id && tab === 'stock', onScan: handleScan });
 
   // ── What the tiles show ──
   const q = search.trim().toLowerCase();
@@ -216,7 +220,7 @@ export default function WarehouseStockPanel({ warehouse }) {
   ];
 
   return (
-    <div className="space-y-5 pb-28" dir="rtl">
+    <div className={`space-y-5 ${readOnly ? '' : 'pb-28'}`} dir="rtl">
       {/* KPI squares */}
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
         {kpis.map(k => (
@@ -229,23 +233,27 @@ export default function WarehouseStockPanel({ warehouse }) {
         ))}
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b gap-1 overflow-x-auto">
-        {[{ key: 'stock', label: 'מלאי', icon: Boxes }, { key: 'history', label: 'תנועות מלאי', icon: History }].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap ${tab === t.key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            <t.icon className="w-4 h-4" /> {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Tabs (the network owner's screen has its own movements tab) */}
+      {!readOnly && (
+        <div className="flex border-b gap-1 overflow-x-auto">
+          {[{ key: 'stock', label: 'מלאי', icon: Boxes }, { key: 'history', label: 'תנועות מלאי', icon: History }].map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap ${tab === t.key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              <t.icon className="w-4 h-4" /> {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === 'history' && <MovementsList warehouseId={warehouse.id} />}
 
       {tab === 'stock' && (
         <div className="space-y-4">
-          <p className="flex items-center gap-1.5 w-fit rounded-full bg-green-50 border border-green-200 px-3 py-1 text-sm text-green-700 font-medium">
-            <ScanLine className="w-4 h-4" /> הסורק פעיל — סרוק קרטון או חולצה כדי לספור (קרטון מוסיף קרטון שלם, חולצה מוסיפה 1)
-          </p>
+          {!readOnly && (
+            <p className="flex items-center gap-1.5 w-fit rounded-full bg-green-50 border border-green-200 px-3 py-1 text-sm text-green-700 font-medium">
+              <ScanLine className="w-4 h-4" /> הסורק פעיל — סרוק קרטון או חולצה כדי לספור (קרטון מוסיף קרטון שלם, חולצה מוסיפה 1)
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
@@ -268,11 +276,11 @@ export default function WarehouseStockPanel({ warehouse }) {
           </div>
 
           {view === 'table' ? (
-            <StockTable items={items.filter(matches)} isLoading={false} onEdit={(it) => openItem(it)} />
+            <StockTable items={items.filter(matches)} isLoading={false} onEdit={readOnly ? undefined : (it) => openItem(it)} />
           ) : filtering ? (
             <WarehouseSizeTiles items={items.filter(matches).sort((a, b) =>
               (a.product_name || '').localeCompare(b.product_name || '', 'he') || sizeCollator.compare(a.variant_label || '', b.variant_label || ''))}
-              selected={selected} onToggle={onToggle} onEdit={(it) => openItem(it)} showProduct />
+              selected={selected} onToggle={onToggle} onEdit={(it) => openItem(it)} showProduct readOnly={readOnly} />
           ) : openProduct ? (
             <div className="space-y-4">
               <button onClick={() => setProductId(null)} className="flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200">
@@ -286,10 +294,10 @@ export default function WarehouseStockPanel({ warehouse }) {
                   <p className="text-xl font-bold text-gray-900">{openProduct.name}</p>
                   <p className="text-sm text-gray-500">{index.productStats(openProduct).sizes} מידות · {index.productStats(openProduct).units} יחידות</p>
                 </div>
-                <TriCheck ids={sizesOf(openProduct.id).map(i => i.key)} selected={selected} onToggle={onToggle} />
+                {!readOnly && <TriCheck ids={sizesOf(openProduct.id).map(i => i.key)} selected={selected} onToggle={onToggle} />}
               </div>
-              <WarehouseSizeTiles items={sizesOf(openProduct.id)} selected={selected} onToggle={onToggle} onEdit={(it) => openItem(it)} />
-              <p className="text-xs text-gray-400">לחיצה על מידה מסמנת אותה (לעדכון כמה יחד מהסרגל התחתון). העיפרון פותח ספירה למידה אחת.</p>
+              <WarehouseSizeTiles items={sizesOf(openProduct.id)} selected={selected} onToggle={onToggle} onEdit={(it) => openItem(it)} readOnly={readOnly} />
+              {!readOnly && <p className="text-xs text-gray-400">לחיצה על מידה מסמנת אותה (לעדכון כמה יחד מהסרגל התחתון). העיפרון פותח ספירה למידה אחת.</p>}
             </div>
           ) : (
             <CatalogTiles index={index} path={path} setPath={setPath} onOpenProduct={setProductId} selected={selected} onToggle={onToggle} />
@@ -297,18 +305,20 @@ export default function WarehouseStockPanel({ warehouse }) {
         </div>
       )}
 
-      <BulkStockBar
-        count={selectedItems.length}
-        units={selectedItems.reduce((s, i) => s + i.qty, 0)}
-        busy={busy}
-        progress={progress}
-        onApply={applyBulk}
-        onOrder={null}
-        onClear={() => setSelected(new Set())}
-        stockNote="המלאי של המחסן מתעדכן דרך השרת, וכל שינוי נרשם בתנועות המלאי."
-      />
+      {!readOnly && (
+        <BulkStockBar
+          count={selectedItems.length}
+          units={selectedItems.reduce((s, i) => s + i.qty, 0)}
+          busy={busy}
+          progress={progress}
+          onApply={applyBulk}
+          onOrder={null}
+          onClear={() => setSelected(new Set())}
+          stockNote="המלאי של המחסן מתעדכן דרך השרת, וכל שינוי נרשם בתנועות המלאי."
+        />
+      )}
 
-      {editing && (
+      {!readOnly && editing && (
         <StockCountDialog
           item={editing}
           form={form}
