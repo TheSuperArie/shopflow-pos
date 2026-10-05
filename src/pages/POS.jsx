@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ShoppingCart, RotateCcw, Users, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { Settings, ShoppingCart, RotateCcw, Users, Wifi, WifiOff, AlertTriangle, Shirt, FolderOpen, ChevronLeft, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import ProductGrid from '@/components/pos/ProductGrid';
@@ -23,6 +23,56 @@ import { usePosBranch } from '@/hooks/usePosCatalog';
 import { usePosReservations } from '@/hooks/usePosReservations';
 import StuckStockBanner from '@/components/pos/StuckStockBanner';
 import { enqueueSaleStock, flushSaleStock } from '@/lib/saleStockQueue';
+
+// Shared look of the POS screen (ink / paper / brass)
+const INK = '#1E2433';
+const SERIF = { fontFamily: "'Frank Ruhl Libre', Georgia, serif" };
+// One color per top-level category, by its order — so the eye finds a category by color
+const CATEGORY_TONES = [
+  { tone: '#1F3A5F', soft: '#E4EAF2' }, { tone: '#2E6B4C', soft: '#E3EFE7' }, { tone: '#8A5A2B', soft: '#F2E6D8' },
+  { tone: '#6B3E6E', soft: '#EFE4F0' }, { tone: '#2A7F7F', soft: '#E0F0F0' }, { tone: '#8C3B2E', soft: '#F4E3DF' },
+  { tone: '#4F5A23', soft: '#ECEFDD' }, { tone: '#4B4A8C', soft: '#E7E6F4' },
+];
+const money = (n) => `₪${Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}`;
+
+// A system notice — every banner on the POS looks the same (tone: 'warn' | 'danger')
+function PosNotice({ tone = 'warn', children, action }) {
+  const cls = tone === 'danger'
+    ? 'bg-[#F7E3DF] border-[#D9A194] text-[#6E2216]'
+    : 'bg-[#FBF0D9] border-[#E3C98F] text-[#5A3E0E]';
+  return (
+    <div className={`mx-4 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-2.5 text-sm ${cls}`} dir="rtl">
+      <span className="flex items-center gap-2">
+        {tone === 'danger' ? <WifiOff className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+        {children}
+      </span>
+      {action}
+    </div>
+  );
+}
+
+// "כל הקטגוריות ‹ חולצות ‹ אמריקאי" — always visible, every step clickable; the last one is where you are
+function PosBreadcrumb({ steps }) {
+  return (
+    <nav aria-label="מיקום" className="flex flex-wrap items-center gap-1.5 min-h-[44px]">
+      {steps.map((s, i) => {
+        const last = i === steps.length - 1;
+        return (
+          <React.Fragment key={i}>
+            {i > 0 && <ChevronLeft className="w-4 h-4 text-[#8A8478]" aria-hidden="true" />}
+            <button
+              type="button"
+              onClick={s.onClick}
+              className={`h-11 px-4 rounded-xl text-base transition-colors ${last ? 'bg-[#1E2433] text-[#F5EFE3] font-medium' : 'bg-[#EDE4D2] text-[#1E2433] hover:bg-[#E3D7BF]'}`}
+            >
+              {s.label}
+            </button>
+          </React.Fragment>
+        );
+      })}
+    </nav>
+  );
+}
 
 // A credit charge that went through (Nedarim) but whose sale wasn't saved yet — kept on the device so
 // the next "save" reuses it instead of charging the customer again, even after a page refresh.
@@ -71,6 +121,14 @@ export default function POS() {
   });
   // Out-of-stock warning popup: { title, description, onConfirm } — the seller can still sell after confirming
   const [stockConfirm, setStockConfirm] = useState(null);
+  // The cart line that was just added / raised — flashes for a moment so the seller sees the scan landed
+  const [flashId, setFlashId] = useState(null);
+  const flashTimer = useRef(null);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 20000);
+    return () => { clearInterval(t); clearTimeout(flashTimer.current); };
+  }, []);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -496,6 +554,9 @@ export default function POS() {
         variant_stock: liveVariant?.stock || 0,
       }];
     });
+    setFlashId(variant.id);
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlashId(null), 1100);
 
     setSelectedCategory(null);
   };
@@ -566,7 +627,24 @@ export default function POS() {
   };
 
   const removeCartItem = (idx) => setCartItems(prev => prev.filter((_, i) => i !== idx));
+  const clearCart = () => { if (window.confirm('לנקות את כל העגלה?')) setCartItems([]); };
   const cartTotal = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
+  const cartUnits = cartItems.reduce((s, i) => s + i.quantity, 0);
+  const branchName = activeBranch?.name || appSettingsList[0]?.store_name || '';
+  const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const catName = (id) => categories.find(c => c.id === id)?.name || '';
+  const topCategories = Array.from(new Map(categories.map(c => [c.id, c])).values()).filter(c => !c.parent_id);
+  const toneOf = (catId) => {
+    const i = topCategories.findIndex(c => c.id === catId);
+    return CATEGORY_TONES[(i < 0 ? 0 : i) % CATEGORY_TONES.length];
+  };
+  const crumbs = [{ label: 'כל הקטגוריות', onClick: () => { setSelectedCategory(null); setSelectedSubCategory(null); } }];
+  if (selectedCategory) crumbs.push({ label: catName(selectedCategory), onClick: () => setSelectedSubCategory(null) });
+  if (selectedSubCategory) crumbs.push({ label: selectedSubCategory === '__direct__' ? 'כללי' : catName(selectedSubCategory), onClick: () => {} });
+  const cartProps = {
+    items: cartItems, onUpdateQty: updateCartQty, onRemove: removeCartItem, onClear: clearCart, flashId,
+    onCheckout: () => { setShowCart(false); setShowCheckout(true); },
+  };
 
   // ── Render ───────────────────────────────────────────────────────
   return (
