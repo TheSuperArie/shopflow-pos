@@ -17,6 +17,7 @@ import {
   DollarSign,
   GitBranch,
   Crown,
+  Shirt,
 } from 'lucide-react';
 
 const BRANCH_MANAGER_ITEMS = [
@@ -55,7 +56,9 @@ export default function AdminSidebar({ mobileOpen, setMobileOpen, adminRole }) {
     <div className="flex flex-col bg-gray-900 text-white overflow-hidden" style={{ height: '100vh' }}>
       <div className="p-5 border-b border-white/10 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-amber-400">🏪 ניהול</h2>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-amber-300" style={{ fontFamily: "'Frank Ruhl Libre', Georgia, serif" }}>
+            <Shirt className="w-5 h-5" strokeWidth={1.7} /> ניהול החנות
+          </h2>
           {isNetworkMaster && (
             <div className="flex items-center gap-1 mt-0.5">
               <Crown className="w-3 h-3 text-amber-400" />
