@@ -12,11 +12,14 @@ module.exports = {
   		colors: {
   			// Warm paper greys + ink for the whole app (same look as the POS)
   			gray: {
-  				50: '#F7F2E8', 100: '#EFE8DA', 200: '#E2D8C4', 300: '#CFC5B2', 400: '#A39B8C',
-  				500: '#736D61', 600: '#5E5A52', 700: '#46423B', 800: '#2E2B27', 900: '#1E2433', 950: '#151A26'
+  				50: '#F7F2E8', 100: '#EFE8DA', 200: '#E2D8C4', 300: '#CFC5B2', 400: '#7A7366',
+  				500: '#655F54', 600: '#4F4B44', 700: '#3D3A34', 800: '#2B2925', 900: '#1E2433', 950: '#151A26'
   			},
   			// Brass instead of bright amber for the main action colour (white text reads well on it)
-  			amber: { 500: '#A5752A', 600: '#8A611F' },
+  			amber: {
+  				50: '#FBF6EC', 100: '#F6EBD3', 200: '#EBD5A8', 300: '#DDBB7A', 400: '#C99A4E',
+  				500: '#9A6B1F', 600: '#7F5A1B', 700: '#664817', 800: '#4E3812', 900: '#3A2A0F', 950: '#24190A'
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
