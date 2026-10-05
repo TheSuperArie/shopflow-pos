@@ -40,8 +40,7 @@ export function usePickAvailability(warehouse, order) {
     let off = false;
     resolveAll().then(() => { if (!off) setResolved(n => n + 1); });
     return () => { off = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, order?.id, order?.items?.length]);
+  }, [id, order?.id, order?.items?.length]); // resolveAll reads the latest order through the closure
 
   const freeOfNetwork = (nid) => {
     const qty = (stock.data || []).filter(s => s.variant_id === nid).reduce((s, r) => s + Number(r.qty || 0), 0);
