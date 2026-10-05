@@ -163,7 +163,7 @@ export default function CatalogShareBanner({ branch, userEmail }) {
       {phase === 'done' && summary ? (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <p className="text-sm font-medium text-indigo-900">
-            ✅ נקלטו {summary.cats} קטגוריות · {summary.groups} מוצרים · {summary.variants} וריאציות לקופה
+            נקלטו {summary.cats} קטגוריות · {summary.groups} מוצרים · {summary.variants} וריאציות לקופה
           </p>
           <Button size="sm" variant="outline" onClick={() => { setPhase('idle'); setSummary(null); }}>
             סגור

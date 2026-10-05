@@ -344,7 +344,7 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
         <h3 className="text-lg font-bold text-gray-800">ללקט ({todoReady.length})</h3>
         {todoReady.length === 0 ? (
           <p className="rounded-2xl border bg-white py-8 text-center text-gray-400">
-            {todoMissing.length ? 'כל מה שיש במחסן לוקט' : 'כל השורות לוקטו 🎉'}
+            {todoMissing.length ? 'כל מה שיש במחסן לוקט' : 'כל השורות לוקטו'}
           </p>
         ) : (
           <div className="rounded-2xl border bg-white divide-y">

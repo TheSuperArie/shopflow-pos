@@ -10,7 +10,7 @@ import {
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
 import { fetchNetworkSales, fetchNetworkExpenses } from '@/lib/networkScope';
-import { TrendingDown, Store, Package, ShoppingBag } from 'lucide-react';
+import { TrendingDown, Store, Package, ShoppingBag, Flame } from 'lucide-react';
 import NetworkDateRangeFilter, { DATE_PRESETS } from './NetworkDateRangeFilter';
 import { isNetworkLevelOf } from '@/lib/branchScope';
 import { splitByBusinessModel, isOwnStock } from '@/lib/businessModelSplit';
@@ -414,7 +414,7 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
               return (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 rounded-xl bg-[#FBF0D9] border border-[#E3C98F] px-4 py-3">
-                    <span className="text-2xl">🔥</span>
+                    <Flame className="w-6 h-6 text-[#A5752A]" />
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-gray-800">
                         השעה הכי חזקה: {pad2(topHours.best.hour)}:00–{pad2((topHours.best.hour + 1) % 24)}:00

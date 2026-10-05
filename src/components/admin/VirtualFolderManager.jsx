@@ -118,12 +118,12 @@ export default function VirtualFolderManager({ folders = [], allGroups = [], all
           <div key={folder.id} className="border border-gray-200 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-amber-500">📁</span>
+                <FolderOpen className="w-4 h-4 text-amber-500" />
                 <span className="font-semibold text-gray-800">{folder.name}</span>
                 <span className="text-xs text-gray-400">({folder.group_ids.length} מוצרים)</span>
                 {folder.category_id && (
                   <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5">
-                    📂 {getCategoryName(folder.category_id) || 'קטגוריה'}
+                    {getCategoryName(folder.category_id) || 'קטגוריה'}
                   </span>
                 )}
               </div>

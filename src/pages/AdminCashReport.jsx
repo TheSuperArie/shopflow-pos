@@ -152,8 +152,8 @@ export default function AdminCashReport() {
                 )}
                 <div>
                   <p className="font-semibold">
-                    {Math.abs(dayDiscrepancy) < 1 ? '✅ הקופה מאוזנת' :
-                      dayDiscrepancy > 0 ? '📈 עודף בקופה' : '📉 חסר בקופה'}
+                    {Math.abs(dayDiscrepancy) < 1 ? 'הקופה מאוזנת' :
+                      dayDiscrepancy > 0 ? 'עודף בקופה' : 'חסר בקופה'}
                   </p>
                   <p className="text-sm text-gray-600">
                     קופה סגירה בפועל: ₪{totalClosingCash?.toLocaleString()} |

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Folder } from 'lucide-react';
 import { getVariantFolders, getPrimaryDimensionKey } from '@/lib/variantHierarchy';
 
 /**
@@ -70,7 +70,7 @@ export default function VariantDimensionFolders({
                 className="flex-1 px-4 py-3 flex items-center justify-between hover:brightness-95 transition-all"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-base">📁</span>
+                  <Folder className="w-4 h-4 text-amber-500" />
                   <span className="font-semibold text-gray-800">{primaryDimKey}: {folder.primaryValue}</span>
                 </div>
                 <div className="flex items-center gap-2">

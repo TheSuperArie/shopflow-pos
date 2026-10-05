@@ -93,7 +93,7 @@ export default function VariantDimensionsManager({ categoryId, categoryName, gro
       {group && group.enabled_dimensions && group.enabled_dimensions.length > 0 && (
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-4">
-            <p className="text-sm font-medium text-blue-900 mb-3">📊 ממד ראשי לארגון הוריאציות</p>
+            <p className="text-sm font-medium text-blue-900 mb-3">ממד ראשי לארגון הוריאציות</p>
             <div className="flex flex-wrap gap-2">
               {dimensions
                 .filter(d => group.enabled_dimensions.includes(d.id))

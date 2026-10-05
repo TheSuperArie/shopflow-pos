@@ -22,7 +22,7 @@ export default function VirtualFolderPickerModal({ folder, groups, variants, onS
         dir="rtl"
       >
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-2xl">📁</span>
+          <Folder className="w-6 h-6 text-[#1F3A5F]" strokeWidth={1.6} />
           <h2 className="text-lg font-bold text-gray-800">{folder.name}</h2>
         </div>
 
