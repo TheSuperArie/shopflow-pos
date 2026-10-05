@@ -8,7 +8,8 @@ import { ArrowRight, ScanLine, UserRound, CheckCircle2, Loader2, PackageCheck, A
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { fetchBranchCatalogRecords } from '@/lib/branchCatalog';
 import {
-  buildCatalogRows, lineQty, matchScannedCode, matchCartonCode, pickedPercent, isOverPicked, nowIso,
+  buildCatalogRows, lineQty, matchScannedCode, matchCartonCode, cartonLocation, compareCartonLocation,
+  pickedPercent, isOverPicked, nowIso,
 } from '@/lib/supplyOrders';
 import { stockOps } from '@/lib/warehouseStock';
 import { usePickAvailability } from '@/hooks/usePickAvailability';
@@ -67,13 +68,16 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
   const catalogById = new Map(catalogRows.map(r => [r.variant_id, r]));
   const withCatalog = (it) => {
     const c = catalogById.get(it.variant_id);
-    return c ? { ...it, carton_number: c.carton_number, carton_barcode: c.carton_barcode } : it;
+    return c ? { ...it, carton_number: c.carton_number, carton_barcode: c.carton_barcode, size: c.size } : it;
   };
+  const locationOf = (it) => cartonLocation(withCatalog(it));
 
   const isDone = (it) => it.picked_qty != null;
   const done = items.map((it, index) => ({ it, index })).filter(x => isDone(x.it))
     .sort((a, b) => String(b.it.picked_at || '').localeCompare(String(a.it.picked_at || '')));
-  const todo = items.map((it, index) => ({ it, index })).filter(x => !isDone(x.it) && !x.it.extra);
+  // To pick: in the order the picker walks the warehouse — carton, then size (no carton → last)
+  const todo = items.map((it, index) => ({ it, index })).filter(x => !isDone(x.it) && !x.it.extra)
+    .sort((a, b) => compareCartonLocation(withCatalog(a.it), withCatalog(b.it)));
   const orderedUnits = items.reduce((s, i) => s + lineQty(i), 0);
   const pickedUnits = items.reduce((s, i) => s + Number(i.picked_qty || 0), 0);
   const orderLines = items.filter(i => !i.extra).length;
@@ -343,9 +347,9 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
                   <p className="text-lg font-semibold text-gray-900 truncate">{it.product_name} · {it.variant_label || '—'}</p>
                   <p className="text-sm text-gray-500 font-mono">{it.sku || '—'}{it.category_name ? ` · ${it.category_name}` : ''}</p>
                 </div>
-                {catalogById.get(it.variant_id)?.carton_number && (
-                  <span className="flex items-center gap-1 rounded-xl bg-amber-50 border border-amber-200 px-2.5 py-1.5 text-amber-800 text-sm font-bold shrink-0">
-                    <Package className="w-4 h-4" /> קרטון {catalogById.get(it.variant_id).carton_number}
+                {locationOf(it) && (
+                  <span className="flex items-center gap-1.5 rounded-xl bg-amber-50 border-2 border-amber-300 px-3 py-2 text-amber-900 text-lg font-bold shrink-0">
+                    <Package className="w-5 h-5" /> {locationOf(it)}
                   </span>
                 )}
                 <span className="text-center rounded-xl bg-blue-50 px-4 py-2">
@@ -411,7 +415,7 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
           line={activeLine}
           qty={qty}
           cartonSize={cartonSize[activeLine.variant_id]}
-          cartonNumber={catalogById.get(activeLine.variant_id)?.carton_number}
+          cartonLocation={locationOf(activeLine)}
           onQtyChange={setQty}
           onConfirm={() => confirm()}
           onCancel={() => { setActive(null); setQty(''); }}
