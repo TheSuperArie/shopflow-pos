@@ -107,7 +107,7 @@ export default function WarehouseHome() {
         <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center"><Warehouse className="w-5 h-5 text-blue-300" /></div>
         <div className="flex-1 min-w-0">
           <p className="font-bold truncate">{warehouse.name}</p>
-          <p className="text-xs text-gray-400 truncate">מחסן · {warehouse.network_name}</p>
+          <p className="text-xs text-gray-300 truncate">מחסן · {warehouse.network_name}</p>
         </div>
         {!portalPicker && !adminOpen && !pickingOrder && (
           <>

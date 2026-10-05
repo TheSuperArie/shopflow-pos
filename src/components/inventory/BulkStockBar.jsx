@@ -34,7 +34,7 @@ export default function BulkStockBar({ count, units, onApply, onOrder, onClear, 
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="bg-amber-500 rounded-full px-3 py-1 text-sm font-bold">{count}</span>
-            <span className="text-sm">מידות נבחרו <span className="text-gray-400">({units} יח' כרגע)</span></span>
+            <span className="text-sm">מידות נבחרו <span className="text-gray-300">({units} יח' כרגע)</span></span>
           </div>
 
           <div className="flex rounded-xl bg-white/10 p-1">
