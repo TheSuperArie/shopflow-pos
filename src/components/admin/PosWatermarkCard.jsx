@@ -5,6 +5,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { ImageIcon, Loader2, Trash2, Upload } from 'lucide-react';
+import tomcheiTorahLogo from '@/assets/brand/tomchei-torah.webp?inline';
+
+const BUILTIN = { '/brand/tomchei-torah.webp': tomcheiTorahLogo };
+
+// The logo is kept inside the settings as a small image (data URL) — no separate image request,
+// so it shows even on filtered connections. Shrunk to at most 480 px and saved as WebP.
+const toSmallDataUrl = (file) => new Promise((resolve, reject) => {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    const scale = Math.min(1, 480 / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    const webp = canvas.toDataURL('image/webp', 0.8);
+    resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/png'));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('לא הצלחנו לקרוא את התמונה')); };
+  img.src = url;
+});
 
 /**
  * "לוגו ברקע הקופה" — an image shown faint (watermark) behind the POS products.
@@ -16,6 +38,7 @@ export default function PosWatermarkCard({ settings }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const current = settings?.pos_watermark_url || '';
+  const preview = BUILTIN[current] || current;
 
   const save = async (url) => {
     setBusy(true);
@@ -39,8 +62,9 @@ export default function PosWatermarkCard({ settings }) {
     }
     setBusy(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      await save(file_url);
+      const dataUrl = await toSmallDataUrl(file);
+      if (dataUrl.length > 400000) throw new Error('התמונה גדולה מדי — נסה תמונה פשוטה יותר');
+      await save(dataUrl);
     } catch (e) {
       toast({ title: 'העלאת התמונה נכשלה', description: e?.message, variant: 'destructive' });
       setBusy(false);
@@ -59,7 +83,7 @@ export default function PosWatermarkCard({ settings }) {
         <div className="flex items-center gap-4">
           <div className="w-28 h-28 rounded-xl border bg-[#F5EFE3] flex items-center justify-center overflow-hidden shrink-0">
             {current
-              ? <img src={current} alt="" className="max-w-[85%] max-h-[85%] object-contain opacity-60 mix-blend-multiply" />
+              ? <img src={preview} alt="" className="max-w-[85%] max-h-[85%] object-contain opacity-60 mix-blend-multiply" />
               : <span className="text-xs text-gray-400">אין לוגו</span>}
           </div>
           <div className="flex flex-col gap-2">
