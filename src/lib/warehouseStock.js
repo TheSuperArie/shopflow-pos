@@ -29,13 +29,18 @@ export const fetchLocalProducts = (warehouseId) =>
  * Read through the server (catalogAccess) — the warehouse account can't read the owner's catalog
  * tables directly.
  */
-export async function fetchNetworkCatalogRows(warehouse) {
-  if (!warehouse?.id || !warehouse?.tenant_email) return [];
+export async function fetchNetworkCatalog(warehouse) {
+  if (!warehouse?.id || !warehouse?.tenant_email) return { rows: [], groups: [], categories: [] };
   const res = await base44.functions.invoke('catalogAccess', { action: 'networkCatalog', warehouse_id: warehouse.id });
   const { own_branch_ids = [], variants = [], groups = [], categories = [] } = res.data || {};
   const own = new Set(own_branch_ids);
   const mine = (r) => !r.branch_id || own.has(r.branch_id);
-  return buildCatalogRows(variants.filter(mine), groups.filter(mine), categories);
+  const myGroups = groups.filter(mine);
+  return { rows: buildCatalogRows(variants.filter(mine), myGroups, categories), groups: myGroups, categories };
+}
+
+export async function fetchNetworkCatalogRows(warehouse) {
+  return (await fetchNetworkCatalog(warehouse)).rows;
 }
 
 export const fetchWarehouseReservations = (warehouseId) =>
