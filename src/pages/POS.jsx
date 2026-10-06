@@ -121,6 +121,17 @@ export default function POS() {
     staleTime: 300000,
     retry: false,
   });
+  // "אשראי ידני" switch in the header (per device): ON = credit is confirmed by hand as before (charged on the
+  // separate tablet); OFF = credit goes through Nedarim's window. Starts ON, so nothing changes until a seller switches it.
+  const [manualCredit, setManualCreditState] = useState(() => {
+    try { return localStorage.getItem('pos_manual_credit') !== '0'; } catch { return true; }
+  });
+  const setManualCredit = (on) => {
+    setManualCreditState(on);
+    try { localStorage.setItem('pos_manual_credit', on ? '1' : '0'); } catch { /* private mode — keeps for this session */ }
+  };
+  const nedarimAvailable = !!nedarim?.enabled;
+  const nedarimForCheckout = nedarimAvailable && !manualCredit ? nedarim : null;
   // Out-of-stock warning popup: { title, description, onConfirm } — the seller can still sell after confirming
   const [stockConfirm, setStockConfirm] = useState(null);
   // The cart line that was just added / raised — flashes for a moment so the seller sees the scan landed
@@ -679,6 +690,16 @@ export default function POS() {
             <span className="hidden sm:inline">{networkOnline ? 'מחובר' : 'אין אינטרנט'}</span>
           </span>
           <span className="hidden sm:inline text-xl font-medium px-2 tabular-nums" style={SERIF}>{clock}</span>
+          {nedarimAvailable && (
+            <button onClick={() => setManualCredit(!manualCredit)}
+              title={manualCredit ? 'אשראי מאושר ידנית (כמו קודם) — לחץ כדי לעבור לנדרים פלוס' : 'אשראי עובר דרך נדרים פלוס — לחץ כדי לאשר ידנית'}
+              className={`h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border text-[15px] transition-colors ${manualCredit
+                ? 'border-[#B8925A] text-[#F3DFB8] hover:bg-[#2B3245]'
+                : 'border-[#2E6B4C] bg-[#2E6B4C] text-white hover:bg-[#25573D]'}`}>
+              <CreditCard className="w-[18px] h-[18px]" />
+              <span className="hidden sm:inline">{manualCredit ? 'אשראי: ידני' : 'אשראי: נדרים'}</span>
+            </button>
+          )}
           <button onClick={() => setShowReturnForm(true)}
             className="h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border border-[#4A5268] hover:bg-[#2B3245] transition-colors text-[15px]">
             <RotateCcw className="w-[18px] h-[18px]" /> <span className="hidden sm:inline">החזרה</span>
@@ -888,7 +909,7 @@ export default function POS() {
         onConfirm={(method, cashDetails, printReceipt) => saleMutation.mutate({ paymentMethod: method, cashDetails, printReceipt })}
         onClose={() => setShowCheckout(false)}
         isProcessing={saleMutation.isPending}
-        nedarim={nedarim}
+        nedarim={nedarimForCheckout}
         paidCharge={paidCharge}
         chargeComment={`ShopFlow · ${appSettingsList[0]?.store_name || 'קופה'}`}
       />
