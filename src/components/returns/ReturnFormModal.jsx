@@ -9,8 +9,13 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, Link2, CreditCard, X } from 'lucide-react';
 import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
+import { variantLabel } from '@/lib/supplyOrders';
+import SaleLookup, { originalSaleSnapshot, formatSaleDate } from './SaleLookup';
+
+const itemKey = (i) => i.variant_id || `name:${i.product_name}`;
+const cleanItem = ({ max_quantity, ...rest }) => rest; // eslint-disable-line no-unused-vars
 
 export default function ReturnFormModal({ open, onClose, branchId = null }) {
   const [form, setForm] = useState({
@@ -25,6 +30,9 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
   const [exchangeItems, setExchangeItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [exchangeSearchQuery, setExchangeSearchQuery] = useState('');
+  // The original sale this return is linked to (optional): { sale, snapshot, returnedBefore }
+  const [linked, setLinked] = useState(null);
+  const [linking, setLinking] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -42,7 +50,8 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
       const returnRecord = await base44.entities.Return.create({
         ...data,
         branch_id: branchId || null,
-        items: selectedItems,
+        items: selectedItems.map(cleanItem),
+        ...(linked ? { sale_id: linked.sale.id, original_sale: linked.snapshot } : {}),
         total_amount: totalAmount,
         status: 'אושר',
         approval_date: format(new Date(), 'yyyy-MM-dd'),
@@ -142,7 +151,40 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
     setExchangeItems([]);
     setSearchQuery('');
     setExchangeSearchQuery('');
+    setLinked(null);
     onClose();
+  };
+
+  // Link to the original sale: its items fill the return (minus what was already returned from it)
+  const pickSale = async (sale, receiptNumber) => {
+    setLinking(true);
+    try {
+      const earlier = await base44.entities.Return.filter({ sale_id: sale.id }, '-created_date', 50);
+      const returnedBefore = new Map();
+      earlier.forEach(r => (r.items || []).forEach(i => {
+        returnedBefore.set(itemKey(i), (returnedBefore.get(itemKey(i)) || 0) + Number(i.quantity || 0));
+      }));
+      const items = (sale.items || [])
+        .map(i => {
+          const left = Number(i.quantity || 0) - (returnedBefore.get(itemKey(i)) || 0);
+          return { variant_id: i.variant_id || null, product_name: i.product_name, quantity: left, max_quantity: left, sell_price: Number(i.sell_price || 0) };
+        })
+        .filter(i => i.quantity > 0);
+      setLinked({ sale, snapshot: originalSaleSnapshot(sale, receiptNumber), returnedBefore: earlier.length });
+      setSelectedItems(items);
+      if (items.length === 0) {
+        toast({ title: 'כל הפריטים מהמכירה הזו כבר הוחזרו', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'לא הצלחתי לטעון את המכירה', description: err?.message, variant: 'destructive' });
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const unlink = () => {
+    setLinked(null);
+    setSelectedItems([]);
   };
 
   const addItem = (variant, group) => {
@@ -153,9 +195,10 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
       setSelectedItems(updated);
     } else {
       const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
+      const label = variantLabel(variant);
       setSelectedItems([...selectedItems, {
         variant_id: variant.id,
-        product_name: `${group.name} - מידה ${variant.size}, ${variant.cut}, ${variant.collar}`,
+        product_name: label ? `${group.name} - ${label}` : group.name,
         quantity: 1,
         sell_price: sellPrice,
       }]);
@@ -168,7 +211,8 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
 
   const updateQuantity = (index, quantity) => {
     const updated = [...selectedItems];
-    updated[index].quantity = Math.max(1, quantity);
+    const max = updated[index].max_quantity;
+    updated[index] = { ...updated[index], quantity: Math.min(max || Infinity, Math.max(1, quantity)) };
     setSelectedItems(updated);
   };
 
@@ -194,9 +238,10 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
       setExchangeItems(updated);
     } else {
       const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
+      const label = variantLabel(variant);
       setExchangeItems([...exchangeItems, {
         variant_id: variant.id,
-        product_name: `${group.name} - מידה ${variant.size}, ${variant.cut}, ${variant.collar}`,
+        product_name: label ? `${group.name} - ${label}` : group.name,
         quantity: 1,
         sell_price: sellPrice,
       }]);
@@ -225,6 +270,35 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Original sale — linked by card digits / approval / receipt / amount */}
+          {linked ? (
+            <div className="rounded-xl border-2 border-[#2E6B4C] bg-[#E3EFE7] p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-0.5">
+                  <p className="flex items-center gap-1.5 font-semibold text-[#1E2433]">
+                    <Link2 className="w-4 h-4" /> מקושר למכירה מ-{formatSaleDate(linked.sale.created_date)} · ₪{Number(linked.sale.total || 0).toFixed(2)}
+                  </p>
+                  <p className="flex flex-wrap items-center gap-x-3 text-sm text-gray-700">
+                    <span className="flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" /> {linked.sale.payment_method || '—'}
+                      {linked.snapshot.card_last4 ? ` · ****${linked.snapshot.card_last4}` : ''}</span>
+                    {linked.snapshot.credit_ref && <span>אישור {linked.snapshot.credit_ref}</span>}
+                    {linked.snapshot.receipt_number && <span>קבלה {linked.snapshot.receipt_number}</span>}
+                  </p>
+                  {linked.returnedBefore > 0 && (
+                    <p className="text-xs text-amber-800">כבר בוצעו {linked.returnedBefore} החזרות מהמכירה הזו — מופיע רק מה שעוד לא הוחזר</p>
+                  )}
+                </div>
+                <button type="button" onClick={unlink} className="flex items-center gap-1 text-sm text-gray-600 hover:text-red-700 shrink-0">
+                  <X className="w-4 h-4" /> בטל קישור
+                </button>
+              </div>
+            </div>
+          ) : linking ? (
+            <div className="py-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+          ) : (
+            open && <SaleLookup branchId={branchId} onPick={pickSale} />
+          )}
+
           {/* Customer Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -255,8 +329,8 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
             />
           </div>
 
-          {/* Item Selection */}
-          <div>
+          {/* Item Selection (a linked sale already filled the items from the sale) */}
+          {!linked && <div>
             <Label>חיפוש מוצר להחזרה</Label>
             <Input
               value={searchQuery}
@@ -274,15 +348,13 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
                       className="w-full p-2 text-right hover:bg-gray-50 border-b last:border-0"
                     >
                       <p className="font-medium">{group?.name}</p>
-                      <p className="text-sm text-gray-500">
-                        מידה {variant.size} | {variant.cut} | {variant.collar}
-                      </p>
+                      <p className="text-sm text-gray-500">{variantLabel(variant) || 'רגיל'}</p>
                     </button>
                   );
                 })}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Selected Items */}
           {selectedItems.length > 0 && (
@@ -293,7 +365,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
                   <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded">
                     <div className="flex-1">
                       <p className="text-sm font-medium">{item.product_name}</p>
-                      <p className="text-xs text-gray-500">₪{item.sell_price} ליחידה</p>
+                      <p className="text-xs text-gray-500">₪{item.sell_price} ליחידה{item.max_quantity ? ` · נמכרו ${item.max_quantity}` : ''}</p>
                     </div>
                     <Input
                       type="number"
@@ -301,6 +373,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
                       onChange={e => updateQuantity(idx, parseInt(e.target.value) || 1)}
                       className="w-16"
                       min="1"
+                      max={item.max_quantity || undefined}
                     />
                     <Button
                       variant="ghost"
@@ -338,9 +411,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
                         className="w-full p-2 text-right hover:bg-gray-50 border-b last:border-0"
                       >
                         <p className="font-medium">{group?.name}</p>
-                        <p className="text-sm text-gray-500">
-                          מידה {variant.size} | {variant.cut} | {variant.collar}
-                        </p>
+                        <p className="text-sm text-gray-500">{variantLabel(variant) || 'רגיל'}</p>
                       </button>
                     );
                   })}
