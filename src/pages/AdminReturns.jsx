@@ -184,6 +184,16 @@ export default function AdminReturns() {
                     <p className="text-xs text-gray-400 mt-1">
                       {returnItem.created_date && format(parseServerDate(returnItem.created_date), 'dd/MM/yyyy HH:mm')}
                     </p>
+                    {returnItem.original_sale && (
+                      <p className="text-xs text-gray-600 mt-1.5 inline-flex flex-wrap gap-x-2 rounded-md bg-[#E3EFE7] px-2 py-1">
+                        <span className="font-semibold">מכירה מקורית:</span>
+                        {returnItem.original_sale.date && <span>{format(parseServerDate(returnItem.original_sale.date), 'dd/MM/yyyy HH:mm')}</span>}
+                        <span>₪{Number(returnItem.original_sale.total || 0).toFixed(2)}</span>
+                        {returnItem.original_sale.payment_method && <span>{returnItem.original_sale.payment_method}</span>}
+                        {returnItem.original_sale.card_last4 && <span>****{returnItem.original_sale.card_last4}</span>}
+                        {returnItem.original_sale.credit_ref && <span>אישור {returnItem.original_sale.credit_ref}</span>}
+                      </p>
+                    )}
                     {returnItem.reason && (
                       <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded"><strong>סיבה:</strong> {returnItem.reason}</p>
                     )}
