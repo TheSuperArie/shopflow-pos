@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Trash2, Link2, CreditCard, X } from 'lucide-react';
 import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
@@ -15,7 +15,7 @@ import { variantLabel } from '@/lib/supplyOrders';
 import SaleLookup, { originalSaleSnapshot, formatSaleDate } from './SaleLookup';
 
 const itemKey = (i) => i.variant_id || `name:${i.product_name}`;
-const cleanItem = ({ max_quantity, ...rest }) => rest; // eslint-disable-line no-unused-vars
+const cleanItem = ({ max_quantity: _max, ...rest }) => rest;
 
 export default function ReturnFormModal({ open, onClose, branchId = null }) {
   const [form, setForm] = useState({
