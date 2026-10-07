@@ -282,6 +282,7 @@ function NetworkOrderTiles({ branch, items, setItems, scanEnabled }) {
         onChange={onChange}
         requested={requested}
         scanEnabled={scanEnabled}
+        branchId={branch?.id}
       />
     </div>
   );
