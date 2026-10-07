@@ -4,6 +4,13 @@ import { Trash2, Plus, Minus, ShoppingCart, CreditCard, PackageOpen } from 'luci
 const SERIF = { fontFamily: "'Frank Ruhl Libre', Georgia, serif" };
 const money = (n) => `₪${Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}`;
 
+/** "קלאסי - 34/35 / כפתורים / סלים" → name on one line, every detail shown in full below it. */
+const splitName = (full = '') => {
+  const i = full.indexOf(' - ');
+  if (i < 0) return { name: full, details: [] };
+  return { name: full.slice(0, i), details: full.slice(i + 3).split(' / ').map(s => s.trim()).filter(Boolean) };
+};
+
 /**
  * POS cart: compact lines with big +/- (touch size), the line just added flashes (flashId = its variant_id),
  * and the pay button carries the total and the item count.
@@ -52,7 +59,21 @@ export default function Cart({ items, onUpdateQty, onRemove, onCheckout, onClear
                   <Trash2 className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[15px] leading-snug line-clamp-2">{item.product_name}</p>
+                  {(() => {
+                    const { name, details } = splitName(item.product_name);
+                    return (
+                      <>
+                        <p className="font-bold text-base leading-snug break-words">{name}</p>
+                        {details.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {details.map((d, i) => (
+                              <span key={i} className="rounded-md bg-[#F0E6D2] px-1.5 py-0.5 text-[13px] font-semibold text-[#3A3228]">{d}</span>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   {item.shirt_size && (
                     <p className="text-xs text-[#5E5A52] mt-0.5">{item.shirt_size} · {item.shirt_collar} · {item.shirt_cut}</p>
                   )}
@@ -69,7 +90,7 @@ export default function Cart({ items, onUpdateQty, onRemove, onCheckout, onClear
                     <Plus className="w-[18px] h-[18px]" strokeWidth={2.2} />
                   </button>
                 </div>
-                <span className="w-[72px] shrink-0 text-left font-bold text-base tabular-nums">{money(item.sell_price * item.quantity)}</span>
+                <span className="w-[76px] shrink-0 text-left font-bold text-lg tabular-nums">{money(item.sell_price * item.quantity)}</span>
               </div>
             );
           })}
