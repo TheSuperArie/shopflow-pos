@@ -864,14 +864,14 @@ export default function POS() {
         </div>
 
         {/* ── Cart (desktop) ── */}
-        <aside className="hidden lg:flex w-[400px] border-r border-[#E2D8C4] p-4 flex-col">
+        <aside className="hidden lg:flex w-[500px] xl:w-[580px] shrink-0 border-r border-[#E2D8C4] p-4 flex-col">
           <Cart {...cartProps} />
         </aside>
 
         {/* ── Cart drawer (tablet / phone) ── */}
         {showCart && (
           <div className="lg:hidden fixed inset-0 z-40 bg-black/40" onClick={() => setShowCart(false)}>
-            <div className="absolute left-0 top-0 bottom-0 w-[88%] max-w-[420px] bg-[#F5EFE3] p-4 shadow-xl flex flex-col"
+            <div className="absolute left-0 top-0 bottom-0 w-[94%] max-w-[560px] bg-[#F5EFE3] p-4 shadow-xl flex flex-col"
               onClick={e => e.stopPropagation()}>
               <Cart {...cartProps} />
             </div>
