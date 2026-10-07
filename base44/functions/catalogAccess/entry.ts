@@ -10,6 +10,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
  *                                                   network, for picking availability
  *  sharedCatalog  { branch_id }                  → the records the network owner shared with this
  *                                                   branch (Branch.catalog_share), for its station
+ *  warehouseFree  { branch_id, keys }            → free warehouse stock (stock − picking reservations)
+ *                                                   of the network's warehouses, per network variant id,
+ *                                                   for the branch's order screen (its station or the owner)
  */
 const lc = (s) => String(s || '').toLowerCase();
 const httpError = (status, message) => Object.assign(new Error(message), { status });
@@ -90,6 +93,35 @@ export default async function (req) {
         pv: ownerOnly(pv),
         fv: ownerOnly(fv),
       });
+    }
+
+    if (action === 'warehouseFree') {
+      if (!body.branch_id) throw httpError(400, 'חסר סניף');
+      const [b] = await db.Branch.filter({ id: body.branch_id }, undefined, 1);
+      if (!b) throw httpError(404, 'הסניף לא נמצא');
+      if (!isMe(b.station_email) && !isMe(b.tenant_email)) throw httpError(403, 'אין הרשאה לסניף הזה');
+      const owner = lc(b.tenant_email);
+      if (!owner) return Response.json({ ok: true, has_warehouse: false, free: {} });
+      const warehouses = (await db.Warehouse.filter({ tenant_email: b.tenant_email }, undefined, 20))
+        .filter(w => w.status === 'ACTIVE' || (!w.status && w.is_active !== false));
+      if (!warehouses.length) return Response.json({ ok: true, has_warehouse: false, free: {} });
+      // Only the network owner's own variants count as keys (the warehouse keeps stock per network variant)
+      const keyRows = await byIds(db.ProductVariant, (body.keys || []).slice(0, 5000));
+      const keys = keyRows.filter(v => lc(v.created_by) === owner || lc(v.tenant_email) === owner).map(v => v.id);
+      const free = Object.fromEntries(keys.map(k => [k, 0]));
+      for (const w of warehouses) {
+        const [stock, reserved] = await Promise.all([
+          db.WarehouseStock.filter({ warehouse_id: w.id }, undefined, 5000),
+          db.StockReservation.filter({ scope: 'WAREHOUSE', warehouse_id: w.id }, undefined, 5000),
+        ]);
+        stock.forEach(s => { if (s.variant_id && s.variant_id in free) free[s.variant_id] += Number(s.qty || 0); });
+        reserved.forEach(r => {
+          const k = r.item_key || r.variant_id;
+          if (k && k in free) free[k] -= Number(r.qty || 0);
+        });
+      }
+      Object.keys(free).forEach(k => { free[k] = Math.max(0, free[k]); });
+      return Response.json({ ok: true, has_warehouse: true, free });
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
