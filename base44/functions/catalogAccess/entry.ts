@@ -105,9 +105,10 @@ export default async function (req) {
       const warehouses = (await db.Warehouse.filter({ tenant_email: b.tenant_email }, undefined, 20))
         .filter(w => w.status === 'ACTIVE' || (!w.status && w.is_active !== false));
       if (!warehouses.length) return Response.json({ ok: true, has_warehouse: false, free: {} });
-      // Only the network owner's own variants count as keys (the warehouse keeps stock per network variant)
+      // Only the network owner's own catalog variants count as keys (the warehouse keeps stock per network
+      // variant; branch copies are created by the branch accounts and point to them with source_id)
       const keyRows = await byIds(db.ProductVariant, (body.keys || []).slice(0, 5000));
-      const keys = keyRows.filter(v => lc(v.created_by) === owner || lc(v.tenant_email) === owner).map(v => v.id);
+      const keys = keyRows.filter(v => lc(v.created_by) === owner).map(v => v.id);
       const free = Object.fromEntries(keys.map(k => [k, 0]));
       for (const w of warehouses) {
         const [stock, reserved] = await Promise.all([
