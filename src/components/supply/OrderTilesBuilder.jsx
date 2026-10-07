@@ -9,6 +9,7 @@ import { CatalogTiles, Tile, TriCheck } from '@/components/inventory/InventoryTi
 import { stockStatus, variantLabel, buildInventoryIndex } from '@/lib/inventory';
 import { buildCatalogRows, matchScannedCode } from '@/lib/supplyOrders';
 import { useScanDetector } from '@/hooks/useScanDetector';
+import { useWarehouseFree } from '@/hooks/useWarehouseFree';
 import SupplyOrderBuilder from './SupplyOrderBuilder';
 
 const collator = new Intl.Collator('he', { numeric: true });
@@ -20,12 +21,14 @@ const collator = new Intl.Collator('he', { numeric: true });
  *  quantities = { [variant_id]: qty }  — controlled by the parent
  *  requested  = { [variant_id]: qty }  — optional, what the branch asked for (network side)
  *  scanEnabled — a barcode scan adds +1 of that size (a product's general barcode opens its sizes)
+ *  branchId    — shows the network warehouse's free stock on every size ("במחסן 40") — information only
  */
 export default function OrderTilesBuilder({
   index: fullIndex, categories = [], groups = [], variants = [], quantities, onChange, requested = null, scanEnabled = true,
-  initialShortOnly = false,
+  initialShortOnly = false, branchId = null,
 }) {
   const { toast } = useToast();
+  const warehouse = useWarehouseFree(branchId, fullIndex.allVariants);
   const [view, setView] = useState('tiles');
   const [path, setPath] = useState([]);
   const [productId, setProductId] = useState(null);
@@ -246,6 +249,7 @@ export default function OrderTilesBuilder({
           variantFilter={filtering ? variantMatches : null}
           requested={requested}
           flashId={flashId}
+          warehouseFreeOf={warehouse.hasWarehouse ? warehouse.freeOf : null}
         />
       ) : filtering ? (
         <FilteredProducts index={index} variantMatches={variantMatches} selected={selected} onToggle={onToggle} onOpen={setProductId} badgeFor={badgeFor} />
@@ -283,7 +287,7 @@ function FilteredProducts({ index, variantMatches, selected, onToggle, onOpen, b
 }
 
 /** One product: a tile per size with its stock and − / qty / + for the order. Tapping the tile selects it. */
-function OrderSizes({ index, groupId, onBack, quantities, setQty, selected, onToggle, variantFilter, requested, flashId }) {
+function OrderSizes({ index, groupId, onBack, quantities, setQty, selected, onToggle, variantFilter, requested, flashId, warehouseFreeOf }) {
   const group = index.groupById.get(groupId);
   if (!group) return null;
   const stats = index.productStats(group);
@@ -291,6 +295,7 @@ function OrderSizes({ index, groupId, onBack, quantities, setQty, selected, onTo
     .filter(v => !variantFilter || variantFilter(v))
     .sort((a, b) => collator.compare(variantLabel(a), variantLabel(b)));
   const ordered = vs.reduce((s, v) => s + (quantities[v.id] || 0), 0);
+  const inWarehouse = warehouseFreeOf ? vs.reduce((s, v) => s + (warehouseFreeOf(v) || 0), 0) : null;
 
   return (
     <div className="space-y-4">
@@ -303,7 +308,10 @@ function OrderSizes({ index, groupId, onBack, quantities, setQty, selected, onTo
           : <div className="w-16 h-16 rounded-xl bg-amber-50 flex items-center justify-center"><Package className="w-8 h-8 text-amber-500" /></div>}
         <div className="flex-1 min-w-0">
           <p className="text-xl font-bold text-gray-900">{group.name}</p>
-          <p className="text-sm text-gray-500">{stats.sizes} מידות · {stats.units} יחידות במלאי</p>
+          <p className="text-sm text-gray-500">
+            {stats.sizes} מידות · {stats.units} יחידות במלאי
+            {inWarehouse != null && <> · <span className="text-blue-700 font-medium">{inWarehouse} במחסן</span></>}
+          </p>
         </div>
         {ordered > 0 && <span className="rounded-full bg-amber-500 text-white text-sm font-bold px-3 py-1">{ordered} בהזמנה</span>}
         <TriCheck ids={vs.map(v => v.id)} selected={selected} onToggle={onToggle} />
@@ -321,6 +329,7 @@ function OrderSizes({ index, groupId, onBack, quantities, setQty, selected, onTo
             onToggle={onToggle}
             req={requested ? requested[v.id] : null}
             flash={flashId === v.id}
+            whFree={warehouseFreeOf ? warehouseFreeOf(v) : undefined}
           />
         ))}
       </div>
@@ -330,7 +339,7 @@ function OrderSizes({ index, groupId, onBack, quantities, setQty, selected, onTo
   );
 }
 
-function SizeTile({ v, threshold, qty, setQty, isSel, onToggle, req, flash }) {
+function SizeTile({ v, threshold, qty, setQty, isSel, onToggle, req, flash, whFree }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState('');
   const st = stockStatus(v.stock, threshold);
@@ -353,6 +362,12 @@ function SizeTile({ v, threshold, qty, setQty, isSel, onToggle, req, flash }) {
       {isSel && <span className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center"><Check className="w-3.5 h-3.5" /></span>}
       <span className="text-sm text-gray-700 font-semibold line-clamp-2 text-center">{variantLabel(v) || 'רגיל'}</span>
       <span className="text-xs text-gray-500">במלאי <strong className={stockTone}>{Number(v.stock || 0)}</strong></span>
+      {whFree !== undefined && (
+        whFree == null ? null
+          : whFree > 0
+            ? <span className="text-xs text-blue-700">במחסן <strong>{whFree}</strong></span>
+            : <span className="text-xs text-gray-400">אין במחסן</span>
+      )}
       {req != null && <span className="text-[10px] text-gray-400">ביקש הסניף: {req}</span>}
 
       <div className="flex items-center gap-1 mt-1" onClick={e => e.stopPropagation()}>
