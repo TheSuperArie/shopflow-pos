@@ -186,12 +186,14 @@ export default function POS() {
     };
   }, [user?.email, queryClient]);
 
-  const { data: appSettingsList = [] } = useQuery({
+  const { data: appSettingsRaw = [] } = useQuery({
     queryKey: ['app-settings', user?.email],
     queryFn: () => base44.entities.AppSettings.filter({ created_by: user.email }),
     enabled: !!user?.email,
     staleTime: 60000,
   });
+  // Always a list, even if some other screen cached one settings object under the same key
+  const appSettingsList = Array.isArray(appSettingsRaw) ? appSettingsRaw : (appSettingsRaw ? [appSettingsRaw] : []);
   const virtualFolders = appSettingsList[0]?.pos_virtual_folders || [];
   // "חסום מכירה של מוצר שאזל" (settings, field stock_mode_enabled): on → out-of-stock items can't be sold.
   // It only controls blocking — every sale always deducts from stock, so inventory/shortages stay accurate.
