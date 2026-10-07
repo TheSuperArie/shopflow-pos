@@ -365,7 +365,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
                   <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded">
                     <div className="flex-1">
                       <p className="text-sm font-medium">{item.product_name}</p>
-                      <p className="text-xs text-gray-500">₪{item.sell_price} ליחידה{item.max_quantity ? ` · נמכרו ${item.max_quantity}` : ''}</p>
+                      <p className="text-xs text-gray-500">₪{item.sell_price} ליחידה{item.max_quantity ? ` · אפשר להחזיר עד ${item.max_quantity}` : ''}</p>
                     </div>
                     <Input
                       type="number"
