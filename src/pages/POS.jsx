@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ShoppingCart, RotateCcw, Users, Wifi, WifiOff, AlertTriangle, Shirt, FolderOpen, ChevronLeft, CreditCard } from 'lucide-react';
+import { Settings, ShoppingCart, RotateCcw, Users, Wifi, WifiOff, AlertTriangle, Shirt, FolderOpen, ChevronLeft, CreditCard, Banknote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import ProductGrid from '@/components/pos/ProductGrid';
@@ -10,6 +10,7 @@ import DynamicVariantSelector from '@/components/pos/DynamicVariantSelector';
 import CheckoutModal from '@/components/pos/CheckoutModal';
 import SmartSearch from '@/components/pos/SmartSearch';
 import ReceiptModal from '@/components/pos/ReceiptModal';
+import FreeAmountDialog from '@/components/pos/FreeAmountDialog';
 import { offlineManager } from '@/components/pos/offlineManager';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
 import StaffPortal from '@/components/pos/StaffPortal';
@@ -99,6 +100,7 @@ export default function POS() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showFreeAmount, setShowFreeAmount] = useState(false);
   const [lastSale, setLastSale] = useState(null);
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
@@ -622,7 +624,8 @@ export default function POS() {
     const item = cartItems[idx];
     const setQty = () => setCartItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: newQty } : it));
     // Raising the quantity above what's in stock → block (if blocking is on) or warn first
-    if (item && newQty > item.quantity) {
+    // (a free-amount line has no product and no stock)
+    if (item && item.variant_id && newQty > item.quantity) {
       if (stockConfirm) return;
       const available = (allVariants.find(v => v.id === item.variant_id)?.stock || 0) - reservedByOthers(item.variant_id);
       if (newQty > available) {
@@ -775,7 +778,13 @@ export default function POS() {
             onSelectVariant={handleBarcodeSelect}
           />
 
-          <PosBreadcrumb steps={crumbs} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <PosBreadcrumb steps={crumbs} />
+            <button onClick={() => setShowFreeAmount(true)}
+              className="h-11 flex items-center gap-2 px-4 rounded-xl border-[1.5px] border-[#E2D8C4] bg-[#FFFDF8] text-[15px] font-medium hover:bg-[#F0E6D2] transition-colors">
+              <Banknote className="w-[18px] h-[18px]" strokeWidth={1.8} /> סכום חופשי
+            </button>
+          </div>
 
           {!selectedCategory ? (
             <>
@@ -923,6 +932,26 @@ export default function POS() {
       />
 
       <ReturnFormModal open={showReturnForm} onClose={() => setShowReturnForm(false)} />
+
+      {/* Free amount — a cart line with no product (doesn't touch the stock) */}
+      <FreeAmountDialog
+        open={showFreeAmount}
+        onClose={() => setShowFreeAmount(false)}
+        onAdd={({ amount, note }) => {
+          setCartItems(prev => [...prev, {
+            variant_id: null,
+            group_id: null,
+            free_id: `free-${Date.now()}`,
+            product_name: note ? `סכום חופשי - ${note}` : 'סכום חופשי',
+            quantity: 1,
+            sell_price: amount,
+            cost_price: 0,
+            variant_stock: 0,
+          }]);
+          setShowFreeAmount(false);
+          toast({ title: `סכום חופשי ${money(amount)} נוסף לעגלה` });
+        }}
+      />
       <StaffPortal open={showStaffPortal} onClose={() => setShowStaffPortal(false)} />
 
       {/* Out-of-stock warning — no button is focused, so a scanner's Enter can't confirm it by accident */}
