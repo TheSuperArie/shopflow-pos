@@ -931,7 +931,7 @@ export default function POS() {
         onClose={() => { setShowReceipt(false); setLastSale(null); }}
       />
 
-      <ReturnFormModal open={showReturnForm} onClose={() => setShowReturnForm(false)} />
+      <ReturnFormModal open={showReturnForm} onClose={() => setShowReturnForm(false)} branchId={activeBranch?.id || null} />
 
       {/* Free amount — a cart line with no product (doesn't touch the stock) */}
       <FreeAmountDialog
