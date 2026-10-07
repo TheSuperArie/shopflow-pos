@@ -218,6 +218,7 @@ export default function BranchSupplyOrders() {
                 onChange={setQuantities}
                 scanEnabled={tab === 'new' && !confirmOpen && !receiving && !chatOpen}
                 initialShortOnly={openShortOnly}
+                branchId={branch?.id}
               />
 
               <Card>
