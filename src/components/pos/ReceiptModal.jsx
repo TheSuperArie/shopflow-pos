@@ -20,13 +20,15 @@ export default function ReceiptModal({ open, sale, onClose }) {
     staleTime: 300000,
   });
 
+  // Same cache entry as the POS ('app-settings' = the settings LIST) — so it must also store the list.
+  // (It used to store a single object under the same key, and then the POS read settings[0] as
+  // empty: no network name in the header, no logo, and "block out-of-stock" fell back to ON.)
   const { data: settings } = useQuery({
-    queryKey: ['app-settings', user?.email],
+    queryKey: ['app-settings', user?.email?.toLowerCase()],
     enabled: !!user?.email,
-    queryFn: async () => {
-      const list = await base44.entities.AppSettings.filter({ created_by: user.email });
-      return list[0] || { store_name: 'החנות שלי' };
-    },
+    queryFn: () => base44.entities.AppSettings.filter({ created_by: user.email.toLowerCase() }),
+    select: (list) => (Array.isArray(list) && list[0]) || { store_name: 'החנות שלי' },
+    staleTime: 60000,
   });
 
   const createReceiptMutation = useMutation({
