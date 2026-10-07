@@ -4,14 +4,15 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowRight, ScanLine, UserRound, CheckCircle2, Loader2, PackageCheck, AlertTriangle, Package } from 'lucide-react';
+import { ArrowRight, ScanLine, UserRound, CheckCircle2, Loader2, PackageCheck, AlertTriangle, Package, Printer } from 'lucide-react';
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { fetchBranchCatalogRecords } from '@/lib/branchCatalog';
 import {
   buildCatalogRows, lineQty, matchScannedCode, matchCartonCode, cartonLocation, compareCartonLocation,
   pickedPercent, isOverPicked, nowIso,
 } from '@/lib/supplyOrders';
-import { stockOps } from '@/lib/warehouseStock';
+import { stockOps, fetchNetworkCatalogRows } from '@/lib/warehouseStock';
+import PickSheetDialog from './PickSheetDialog';
 import { usePickAvailability } from '@/hooks/usePickAvailability';
 import StockWarningDialog from '@/components/stock/StockWarningDialog';
 import PickLineDialog from './PickLineDialog';
@@ -46,6 +47,7 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
   const [saving, setSaving] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
   const snapshot = useRef('');
 
   // The branch catalog — only needed to recognise a scanned product that isn't in the order
@@ -64,12 +66,32 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
     staleTime: 600000,
   });
 
-  // Carton number / carton barcode come from the branch catalog (order lines saved before they existed)
+  // The network catalog, through the server — the warehouse account may read it (the branch catalog
+  // tables are locked to their owners, so for the warehouse the query above can come back empty)
+  const { data: networkRows = [] } = useQuery({
+    queryKey: ['picking-network-catalog', warehouse?.id],
+    queryFn: () => fetchNetworkCatalogRows(warehouse),
+    enabled: !!warehouse?.id,
+    staleTime: 600000,
+  });
+
+  // Carton number / carton barcode / size: branch catalog first, then the network catalog
+  // (same variant id for the owner's own branch, same SKU for a branch copy)
   const catalogById = new Map(catalogRows.map(r => [r.variant_id, r]));
+  const networkById = new Map(networkRows.map(r => [r.variant_id, r]));
+  const networkBySku = new Map(networkRows.filter(r => r.sku).map(r => [String(r.sku).toLowerCase(), r]));
   const withCatalog = (it) => {
     const c = catalogById.get(it.variant_id);
-    return c ? { ...it, carton_number: c.carton_number, carton_barcode: c.carton_barcode, size: c.size } : it;
+    const n = networkById.get(it.variant_id) || (it.sku ? networkBySku.get(String(it.sku).toLowerCase()) : null);
+    if (!c && !n) return it;
+    return {
+      ...it,
+      carton_number: c?.carton_number || n?.carton_number || it.carton_number,
+      carton_barcode: c?.carton_barcode || n?.carton_barcode || it.carton_barcode,
+      size: c?.size || n?.size || it.size,
+    };
   };
+  const cartonOf = (it) => withCatalog(it).carton_number || '';
   const locationOf = (it) => cartonLocation(withCatalog(it));
 
   const isDone = (it) => it.picked_qty != null;
@@ -291,6 +313,10 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
           <div className="flex-1 min-w-0">
             <p className="text-xl font-bold text-gray-900">{order.branch_name} · הזמנה #{order.order_number}</p>
           </div>
+          <button onClick={() => setShowSheet(true)}
+            className="flex items-center gap-1.5 rounded-xl border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <Printer className="w-4 h-4" /> הדפס דף ליקוט
+          </button>
           {picker && (
             <button onClick={() => setPicker(null)} className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">
               <UserRound className="w-4 h-4" /> {picker}
@@ -354,6 +380,11 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
               return (
               <button key={`${it.variant_id}-${index}`} onClick={() => openLine(index)}
                 className="w-full text-right flex items-center gap-3 px-4 py-3 min-h-[68px] hover:bg-blue-50 active:bg-blue-100">
+                {/* Carton first — the picker walks by it */}
+                <span className={`w-[76px] shrink-0 text-center rounded-xl px-2 py-2 ${cartonOf(it) ? 'bg-amber-100 border-2 border-amber-400' : 'bg-gray-50 border-2 border-dashed border-gray-200'}`}>
+                  <span className={`flex items-center justify-center gap-1 text-xs ${cartonOf(it) ? 'text-amber-800' : 'text-gray-400'}`}><Package className="w-3.5 h-3.5" /> קרטון</span>
+                  <span className={`block text-3xl font-bold leading-tight ${cartonOf(it) ? 'text-amber-950' : 'text-gray-300'}`}>{cartonOf(it) || '—'}</span>
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-lg font-semibold text-gray-900 truncate">{it.product_name} · {it.variant_label || '—'}</p>
                   <p className="text-sm text-gray-500 font-mono">{it.sku || '—'}{it.category_name ? ` · ${it.category_name}` : ''}</p>
@@ -361,11 +392,6 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
                     <p className="mt-0.5 text-sm font-semibold text-orange-700">יש במחסן רק {free}</p>
                   )}
                 </div>
-                {locationOf(it) && (
-                  <span className="flex items-center gap-1.5 rounded-xl bg-amber-50 border-2 border-amber-300 px-3 py-2 text-amber-900 text-lg font-bold shrink-0">
-                    <Package className="w-5 h-5" /> {locationOf(it)}
-                  </span>
-                )}
                 <span className="text-center rounded-xl bg-blue-50 px-4 py-2">
                   <span className="block text-xs text-blue-700">צריך</span>
                   <span className="block text-2xl font-bold text-blue-900">{lineQty(it)}</span>
@@ -462,6 +488,19 @@ export default function PickingScreen({ order, warehouse, onBack, onFinished }) 
           onConfirm={() => confirm()}
           onCancel={() => { setActive(null); setQty(''); }}
           saving={saving}
+        />
+      )}
+
+      {showSheet && (
+        <PickSheetDialog
+          order={{ ...order, items }}
+          warehouse={warehouse}
+          lines={items
+            .filter(it => !it.extra)
+            .map(it => ({ it, row: withCatalog(it) }))
+            .sort((a, b) => compareCartonLocation(a.row, b.row))
+            .map(({ it, row }) => ({ it, carton: row.carton_number || '', size: row.size || '', free: freeOf(it) }))}
+          onClose={() => setShowSheet(false)}
         />
       )}
 
