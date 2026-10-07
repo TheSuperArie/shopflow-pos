@@ -61,7 +61,7 @@ export default function WarehouseReceivePanel({ warehouse }) {
         const { row, units } = carton[0];
         if (units) setCartonSize(s => ({ ...s, [row.key]: units }));
         add(row, units || 1, before.lines);
-        toast({ title: `קרטון נקלט: +${units || 1}`, description: `${row.product_name}${row.variant_label ? ` · ${row.variant_label}` : ''}`, duration: 1800 });
+        toast({ title: `קרטון נקלט: +${units || 1}`, description: `${row.product_name}${row.variant_label ? ` · ${row.variant_label}` : ''}`, duration: 1500 });
         return;
       }
       const m = matchScannedCode(code, items);
