@@ -2,7 +2,10 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_REMOVE_DELAY = 1000; // after it closed (lets the closing animation finish)
+// A success message without its own duration closes after 1.5 seconds; errors stay longer.
+const SUCCESS_DURATION = 1500;
+const ERROR_DURATION = 5000;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -128,10 +131,13 @@ function toast({ ...props }) {
   const dismiss = () =>
     dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
 
+  const duration = props.duration ?? (props.variant === 'destructive' ? ERROR_DURATION : SUCCESS_DURATION);
+
   dispatch({
     type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
+      duration,
       id,
       open: true,
       onOpenChange: (open) => {
@@ -139,6 +145,9 @@ function toast({ ...props }) {
       },
     },
   });
+
+  // Close on time even if the mouse rests on it or the window isn't focused (the built-in timer pauses then)
+  if (Number.isFinite(duration) && duration > 0) setTimeout(dismiss, duration + 300);
 
   return {
     id,
