@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import {
-  Loader2, Search, LayoutGrid, Table2, Boxes, AlertTriangle, PackageX, Layers, Package, History, X,
+  Loader2, Search, LayoutGrid, Table2, Boxes, AlertTriangle, PackageX, Layers, Package, History, X, ScanLine,
 } from 'lucide-react';
+import { useScanDetector } from '@/hooks/useScanDetector';
+import { matchScannedCode, matchCartonCode } from '@/lib/supplyOrders';
+import StockCountDialog, { countFormValid } from '@/components/warehouse/stock/StockCountDialog';
 import { useInventoryData } from '@/hooks/useInventoryData';
 import { buildInventoryIndex, applyStockChanges, stockStatus, variantLabel } from '@/lib/inventory';
 import { addToSupplyDraft } from '@/lib/supplyOrders';
@@ -14,6 +17,8 @@ import ShortagesView from './ShortagesView';
 import StockHistory from './StockHistory';
 import BulkStockBar from './BulkStockBar';
 
+const emptyForm = { mode: 'COUNT', value: '', notes: '' };
+
 /**
  * The inventory screen — one component for both sides:
  *  - branch admin:   <InventoryManager />             (its own stock; can send sizes to the order)
@@ -21,6 +26,8 @@ import BulkStockBar from './BulkStockBar';
  * Tabs: stock (square tiles or a table) · shortages · history.
  * Selection works across categories / sub-categories / products / sizes; the bottom bar
  * adds to or sets the stock of everything selected at once.
+ * The scanner is on in the stock tab: scanning opens a count for that size — a carton label
+ * counts a whole carton (and every further carton scan adds one more), a single shirt adds 1.
  */
 export default function InventoryManager({ branch, defaultTab = 'stock', title = 'מלאי' }) {
   const data = useInventoryData(branch);
@@ -36,6 +43,15 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
   const [selected, setSelected] = useState(() => new Set());
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  // Count window (one size) — opened by a scan or by the pencil on a size tile
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [openedByScan, setOpenedByScan] = useState(false);
+  const [cartonSize, setCartonSize] = useState({}); // variant id → shirts per carton (read from scanned labels)
+  const [counted, setCounted] = useState({}); // variant id → what was counted on this page so far
+  const snapshot = useRef({ value: '', search: '' }); // undo what a scan typed into a focused box
+  const scanBusy = useRef(false); // saving the previous size — the next scan waits
 
   const index = useMemo(
     () => buildInventoryIndex({ categories: data.categories, groups: data.groups, variants: data.variants, globalThreshold: data.threshold }),
@@ -66,7 +82,8 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
     if (statusFilter !== 'all' && stockStatus(v.stock, index.thresholdOfVariant(v)) !== statusFilter) return false;
     if (!q) return true;
     const g = index.groupById.get(v.group_id);
-    return [g?.name, variantLabel(v), v.sku, g?.barcode].some(x => String(x || '').toLowerCase().includes(q));
+    return [g?.name, variantLabel(v), v.sku, v.barcode, g?.barcode, v.carton_number && `קרטון ${v.carton_number}`]
+      .some(x => String(x || '').toLowerCase().includes(q));
   };
   const filtering = !!q || statusFilter !== 'all';
 
@@ -95,6 +112,114 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
       setBusy(false);
     }
   };
+
+  // ── Count window ──
+  // Rows the scanner matches against: SKU / variant barcode / product barcode / carton barcode
+  const scanRows = useMemo(() => index.allVariants.map(v => {
+    const g = index.groupById.get(v.group_id);
+    return {
+      key: v.id,
+      variant: v,
+      product_name: g?.name || 'מוצר',
+      variant_label: variantLabel(v),
+      qty: Number(v.stock || 0),
+      sku: v.sku || '',
+      barcode: v.barcode || '',
+      group_barcode: g?.barcode || '',
+      carton_number: v.carton_number || '',
+      carton_barcode: v.carton_barcode || '',
+      size: v.dimensions?.['מידה'] ?? '',
+    };
+  }), [index]);
+  const rowById = useMemo(() => new Map(scanRows.map(r => [r.key, r])), [scanRows]);
+
+  const openCount = (row, { add = 0, byScan = false } = {}) => {
+    const before = counted[row.key];
+    setForm({ ...emptyForm, value: before != null || add ? String((before || 0) + add) : '' });
+    setOpenedByScan(byScan);
+    setEditing(row);
+  };
+
+  const saveCount = async ({ type, newQty, notes }, target = editing, formNow = form) => {
+    const delta = parseInt(formNow.value, 10);
+    const op = type === 'COUNT'
+      ? { variant: target.variant, mode: 'set', value: newQty }
+      : { variant: target.variant, mode: 'add', value: delta };
+    setBusy(true);
+    try {
+      await applyStockChanges([op], {
+        branchId: data.branchId,
+        groupById: index.groupById,
+        note: [type === 'COUNT' ? 'ספירת מלאי' : 'תיקון', notes, data.networkMode ? 'עודכן ע"י מנהל הרשת' : ''].filter(Boolean).join(' · '),
+      });
+      data.invalidate();
+      if (type === 'COUNT' || counted[target.key] != null) setCounted(c => ({ ...c, [target.key]: newQty }));
+      toast({ title: `המלאי עודכן${target.variant_label ? ` · ${target.variant_label}` : ''} → ${Math.max(0, newQty)}` });
+      setEditing(null);
+      return true;
+    } catch (err) {
+      data.invalidate();
+      toast({ title: 'העדכון נכשל', description: err?.message, variant: 'destructive' });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Scanner: a carton label counts a whole carton, a single shirt adds 1 ──
+  const addScanned = async (row, step, units) => {
+    if (units) setCartonSize(s => ({ ...s, [row.key]: units }));
+    if (editing && editing.key === row.key) {
+      setForm(f => ({ ...f, value: String((parseInt(snapshot.current.value ?? f.value, 10) || 0) + step) }));
+      return;
+    }
+    // Another size is open → save its count first (if one was entered), then open this one
+    if (editing) {
+      const prev = { ...form, value: snapshot.current.value ?? form.value };
+      if (countFormValid(prev)) {
+        scanBusy.current = true;
+        try {
+          const n = parseInt(prev.value, 10);
+          const newQty = prev.mode === 'COUNT' ? n : editing.qty + n;
+          const ok = await saveCount({ type: prev.mode, newQty, notes: prev.notes.trim() }, editing, prev);
+          if (!ok) return;
+        } finally {
+          scanBusy.current = false;
+        }
+      } else {
+        setEditing(null);
+      }
+    }
+    openCount(rowById.get(row.key) || row, { add: step, byScan: true });
+  };
+
+  const handleScan = (code) => {
+    setSearch(snapshot.current.search);
+    if (editing) setForm(f => ({ ...f, value: snapshot.current.value }));
+    if (scanBusy.current) {
+      toast({ title: 'רגע — שומר את המידה הקודמת', description: 'סרוק שוב בעוד שנייה', variant: 'destructive' });
+      return;
+    }
+    const carton = matchCartonCode(code, scanRows);
+    if (carton.length === 1) return addScanned(carton[0].row, carton[0].units || 1, carton[0].units);
+    if (carton.length > 1) {
+      toast({ title: 'הקרטון מתאים לכמה מידות', description: 'פתח את המידה הנכונה בעיפרון', variant: 'destructive' });
+      return;
+    }
+    const hits = matchScannedCode(code, scanRows);
+    if (hits.length === 1) return addScanned(hits[0], 1, null);
+    if (hits.length > 1) {
+      toast({ title: 'הברקוד מתאים לכמה מידות', description: 'פתח את המוצר ולחץ על העיפרון של המידה', variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'ברקוד לא נמצא', description: code, variant: 'destructive' });
+  };
+
+  useScanDetector({
+    enabled: tab === 'stock' && view === 'tiles' && !data.isLoading,
+    onScan: handleScan,
+    onBurstStart: () => { snapshot.current = { value: form.value, search }; },
+  });
 
   const applyBulk = async (mode, value) => {
     const ok = await runChanges(selectedVariants.map(v => ({ variant: v, mode, value })));
@@ -162,10 +287,15 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
 
       {tab === 'stock' && (
         <div className="space-y-4">
+          {view === 'tiles' && (
+            <p className="flex items-center gap-1.5 w-fit rounded-full bg-green-50 border border-green-200 px-3 py-1 text-sm text-green-700 font-medium">
+              <ScanLine className="w-4 h-4" /> הסורק פעיל — סריקה פותחת ספירה של המידה: כל קרטון שנסרק נספר (חולצה = 1), והכמות שנספרה מחליפה את מה שרשום
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder='חיפוש לפי מוצר, מידה, מק"ט או ברקוד' className="pr-9" />
+              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder='חיפוש לפי מוצר, מידה, מק"ט, ברקוד או קרטון' className="pr-9" data-scan-capture />
             </div>
             {[{ k: 'all', l: 'הכל' }, { k: 'low', l: 'נמוך' }, { k: 'out', l: 'אזל' }].map(f => (
               <button key={f.k} onClick={() => setStatusFilter(f.k)}
@@ -198,6 +328,7 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
               globalThreshold={data.threshold}
               onThresholdSaved={data.invalidate}
               variantFilter={filtering ? variantMatches : null}
+              onEdit={(v) => { const r = rowById.get(v.id); if (r) openCount(r); }}
             />
           ) : filtering ? (
             <FilteredProducts index={index} variantMatches={variantMatches} selected={selected} onToggle={onToggle} onOpen={setProductId} />
@@ -223,6 +354,19 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
         onOrder={data.networkMode ? null : orderFixed}
         onClear={() => setSelected(new Set())}
       />
+
+      {editing && (
+        <StockCountDialog
+          item={rowById.get(editing.key) || editing}
+          form={form}
+          onFormChange={setForm}
+          cartonSize={cartonSize[editing.key]}
+          openedByScan={openedByScan}
+          previouslyCounted={counted[editing.key]}
+          onClose={() => setEditing(null)}
+          onSave={(d) => saveCount(d)}
+        />
+      )}
     </div>
   );
 }
