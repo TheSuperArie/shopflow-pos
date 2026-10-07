@@ -81,6 +81,14 @@ export default function OrderTilesBuilder({
   const orderedIds = Object.keys(quantities).filter(id => quantities[id] > 0 && fullIndex.allVariants.some(v => v.id === id));
   const totalLines = orderedIds.length;
   const totalUnits = orderedIds.reduce((s, id) => s + quantities[id], 0);
+  // Ordered above what the warehouse has free (information only — ordering is never blocked)
+  const overWarehouse = warehouse.hasWarehouse
+    ? orderedIds.filter(id => {
+      const v = fullIndex.allVariants.find(x => x.id === id);
+      const free = warehouse.freeOf(v);
+      return free != null && quantities[id] > free;
+    }).length
+    : 0;
 
   const onToggle = (ids, on) => setSelected(prev => {
     const next = new Set(prev);
@@ -182,8 +190,17 @@ export default function OrderTilesBuilder({
             ? <span><strong>הסורק פעיל</strong> — סרוק מוצר והוא יתווסף להזמנה (+1 בכל סריקה)</span>
             : <span>הסורק מושהה</span>}
         </div>
-        <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-1.5 text-sm text-amber-900">
-          בהזמנה: <strong>{totalLines}</strong> מידות · <strong>{totalUnits}</strong> יחידות
+        <div className="flex flex-wrap items-center gap-2">
+          {overWarehouse > 0 && (
+            <button type="button" onClick={() => { setFilter('ordered'); setProductId(null); }}
+              className="flex items-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-100"
+              title="מידות שהוזמנו יותר ממה שיש כרגע במחסן — מסומנות באדום. אפשר להזמין בכל זאת.">
+              <AlertTriangle className="w-4 h-4" /> <strong>{overWarehouse}</strong> מידות מעבר למה שיש במחסן
+            </button>
+          )}
+          <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-1.5 text-sm text-amber-900">
+            בהזמנה: <strong>{totalLines}</strong> מידות · <strong>{totalUnits}</strong> יחידות
+          </div>
         </div>
       </div>
 
@@ -350,9 +367,12 @@ function SizeTile({ v, threshold, qty, setQty, isSel, onToggle, req, flash, whFr
     if (val.trim() !== '') setQty(v.id, val);
   };
 
+  // Ordered more than the warehouse has free → red (a warning only; the order still goes through)
+  const overWh = qty > 0 && whFree != null && qty > whFree;
   const tone = isSel
     ? 'ring-4 ring-amber-400 border-amber-500 bg-white'
-    : qty > 0 ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white';
+    : overWh ? 'border-red-400 bg-red-50'
+      : qty > 0 ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white';
 
   return (
     <div
@@ -364,9 +384,15 @@ function SizeTile({ v, threshold, qty, setQty, isSel, onToggle, req, flash, whFr
       <span className="text-xs text-gray-500">במלאי <strong className={stockTone}>{Number(v.stock || 0)}</strong></span>
       {whFree !== undefined && (
         whFree == null ? null
-          : whFree > 0
-            ? <span className="text-xs text-blue-700">במחסן <strong>{whFree}</strong></span>
-            : <span className="text-xs text-gray-400">אין במחסן</span>
+          : overWh
+            ? (
+              <span className="flex items-center gap-1 text-xs font-bold text-red-700">
+                <AlertTriangle className="w-3.5 h-3.5" /> {whFree > 0 ? `במחסן רק ${whFree}` : 'אין במחסן'}
+              </span>
+            )
+            : whFree > 0
+              ? <span className="text-xs text-blue-700">במחסן <strong>{whFree}</strong></span>
+              : <span className="text-xs text-gray-400">אין במחסן</span>
       )}
       {req != null && <span className="text-[10px] text-gray-400">ביקש הסניף: {req}</span>}
 
