@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Folder, Package, ChevronLeft, Check, Minus, ArrowRight } from 'lucide-react';
+import { Folder, Package, ChevronLeft, Check, Minus, ArrowRight, Pencil } from 'lucide-react';
 import { stockStatus, variantLabel } from '@/lib/inventory';
 
 /** Round corner check: all / some / none of the given variant ids are selected. */
@@ -129,7 +129,7 @@ function Breadcrumb({ index, path, setPath }) {
 }
 
 /** One product: square size tiles (tap = select) + its own shortage threshold. */
-export function ProductSizes({ index, groupId, onBack, selected, onToggle, globalThreshold, onThresholdSaved, variantFilter }) {
+export function ProductSizes({ index, groupId, onBack, selected, onToggle, globalThreshold, onThresholdSaved, variantFilter, onEdit }) {
   const group = index.groupById.get(groupId);
   const [th, setTh] = useState(group?.low_stock_threshold ?? '');
   const [saving, setSaving] = useState(false);
@@ -180,20 +180,32 @@ export function ProductSizes({ index, groupId, onBack, selected, onToggle, globa
           const isSel = selected.has(v.id);
           const tone = st === 'out' ? 'border-red-300 bg-red-50' : st === 'low' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white';
           return (
-            <button
-              key={v.id}
-              onClick={() => onToggle([v.id], !isSel)}
-              className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-1 p-2 transition-all ${isSel ? 'ring-4 ring-amber-400 border-amber-500' : tone}`}
-            >
-              {isSel && <span className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center"><Check className="w-3.5 h-3.5" /></span>}
-              <span className="text-xs text-gray-600 font-medium line-clamp-2 text-center">{variantLabel(v) || 'רגיל'}</span>
-              <span className={`text-2xl font-bold ${st === 'out' ? 'text-red-600' : st === 'low' ? 'text-amber-700' : 'text-gray-900'}`}>{Number(v.stock || 0)}</span>
-              {v.sku && <span className="text-[10px] text-gray-400 font-mono">{v.sku}</span>}
-            </button>
+            <div key={v.id} className="relative">
+              <button
+                onClick={() => onToggle([v.id], !isSel)}
+                className={`relative w-full aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-1 p-2 transition-all ${isSel ? 'ring-4 ring-amber-400 border-amber-500' : tone}`}
+              >
+                {isSel && <span className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center"><Check className="w-3.5 h-3.5" /></span>}
+                <span className="text-xs text-gray-600 font-medium line-clamp-2 text-center">{variantLabel(v) || 'רגיל'}</span>
+                <span className={`text-2xl font-bold ${st === 'out' ? 'text-red-600' : st === 'low' ? 'text-amber-700' : 'text-gray-900'}`}>{Number(v.stock || 0)}</span>
+                {v.carton_number && (
+                  <span className="flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-800">
+                    <Package className="w-3 h-3" /> קרטון {v.carton_number}
+                  </span>
+                )}
+                {v.sku && <span className="text-[10px] text-gray-400 font-mono">{v.sku}</span>}
+              </button>
+              {onEdit && (
+                <button onClick={() => onEdit(v)} title="ספירה למידה הזו"
+                  className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-white/90 border text-gray-600 hover:text-gray-900 hover:bg-white flex items-center justify-center">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
-      <p className="text-xs text-gray-400">לחיצה על מידה מסמנת אותה. אחרי הסימון עדכנו את כולן יחד מהסרגל התחתון.</p>
+      <p className="text-xs text-gray-400">לחיצה על מידה מסמנת אותה. אחרי הסימון עדכנו את כולן יחד מהסרגל התחתון.{onEdit ? ' העיפרון פותח ספירה למידה אחת.' : ''}</p>
     </div>
   );
 }
