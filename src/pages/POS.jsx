@@ -922,7 +922,9 @@ export default function POS() {
         isProcessing={saleMutation.isPending}
         nedarim={nedarimForCheckout}
         paidCharge={paidCharge}
-        chargeComment={`ShopFlow · ${appSettingsList[0]?.store_name || 'קופה'}`}
+        // Shown with the charge in Nedarim's reports: the branch name as the network registered it
+        // (falls back to the store name in settings for a store without a network branch)
+        chargeComment={(activeBranch?.name || appSettingsList[0]?.store_name || 'קופה').trim()}
       />
 
       <ReceiptModal
