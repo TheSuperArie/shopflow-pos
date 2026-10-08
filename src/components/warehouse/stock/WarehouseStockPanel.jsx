@@ -26,35 +26,11 @@ const sizeCollator = new Intl.Collator('he', { numeric: true });
 /** The warehouse's shortage line for the Excel export (settings → "ייצוא חוסרים"; 0 = only sold out). */
 const shortageThreshold = (warehouse) => Math.max(0, Number(warehouse?.shortage_threshold) || 0);
 
-/** Excel file (CSV with BOM so Hebrew opens right) of every size at/below the shortage line, by carton. */
-function exportShortages(items, warehouse) {
+/** Excel file of every size at/below the shortage line, by carton. */
+const exportShortages = (items, warehouse) => {
   const limit = shortageThreshold(warehouse);
-  const out = items.filter(i => i.qty <= limit).sort((a, b) =>
-    compareCartonLocation(a, b) ||
-    (a.product_name || '').localeCompare(b.product_name || '', 'he') ||
-    sizeCollator.compare(a.variant_label || '', b.variant_label || ''));
-  if (!out.length) return 0;
-  const cell = (v) => {
-    const s = String(v ?? '');
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const head = ['מספר קרטון', 'מוצר', 'מידה', 'קטגוריה', 'מק"ט', 'במלאי', 'משוריין לליקוט'];
-  const rows = out.map(i => [
-    i.carton_number || 'ללא קרטון', i.product_name, String(i.size ?? '').trim() || i.variant_label,
-    i.category_name, i.sku, i.qty, i.reserved || 0,
-  ]);
-  const csv = '﻿' + [head, ...rows].map(r => r.map(cell).join(',')).join('\r\n');
-  const d = new Date();
-  const date = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-  link.download = `חוסרים_${warehouse?.name || 'מחסן'}_${date}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  return out.length;
-}
+  return downloadStockExcel(items.filter(i => i.qty <= limit), { fileTitle: 'חוסרים', place: warehouse?.name || 'מחסן', withReserved: true });
+};
 
 /**
  * Warehouse stock — the same square-tiles screen as the branches (category → product → sizes,
