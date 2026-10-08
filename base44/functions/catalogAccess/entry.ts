@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { actingUser, ownedBy, asOwnerRows } from '../../shared/acting.ts';
 
 /**
  * Reads of someone else's catalog, checked on the server — so the catalog tables themselves can be
@@ -20,7 +21,8 @@ const httpError = (status, message) => Object.assign(new Error(message), { statu
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    // An authorized network manager acts as the network owner
+    const user = await actingUser(base44, await base44.auth.me());
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const me = lc(user.email);
     const isMe = (e) => !!e && lc(e) === me;
@@ -51,17 +53,20 @@ export default async function (req) {
       const t = w.tenant_email;
       const [branches, variants, groups, categories] = await Promise.all([
         db.Branch.filter({ tenant_email: t, station_email: t }, undefined, 50),
-        db.ProductVariant.filter({ created_by: t }, undefined, 5000),
-        db.ProductGroup.filter({ created_by: t }, undefined, 5000),
-        db.Category.filter({ created_by: t }, undefined, 2000),
+        db.ProductVariant.filter(ownedBy(t), undefined, 5000),
+        db.ProductGroup.filter(ownedBy(t), undefined, 5000),
+        db.Category.filter(ownedBy(t), undefined, 2000),
       ]);
-      return Response.json({ ok: true, own_branch_ids: branches.map(b => b.id), variants, groups, categories });
+      return Response.json({
+        ok: true, own_branch_ids: branches.map(b => b.id),
+        variants: asOwnerRows(variants), groups: asOwnerRows(groups), categories: asOwnerRows(categories),
+      });
     }
 
     if (action === 'variantSources') {
       const w = await loadWarehouse(body.warehouse_id);
       const t = lc(w.tenant_email);
-      const rows = await byIds(db.ProductVariant, (body.variant_ids || []).slice(0, 500));
+      const rows = asOwnerRows(await byIds(db.ProductVariant, (body.variant_ids || []).slice(0, 500)));
       const sources = rows
         .filter(v => lc(v.tenant_email) === t || lc(v.created_by) === t)
         .map(v => ({ id: v.id, source_id: v.source_id || null }));
@@ -77,7 +82,7 @@ export default async function (req) {
       if (!owner) throw httpError(409, 'הסניף לא מחובר לרשת');
       const share = b.catalog_share || {};
       // Only records that really belong to this network's owner
-      const ownerOnly = (rows) => rows.filter(r => lc(r.created_by) === owner || lc(r.tenant_email) === owner);
+      const ownerOnly = (rows) => asOwnerRows(rows).filter(r => lc(r.created_by) === owner || lc(r.tenant_email) === owner);
       const [categories, dimensions, groups, pv, fv] = await Promise.all([
         byIds(db.Category, share.category_ids),
         byIds(db.VariantDimension, share.dimension_ids),
@@ -107,7 +112,7 @@ export default async function (req) {
       if (!warehouses.length) return Response.json({ ok: true, has_warehouse: false, free: {} });
       // Only the network owner's own catalog variants count as keys (the warehouse keeps stock per network
       // variant; branch copies are created by the branch accounts and point to them with source_id)
-      const keyRows = await byIds(db.ProductVariant, (body.keys || []).slice(0, 5000));
+      const keyRows = asOwnerRows(await byIds(db.ProductVariant, (body.keys || []).slice(0, 5000)));
       const keys = keyRows.filter(v => lc(v.created_by) === owner).map(v => v.id);
       const free = Object.fromEntries(keys.map(k => [k, 0]));
       for (const w of warehouses) {
