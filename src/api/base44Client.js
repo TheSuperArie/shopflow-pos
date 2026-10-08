@@ -90,7 +90,9 @@ const wrapHandler = (name, handler) => {
             const [sort, limit, skip] = rest;
             return viaDelegate({ op: 'filter', entity: name, query: query || {}, sort, limit, skip });
           }
-          return asOwnerAll(await target.filter(withActingOwner(query), ...rest));
+          // NOTE: the query goes out exactly as written. (Rewriting created_by into $and/$or broke
+          // regular accounts — the browser API doesn't apply those operators, so the filter was lost.)
+          return asOwnerAll(await target.filter(query, ...rest));
         };
         if (prop === 'list') return async (...args) => {
           if (routed && await getDelegateOwner()) {
