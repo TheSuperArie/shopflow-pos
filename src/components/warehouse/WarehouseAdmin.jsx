@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowRight, UsersRound, Wallet, Settings, Loader2, Trash2, Plus, KeyRound, Save, Boxes, PackagePlus, Package } from 'lucide-react';
+import { ArrowRight, UsersRound, Wallet, Settings, Loader2, Trash2, Plus, KeyRound, Save, Boxes, PackagePlus, Package, FileSpreadsheet } from 'lucide-react';
 import WarehouseStockPanel from '@/components/warehouse/stock/WarehouseStockPanel';
 import WarehouseReceivePanel from '@/components/warehouse/stock/WarehouseReceivePanel';
 import WarehouseProductsPanel from '@/components/warehouse/stock/WarehouseProductsPanel';
@@ -201,8 +201,16 @@ function WarehouseSettings({ warehouse }) {
     manager_phone: warehouse.manager_phone || '',
   });
   const [code, setCode] = useState({ current: '', next: '', confirm: '' });
+  const [threshold, setThreshold] = useState(String(Number(warehouse.shortage_threshold) || 0));
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['my-warehouse'] });
+
+  const saveThreshold = useMutation({
+    mutationFn: () => base44.entities.Warehouse.update(warehouse.id, { shortage_threshold: Math.max(0, parseInt(threshold, 10) || 0) }),
+    onSuccess: () => { refresh(); toast({ title: 'סף החוסרים נשמר' }); },
+    onError: (e) => toast({ title: 'השמירה נכשלה', description: e?.message, variant: 'destructive' }),
+  });
+  const thresholdNum = Math.max(0, parseInt(threshold, 10) || 0);
 
   const saveDetails = useMutation({
     mutationFn: () => base44.entities.Warehouse.update(warehouse.id, {
@@ -270,6 +278,24 @@ function WarehouseSettings({ warehouse }) {
           {saveCode.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'עדכן קוד'}
         </Button>
         <p className="text-xs text-gray-400">קודי הכניסה של המלקטים נקבעים בלשונית "מלקטים", בעריכת כל מלקט.</p>
+      </div>
+
+      <div className="rounded-2xl border bg-white p-4 space-y-3">
+        <h3 className="font-bold text-gray-800 flex items-center gap-2"><FileSpreadsheet className="w-5 h-5" /> ייצוא חוסרים לאקסל</h3>
+        <div>
+          <Label>מידה נכנסת לקובץ כשנשארו במלאי עד (יחידות)</Label>
+          <Input type="number" inputMode="numeric" min="0" value={threshold}
+            onChange={e => setThreshold(e.target.value.replace(/\D/g, ''))}
+            className="h-11 text-center text-lg" dir="ltr" />
+          <p className="text-xs text-gray-500 mt-1">
+            {thresholdNum ? `כל מידה שנשארו ממנה ${thresholdNum} יחידות או פחות תיכנס לקובץ.` : '0 = רק מידות שאזלו לגמרי נכנסות לקובץ.'}
+          </p>
+        </div>
+        <Button onClick={() => saveThreshold.mutate()} disabled={saveThreshold.isPending || thresholdNum === (Number(warehouse.shortage_threshold) || 0)}
+          className="w-full h-11 gap-1.5 bg-green-700 hover:bg-green-800">
+          {saveThreshold.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} שמור
+        </Button>
+        <p className="text-xs text-gray-400">הכפתור "ייצוא חוסרים לאקסל" נמצא בלשונית "מלאי". הקובץ מסודר לפי מספר קרטון ומידה.</p>
       </div>
     </div>
   );
