@@ -8,8 +8,6 @@ import { format, startOfMonth, endOfMonth, startOfWeek, subMonths } from 'date-f
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Wallet, Plus, Repeat } from 'lucide-react';
 import FixedTemplatesDialog from '@/components/expenses/FixedTemplatesDialog';
-
-const EXPENSE_CATEGORIES = ['הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 import { fetchBranchScoped } from '@/lib/branchScope';
 import { ALL } from '@/lib/fetchAllPages';
 import { groupExpenses, sumExpenses } from '@/lib/expenseGrouping';
@@ -18,6 +16,8 @@ import NetworkExpenseFormModal from './NetworkExpenseFormModal';
 import ExpenseFolder from './ExpenseFolder';
 import ExpenseRow from './ExpenseRow';
 import EmployeeExpenseFolderContent from './EmployeeExpenseFolderContent';
+
+const EXPENSE_CATEGORIES = ['הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 
 const d = (x) => format(x, 'yyyy-MM-dd');
 const RANGE_SHORTCUTS = [
