@@ -22,9 +22,13 @@ const LOCAL_CAT = { id: '__wh_local__', name: 'מוצרי מחסן', sort_order:
 const PARALLEL = 5;
 const sizeCollator = new Intl.Collator('he', { numeric: true });
 
-/** Excel file (CSV with BOM so Hebrew opens right) of every size that is out of stock, by carton. */
+/** The warehouse's shortage line for the Excel export (settings → "ייצוא חוסרים"; 0 = only sold out). */
+export const shortageThreshold = (warehouse) => Math.max(0, Number(warehouse?.shortage_threshold) || 0);
+
+/** Excel file (CSV with BOM so Hebrew opens right) of every size at/below the shortage line, by carton. */
 function exportShortages(items, warehouse) {
-  const out = items.filter(i => i.qty <= 0).sort((a, b) =>
+  const limit = shortageThreshold(warehouse);
+  const out = items.filter(i => i.qty <= limit).sort((a, b) =>
     compareCartonLocation(a, b) ||
     (a.product_name || '').localeCompare(b.product_name || '', 'he') ||
     sizeCollator.compare(a.variant_label || '', b.variant_label || ''));
@@ -317,8 +321,11 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
             <button
               onClick={() => {
                 const n = exportShortages(items, warehouse);
-                toast({ title: n ? `ירד קובץ אקסל עם ${n} מידות שאזלו` : 'אין חוסרים במחסן' });
+                const limit = shortageThreshold(warehouse);
+                const what = limit ? `עם מלאי עד ${limit}` : 'שאזלו';
+                toast({ title: n ? `ירד קובץ אקסל עם ${n} מידות ${what}` : `אין מידות ${what}` });
               }}
+              title={shortageThreshold(warehouse) ? `מידות שהמלאי שלהן עד ${shortageThreshold(warehouse)} — משנים בהגדרות המחסן` : 'מידות שאזלו — את הסף משנים בהגדרות המחסן'}
               className="flex items-center gap-1.5 rounded-full border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-800 hover:bg-green-100">
               <Download className="w-4 h-4" /> ייצוא חוסרים לאקסל
             </button>
