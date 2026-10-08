@@ -21,7 +21,7 @@ const httpError = (status, message) => Object.assign(new Error(message), { statu
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    // An authorized network manager acts as the network owner
+    // An authorized network manager (מנהל רשת מורשה) acts as the network owner
     const user = await actingUser(base44, await base44.auth.me());
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const me = lc(user.email);
