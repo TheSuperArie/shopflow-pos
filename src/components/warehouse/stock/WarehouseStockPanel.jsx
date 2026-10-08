@@ -3,13 +3,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, Search, LayoutGrid, Table2, Boxes, Package, Layers, Lock, PackageX, History, ScanLine, X, ArrowRight, Download,
+  Loader2, Search, LayoutGrid, Table2, Boxes, Package, Layers, Lock, PackageX, History, ScanLine, X, ArrowRight, Download, FileSpreadsheet,
 } from 'lucide-react';
 import { useWarehouseInventory } from '@/hooks/useWarehouseInventory';
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { stockOps, newOpKey } from '@/lib/warehouseStock';
 import { buildInventoryIndex } from '@/lib/inventory';
-import { matchScannedCode, matchCartonCode, compareCartonLocation } from '@/lib/supplyOrders';
+import { matchScannedCode, matchCartonCode } from '@/lib/supplyOrders';
+import { downloadStockExcel } from '@/lib/stockExport';
 import { CatalogTiles, TriCheck } from '@/components/inventory/InventoryTiles';
 import BulkStockBar from '@/components/inventory/BulkStockBar';
 import StockTable from './StockTable';
@@ -304,6 +305,15 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
               title={shortageThreshold(warehouse) ? `מידות שהמלאי שלהן עד ${shortageThreshold(warehouse)} — משנים בהגדרות המחסן` : 'מידות שאזלו — את הסף משנים בהגדרות המחסן'}
               className="flex items-center gap-1.5 rounded-full border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-800 hover:bg-green-100">
               <Download className="w-4 h-4" /> ייצוא חוסרים לאקסל
+            </button>
+            <button
+              onClick={() => {
+                const n = downloadStockExcel(items.filter(i => i.qty > 0), { fileTitle: 'מלאי', place: warehouse?.name || 'מחסן', withReserved: true });
+                toast({ title: n ? `ירד קובץ אקסל עם ${n} מידות שיש במלאי` : 'אין כרגע מלאי במחסן' });
+              }}
+              title="כל המידות שיש מהן במלאי, מסודר לפי מספר קרטון"
+              className="flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm text-blue-800 hover:bg-blue-100">
+              <FileSpreadsheet className="w-4 h-4" /> ייצוא מלאי לאקסל
             </button>
             {filtering && (
               <button onClick={() => { setSearch(''); setOnlyOut(false); }} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
