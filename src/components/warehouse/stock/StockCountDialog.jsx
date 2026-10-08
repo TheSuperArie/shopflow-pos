@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ export const countFormValid = (form) => {
 export default function StockCountDialog({ item, form, onFormChange, onClose, onSave, cartonSize, openedByScan, previouslyCounted }) {
   const [saving, setSaving] = useState(false);
   const [confirmCount, setConfirmCount] = useState(false); // "ספירת מלאי" replaces the stock — asked first
+  useEffect(() => { setConfirmCount(false); }, [item?.key]); // a scan opened another size
   const n = parseInt(form.value, 10);
   const valid = countFormValid(form);
   const after = countAfter(item, form);
