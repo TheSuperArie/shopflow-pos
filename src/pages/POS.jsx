@@ -971,7 +971,7 @@ export default function POS() {
           {hasReturned && cartTotal <= 0 ? (
             <button onClick={() => (cartTotal === 0 ? finishExchange() : setShowCart(true))} disabled={saleMutation.isPending}
               className={`flex-1 h-14 rounded-xl text-lg font-bold flex items-center justify-center gap-2 ${cartTotal === 0 ? 'bg-[#2E6B4C] hover:bg-[#25573D] text-white' : 'bg-[#F7E3DF] text-[#6E2216]'}`}>
-              <ArrowLeftRight className="w-5 h-5" /> {cartTotal === 0 ? 'סיים החלפה' : `חסר ${money(-cartTotal)} — ראה עגלה`}
+              <ArrowLeftRight className="w-5 h-5" /> {cartTotal === 0 ? 'סיים החלפה' : `החדש זול ב-${money(-cartTotal)} — ראה עגלה`}
             </button>
           ) : (
             <button onClick={() => setShowCheckout(true)}
