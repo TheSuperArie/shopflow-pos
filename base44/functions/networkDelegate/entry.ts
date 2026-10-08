@@ -70,6 +70,9 @@ const scopeOf = (owner) => ({
 });
 const inScope = (r, owner) => !!r && [r.created_by, r.acting_owner, r.station_email, r.tenant_email, r.warehouse_email]
   .some(e => lc(e) === owner);
+// Writes: by the record's real ownership only (acting_owner is our own mark — never a reason to write)
+const inWriteScope = (r, owner) => !!r && [r.created_by, r.station_email, r.tenant_email, r.warehouse_email]
+  .some(e => lc(e) === owner);
 
 /** Shown to the browser as the owner's own record. */
 const asOwner = (r) => (r && r.acting_owner ? { ...r, created_by: r.acting_owner } : r);
@@ -113,7 +116,7 @@ export default async function (req) {
       else own = { station_email: owner, tenant_email: owner };
       return { ...d, station_email: d.station_email || own.station_email, tenant_email: d.tenant_email || own.tenant_email };
     };
-    const mayWrite = (r) => OPEN_WRITE.has(name) || inScope(r, owner);
+    const mayWrite = (r) => OPEN_WRITE.has(name) || inWriteScope(r, owner);
     const loadOne = async (id) => (await entity.filter({ id }, undefined, 1))[0] || null;
 
     switch (body.op) {
