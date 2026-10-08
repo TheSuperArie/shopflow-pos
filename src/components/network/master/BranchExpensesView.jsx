@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format, startOfMonth, endOfMonth, startOfWeek, subMonths } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Wallet, Plus } from 'lucide-react';
+import { Loader2, Wallet, Plus, Repeat } from 'lucide-react';
+import FixedTemplatesDialog from '@/components/expenses/FixedTemplatesDialog';
+
+const EXPENSE_CATEGORIES = ['הוצאות חוץ', 'פרסום', 'כיבוד/עוגות', 'אחר'];
 import { fetchBranchScoped } from '@/lib/branchScope';
 import { ALL } from '@/lib/fetchAllPages';
 import { groupExpenses, sumExpenses } from '@/lib/expenseGrouping';
@@ -28,6 +31,7 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [editing, setEditing] = useState(null);
   // Local date range for this tab (defaults to whatever the page passed in)
   const [from, setFrom] = useState(fromDate || '');
@@ -38,10 +42,12 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
     queryFn: () => fetchBranchScoped(base44.entities.Expense, branch, {}, '-date', ALL),
   });
 
-  // The branch's own fixed-expense templates (managed by the branch manager)
+  // The branch's fixed-expense templates: the branch manager's own + the network's for this branch
+  // (network_only — like the network's expenses, the branch manager doesn't see those)
   const { data: templates = [] } = useQuery({
     queryKey: ['fixed-templates', 'branch-view', branch.id],
-    queryFn: () => fetchBranchScoped(base44.entities.FixedExpenseTemplate, branch, {}, 'name', 500),
+    queryFn: async () => (await fetchBranchScoped(base44.entities.FixedExpenseTemplate, branch, {}, 'name', 500))
+      .filter(t => t.network_level !== true),
   });
   const lastUsed = lastUsedByTemplate(allExpenses);
 
@@ -106,7 +112,10 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
             <span className="text-gray-500">חד פעמיות <b className="text-orange-600">₪{totals.onetime.toFixed(0)}</b></span>
             <span className="text-gray-500">תשלומי עובדים <b className="text-blue-600">₪{totals.employee.toFixed(0)}</b></span>
           </div>
-          <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }} className="ms-auto gap-1.5 bg-amber-500 hover:bg-amber-600">
+          <Button size="sm" variant="outline" onClick={() => setShowTemplates(true)} className="ms-auto gap-1.5">
+            <Repeat className="w-3.5 h-3.5" /> הוצאות קבועות
+          </Button>
+          <Button size="sm" onClick={() => { setEditing(null); setShowForm(true); }} className="gap-1.5 bg-amber-500 hover:bg-amber-600">
             <Plus className="w-3.5 h-3.5" /> הוספת הוצאה
           </Button>
         </CardContent>
@@ -137,6 +146,19 @@ export default function BranchExpensesView({ branch, fromDate, toDate }) {
         onClose={() => setShowForm(false)}
         onSaved={() => { refresh(); setShowForm(false); toast({ title: '✅ ההוצאה נשמרה', duration: 2000 }); }}
         onError={onError}
+      />
+
+      {/* Templates the network manager keeps for this branch — network-only, like his expenses here */}
+      <FixedTemplatesDialog
+        open={showTemplates}
+        onClose={() => setShowTemplates(false)}
+        templates={templates}
+        lastUsed={lastUsed}
+        categories={EXPENSE_CATEGORIES}
+        scope={{
+          branch_id: branch.id, network_level: false, network_only: true,
+          station_email: branch.station_email || null, tenant_email: branch.tenant_email || null,
+        }}
       />
     </div>
   );
