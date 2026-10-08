@@ -3,13 +3,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, Search, LayoutGrid, Table2, Boxes, Package, Layers, Lock, PackageX, History, ScanLine, X, ArrowRight,
+  Loader2, Search, LayoutGrid, Table2, Boxes, Package, Layers, Lock, PackageX, History, ScanLine, X, ArrowRight, Download,
 } from 'lucide-react';
 import { useWarehouseInventory } from '@/hooks/useWarehouseInventory';
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { stockOps, newOpKey } from '@/lib/warehouseStock';
 import { buildInventoryIndex } from '@/lib/inventory';
-import { matchScannedCode, matchCartonCode } from '@/lib/supplyOrders';
+import { matchScannedCode, matchCartonCode, compareCartonLocation } from '@/lib/supplyOrders';
 import { CatalogTiles, TriCheck } from '@/components/inventory/InventoryTiles';
 import BulkStockBar from '@/components/inventory/BulkStockBar';
 import StockTable from './StockTable';
@@ -21,6 +21,34 @@ const emptyForm = { mode: 'COUNT', value: '', notes: '' };
 const LOCAL_CAT = { id: '__wh_local__', name: 'מוצרי מחסן', sort_order: 99999 };
 const PARALLEL = 5;
 const sizeCollator = new Intl.Collator('he', { numeric: true });
+
+/** Excel file (CSV with BOM so Hebrew opens right) of every size that is out of stock, by carton. */
+function exportShortages(items, warehouse) {
+  const out = items.filter(i => i.qty <= 0).sort((a, b) =>
+    compareCartonLocation(a, b) ||
+    (a.product_name || '').localeCompare(b.product_name || '', 'he') ||
+    sizeCollator.compare(a.variant_label || '', b.variant_label || ''));
+  const cell = (v) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const head = ['מספר קרטון', 'מוצר', 'מידה', 'קטגוריה', 'מק"ט', 'במלאי', 'משוריין לליקוט'];
+  const rows = out.map(i => [
+    i.carton_number || 'ללא קרטון', i.product_name, String(i.size ?? '').trim() || i.variant_label,
+    i.category_name, i.sku, i.qty, i.reserved || 0,
+  ]);
+  const csv = '﻿' + [head, ...rows].map(r => r.map(cell).join(',')).join('\r\n');
+  const d = new Date();
+  const date = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  link.download = `חוסרים_${warehouse?.name || 'מחסן'}_${date}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  return out.length;
+}
 
 /**
  * Warehouse stock — the same square-tiles screen as the branches (category → product → sizes,
@@ -284,6 +312,14 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
             <button onClick={() => setOnlyOut(v => !v)}
               className={`rounded-full border px-3 py-1.5 text-sm ${onlyOut ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600'}`}>
               רק מה שאזל
+            </button>
+            <button
+              onClick={() => {
+                const n = exportShortages(items, warehouse);
+                toast({ title: n ? `ירד קובץ אקסל עם ${n} מידות שאזלו` : 'אין חוסרים במחסן' });
+              }}
+              className="flex items-center gap-1.5 rounded-full border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-800 hover:bg-green-100">
+              <Download className="w-4 h-4" /> ייצוא חוסרים לאקסל
             </button>
             {filtering && (
               <button onClick={() => { setSearch(''); setOnlyOut(false); }} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
