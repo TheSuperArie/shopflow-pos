@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { ownedBy, asOwnerRows } from '../../shared/acting.ts';
 
 /**
  * Feed for the separate public stock site ("מלאי תומכי תורה").
@@ -12,6 +11,9 @@ import { ownedBy, asOwnerRows } from '../../shared/acting.ts';
  *                                                        with status per variant and sell price
  */
 const lc = (s) => String(s || '').trim().toLowerCase();
+// Same as shared/acting.ts (kept inline so this function deploys on its own)
+const ownedBy = (email) => ({ $or: [{ created_by: email }, { acting_owner: email }] });
+const asOwnerRows = (rows) => (rows || []).map(r => (r && r.acting_owner ? { ...r, created_by: r.acting_owner } : r));
 const FEED_ROW = '__public_feed__';
 // The network shown on the public site: תומכי תורה חדרי ביגוד
 const TENANT = 'tt0534168729@gmail.com';
