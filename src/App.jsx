@@ -10,6 +10,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { useUsageLogger } from '@/hooks/useUsageLogger';
 import AccessGate from '@/components/access/AccessGate';
 import WarehouseGate from '@/components/access/WarehouseGate';
+import DelegateGate from '@/components/access/DelegateGate';
 
 import POS from './pages/POS.jsx';
 import Layout from './components/Layout';
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
   return (
     <ShipmentBatchProvider>
       <AccessGate>
+      <DelegateGate>
       <WarehouseGate>
       <Suspense fallback={<PageLoader />}>
         <Routes>
@@ -109,6 +111,7 @@ const AuthenticatedApp = () => {
         </Routes>
       </Suspense>
       </WarehouseGate>
+      </DelegateGate>
       </AccessGate>
     </ShipmentBatchProvider>
   );
