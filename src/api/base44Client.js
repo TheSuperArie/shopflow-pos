@@ -18,7 +18,10 @@ const client = createClient({
 // An account the developer set to manage someone else's network (AdminSecret.delegate_of).
 // All of its data calls go through the server (function networkDelegate), which acts as the
 // network owner within the owner's own access rules. Checked once per sign-in and remembered.
-const DELEGATE_CACHE = 'shopflow_delegate_v1';
+const DELEGATE_CACHE = 'shopflow_delegate_v2';
+// "Not a manager" is re-checked after a while (an account can be made a manager while signed in);
+// "manager of X" is kept for the sign-in
+const NEGATIVE_TTL_MS = 10 * 60 * 1000;
 const tokenTag = () => String(appParams.token || localStorage.getItem('base44_access_token') || '').slice(-24);
 let delegatePromise = null;
 
@@ -28,12 +31,14 @@ export function getDelegateOwner() {
       const tag = tokenTag();
       try {
         const cached = JSON.parse(localStorage.getItem(DELEGATE_CACHE) || 'null');
-        if (cached && tag && cached.tag === tag) return cached.owner || null;
+        if (cached && tag && cached.tag === tag && (cached.owner || Date.now() - (cached.at || 0) < NEGATIVE_TTL_MS)) {
+          return cached.owner || null;
+        }
       } catch { /* no cache */ }
       try {
         const res = await client.functions.invoke('networkDelegate', { op: 'whoami' });
         const owner = res?.data?.owner || null;
-        try { if (tag) localStorage.setItem(DELEGATE_CACHE, JSON.stringify({ tag, owner })); } catch { /* ignore */ }
+        try { if (tag) localStorage.setItem(DELEGATE_CACHE, JSON.stringify({ tag, owner, at: Date.now() })); } catch { /* ignore */ }
         return owner;
       } catch {
         delegatePromise = null; // not signed in yet / offline — ask again next time
