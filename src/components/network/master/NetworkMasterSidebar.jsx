@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { base44, getDelegateOwner } from '@/api/base44Client';
 import { Crown, GitBranch, BarChart2, BarChart3, LogOut, X, ShoppingCart, Settings, LayoutDashboard, Warehouse, Landmark, Boxes } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,8 +18,12 @@ const NAV_ITEMS = [
 
 export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpen, setMobileOpen }) {
   const navigate = useNavigate();
+  // Authorized network manager: no POS to go back to — "exit" signs the account out
+  const [isDelegate, setIsDelegate] = useState(false);
+  useEffect(() => { getDelegateOwner().then(o => setIsDelegate(!!o)); }, []);
 
   const handleLogout = () => {
+    if (isDelegate) { base44.auth.logout(); return; }
     sessionStorage.removeItem('admin_auth');
     sessionStorage.removeItem('admin_role');
     sessionStorage.removeItem('network_master_email');
@@ -35,7 +40,7 @@ export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpe
               <Crown className="w-5 h-5 text-amber-400" />
               <h2 className="text-lg font-bold text-amber-400">מרכז פיקוד</h2>
             </div>
-            <p className="text-xs text-amber-300/70">בעל הרשת</p>
+            <p className="text-xs text-amber-300/70">{isDelegate ? 'מנהל רשת' : 'בעל הרשת'}</p>
           </div>
           <button onClick={() => setMobileOpen(false)} className="lg:hidden text-gray-300 hover:text-white">
             <X className="w-5 h-5" />
@@ -63,19 +68,21 @@ export default function NetworkMasterSidebar({ activeTab, onTabChange, mobileOpe
 
       {/* Footer */}
       <div className="p-3 border-t border-white/10 space-y-1">
-        <button
-          onClick={() => navigate('/POS')}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-300 hover:bg-white/5 hover:text-white"
-        >
-          <ShoppingCart className="w-5 h-5" />
-          חזרה לקופה
-        </button>
+        {!isDelegate && (
+          <button
+            onClick={() => navigate('/POS')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            חזרה לקופה
+          </button>
+        )}
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400 hover:bg-red-500/10"
         >
           <LogOut className="w-5 h-5" />
-          יציאה
+          {isDelegate ? 'התנתק' : 'יציאה'}
         </button>
       </div>
     </div>
