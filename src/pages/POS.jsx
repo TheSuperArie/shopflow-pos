@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, ShoppingCart, RotateCcw, Users, Wifi, WifiOff, AlertTriangle, Shirt, FolderOpen, ChevronLeft, CreditCard, Banknote } from 'lucide-react';
+import { Settings, ShoppingCart, RotateCcw, Users, Wifi, WifiOff, AlertTriangle, Shirt, FolderOpen, ChevronLeft, CreditCard, Banknote, ArrowLeftRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import ProductGrid from '@/components/pos/ProductGrid';
@@ -103,6 +103,9 @@ export default function POS() {
   const [showFreeAmount, setShowFreeAmount] = useState(false);
   const [lastSale, setLastSale] = useState(null);
   const [showReturnForm, setShowReturnForm] = useState(false);
+  // Exchange ("החלפה"): ON = the next product scanned / chosen is one the customer brings back — it goes into
+  // the cart as a returned line (negative quantity, back to stock when the sale is saved), then this turns off
+  const [exchangeMode, setExchangeMode] = useState(false);
   const [showStaffPortal, setShowStaffPortal] = useState(false);
   // Offline mode is off for good — a device that had it switched on is reset on load (see effect below)
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -200,6 +203,8 @@ export default function POS() {
   // "חסום מכירה של מוצר שאזל" (settings, field stock_mode_enabled): on → out-of-stock items can't be sold.
   // It only controls blocking — every sale always deducts from stock, so inventory/shortages stay accurate.
   const stockModeEnabled = appSettingsList[0]?.stock_mode_enabled !== false;
+  // A returned item may be out of stock here — while picking it, nothing is hidden or blocked
+  const blockOutOfStock = stockModeEnabled && !exchangeMode;
 
   useInventorySync();
 
@@ -365,6 +370,7 @@ export default function POS() {
       const total = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
 
       // Map cart items to clean sale items — explicitly carry relational IDs
+      // A returned line (exchange) has a negative quantity — the server adds it back to the stock
       const saleItems = cartItems.map(item => ({
         variant_id: item.variant_id || null,
         group_id: item.group_id || null,
@@ -372,13 +378,16 @@ export default function POS() {
         quantity: item.quantity,
         sell_price: item.sell_price,
         cost_price: item.cost_price || 0,
+        ...(item.returned ? { returned: true } : {}),
       }));
+      const isExchange = cartItems.some(i => i.returned);
 
       const saleData = {
         items: saleItems,
         total,
         total_cost: totalCost,
         payment_method: paymentMethod,
+        ...(isExchange ? { is_exchange: true } : {}),
         cash_received: cashDetails?.received,
         cash_change: cashDetails?.change,
         // Split payment (cash + credit): record how much went to each method
@@ -429,8 +438,9 @@ export default function POS() {
       setShowCheckout(false);
       setShowCart(false);
       if (saleMutation.variables?.printReceipt) setShowReceipt(true);
+      setExchangeMode(false);
       toast({
-        title: sale?._recovered ? '✅ המכירה כבר נשמרה בניסיון הקודם' : '✅ המכירה הושלמה!',
+        title: sale?._recovered ? '✅ המכירה כבר נשמרה בניסיון הקודם' : sale?.is_exchange ? '✅ ההחלפה הושלמה!' : '✅ המכירה הושלמה!',
         description: sale?._recovered
           ? 'לא נרשמה פעמיים'
           : sale?._stockWarning ? 'שים לב: עדכון המלאי נכשל' : undefined,
@@ -513,10 +523,16 @@ export default function POS() {
     // A warning popup is already open — ignore further scans/taps until the seller answers it
     if (stockConfirm) return;
 
+    // Exchange: this is the item the customer brings back — no stock check, it returns to stock on save
+    if (exchangeMode) {
+      pushReturned(variant, group);
+      return;
+    }
+
     const liveVariant = allVariants.find(v => v.id === variant.id);
     // Free = stock − what other computers of this branch hold in their carts
     const available = (liveVariant?.stock || 0) - reservedByOthers(variant.id);
-    const inCart = cartItems.find(item => item.variant_id === variant.id)?.quantity || 0;
+    const inCart = cartItems.find(item => item.variant_id === variant.id && !item.returned)?.quantity || 0;
     if (inCart + 1 > available) {
       if (stockModeEnabled) {
         toast({ title: '⛔ אין מלאי', description: available > 0 ? `קיימים במלאי רק ${available}` : 'הפריט אזל מהמלאי', duration: 2000 });
@@ -556,7 +572,7 @@ export default function POS() {
       : '';
 
     setCartItems(prev => {
-      const existingIdx = prev.findIndex(item => item.variant_id === variant.id);
+      const existingIdx = prev.findIndex(item => item.variant_id === variant.id && !item.returned);
       if (existingIdx !== -1) {
         // Auto-increment existing item
         return prev.map((item, i) => i === existingIdx ? { ...item, quantity: item.quantity + 1 } : item);
@@ -576,6 +592,32 @@ export default function POS() {
     flashTimer.current = setTimeout(() => setFlashId(null), 1100);
 
     setSelectedCategory(null);
+  };
+
+  // Exchange: the returned item — its own cart line with a negative quantity (price as sold today)
+  const pushReturned = (variant, group) => {
+    const sellPrice = group.has_uniform_price ? group.uniform_sell_price : variant.sell_price;
+    const costPrice = group.has_uniform_price ? group.uniform_cost_price : variant.cost_price;
+    const dimText = variant.dimensions && Object.keys(variant.dimensions).length > 0
+      ? Object.values(variant.dimensions).join(' / ')
+      : '';
+    setCartItems(prev => {
+      const idx = prev.findIndex(item => item.variant_id === variant.id && item.returned);
+      if (idx !== -1) return prev.map((item, i) => i === idx ? { ...item, quantity: item.quantity - 1 } : item);
+      return [...prev, {
+        variant_id: variant.id,
+        group_id: group.id,
+        product_name: dimText ? `${group.name} - ${dimText}` : group.name,
+        quantity: -1,
+        sell_price: sellPrice,
+        cost_price: costPrice || 0,
+        variant_stock: 0,
+        returned: true,
+      }];
+    });
+    setExchangeMode(false);
+    setSelectedCategory(null);
+    toast({ title: 'הפריט המוחזר נכנס לעגלה', description: 'עכשיו סרוק את מה שהלקוח לוקח במקום' });
   };
 
   const handleGroupSelect = (group) => {
@@ -601,7 +643,7 @@ export default function POS() {
     groups: allGroups,
     onAddToCart: addToCart,
     onGroupSelect: handleScannerGroupSelect,
-    stockModeEnabled,
+    stockModeEnabled: blockOutOfStock,
     freeStock: scanFreeStock,
   });
 
@@ -617,11 +659,17 @@ export default function POS() {
   };
 
   const updateCartQty = (idx, newQty) => {
+    const item = cartItems[idx];
+    // Returned line (negative quantity): reaching 0 removes it, no stock check
+    if (item?.returned) {
+      if (newQty >= 0) setCartItems(prev => prev.filter((_, i) => i !== idx));
+      else setCartItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: newQty } : it));
+      return;
+    }
     if (newQty <= 0) {
       setCartItems(prev => prev.filter((_, i) => i !== idx));
       return;
     }
-    const item = cartItems[idx];
     const setQty = () => setCartItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: newQty } : it));
     // Raising the quantity above what's in stock → block (if blocking is on) or warn first
     // (a free-amount line has no product and no stock)
@@ -645,9 +693,15 @@ export default function POS() {
   };
 
   const removeCartItem = (idx) => setCartItems(prev => prev.filter((_, i) => i !== idx));
-  const clearCart = () => { if (window.confirm('לנקות את כל העגלה?')) setCartItems([]); };
+  const clearCart = () => { if (window.confirm('לנקות את כל העגלה?')) { setCartItems([]); setExchangeMode(false); } };
   const cartTotal = cartItems.reduce((s, i) => s + i.sell_price * i.quantity, 0);
-  const cartUnits = cartItems.reduce((s, i) => s + i.quantity, 0);
+  const cartUnits = cartItems.reduce((s, i) => s + Math.abs(i.quantity), 0);
+  const hasReturned = cartItems.some(i => i.returned);
+  // Exchange that costs nothing more → saved without a payment window
+  const finishExchange = () => {
+    if (saleMutation.isPending) return;
+    saleMutation.mutate({ paymentMethod: 'החלפה', cashDetails: null, printReceipt: false });
+  };
   const branchName = activeBranch?.name || appSettingsList[0]?.store_name || '';
   const savedWatermark = appSettingsList[0]?.pos_watermark_url || '';
   const watermarkUrl = BUILTIN_WATERMARKS[savedWatermark] || savedWatermark;
@@ -668,6 +722,7 @@ export default function POS() {
   const cartProps = {
     items: cartItems, onUpdateQty: updateCartQty, onRemove: removeCartItem, onClear: clearCart, flashId,
     onCheckout: () => { setShowCart(false); setShowCheckout(true); },
+    onFinishExchange: finishExchange, finishing: saleMutation.isPending,
   };
 
   // ── Render ───────────────────────────────────────────────────────
@@ -709,6 +764,13 @@ export default function POS() {
             className="h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border border-[#4A5268] hover:bg-[#2B3245] transition-colors text-[15px]">
             <RotateCcw className="w-[18px] h-[18px]" /> <span className="hidden sm:inline">החזרה</span>
           </button>
+          <button onClick={() => setExchangeMode(m => !m)}
+            title="החלפה — סרוק את הפריט שהלקוח מחזיר (חוזר למלאי), ואז את מה שהוא לוקח"
+            className={`h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border transition-colors text-[15px] ${exchangeMode
+              ? 'border-[#B8925A] bg-[#B8925A] text-[#1E2433] font-bold'
+              : 'border-[#4A5268] hover:bg-[#2B3245]'}`}>
+            <ArrowLeftRight className="w-[18px] h-[18px]" /> <span className="hidden sm:inline">החלפה</span>
+          </button>
           <button onClick={() => setShowStaffPortal(true)}
             className="h-11 flex items-center gap-2 px-3 sm:px-4 rounded-xl border border-[#4A5268] hover:bg-[#2B3245] transition-colors text-[15px]">
             <Users className="w-[18px] h-[18px]" /> <span className="hidden sm:inline">עובדים</span>
@@ -729,6 +791,16 @@ export default function POS() {
       </header>
 
       {/* ── System notices — one look for all ── */}
+      {exchangeMode && (
+        <PosNotice action={(
+          <button onClick={() => setExchangeMode(false)}
+            className="h-9 px-3 rounded-lg text-sm font-medium bg-[#5A3E0E] text-[#FFFDF8] hover:bg-[#46300B]">
+            ביטול
+          </button>
+        )}>
+          <b>החלפה:</b> סרוק או בחר את הפריט שהלקוח מחזיר — הוא יחזור למלאי. אחר כך סרוק את מה שהוא לוקח.
+        </PosNotice>
+      )}
       {!networkOnline && (
         <PosNotice tone="danger">אין חיבור לאינטרנט — לא ניתן לבצע מכירות כרגע</PosNotice>
       )}
@@ -770,7 +842,7 @@ export default function POS() {
         )}
         <div className={`relative flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 ${cartItems.length > 0 ? 'pb-28 lg:pb-5' : ''}`}>
           <SmartSearch
-            stockModeEnabled={stockModeEnabled}
+            stockModeEnabled={blockOutOfStock}
             groups={allGroups}
             variants={allVariants}
             categories={categories}
@@ -865,7 +937,7 @@ export default function POS() {
                 : groups}
               variants={allVariants}
               virtualFolders={virtualFolders}
-              stockModeEnabled={stockModeEnabled}
+              stockModeEnabled={blockOutOfStock}
               currentCategoryId={selectedSubCategory && selectedSubCategory !== '__direct__' ? selectedSubCategory : selectedCategory}
               tone={toneOf(selectedCategory).tone}
               onSelect={handleGroupSelect}
@@ -896,10 +968,17 @@ export default function POS() {
           <button onClick={() => setShowCart(true)} className="h-14 px-4 rounded-xl border-[1.5px] border-[#E2D8C4] bg-[#F5EFE3] flex items-center gap-2 font-medium">
             <ShoppingCart className="w-5 h-5" /> עגלה ({cartUnits})
           </button>
-          <button onClick={() => setShowCheckout(true)}
-            className="flex-1 h-14 rounded-xl bg-[#2E6B4C] hover:bg-[#25573D] text-white text-lg font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all">
-            <CreditCard className="w-5 h-5" /> לתשלום {money(cartTotal)}
-          </button>
+          {hasReturned && cartTotal <= 0 ? (
+            <button onClick={() => (cartTotal === 0 ? finishExchange() : setShowCart(true))} disabled={saleMutation.isPending}
+              className={`flex-1 h-14 rounded-xl text-lg font-bold flex items-center justify-center gap-2 ${cartTotal === 0 ? 'bg-[#2E6B4C] hover:bg-[#25573D] text-white' : 'bg-[#F7E3DF] text-[#6E2216]'}`}>
+              <ArrowLeftRight className="w-5 h-5" /> {cartTotal === 0 ? 'סיים החלפה' : `חסר ${money(-cartTotal)} — ראה עגלה`}
+            </button>
+          ) : (
+            <button onClick={() => setShowCheckout(true)}
+              className="flex-1 h-14 rounded-xl bg-[#2E6B4C] hover:bg-[#25573D] text-white text-lg font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-all">
+              <CreditCard className="w-5 h-5" /> לתשלום {money(cartTotal)}
+            </button>
+          )}
         </div>
       )}
 
@@ -909,7 +988,7 @@ export default function POS() {
         variants={allVariants.filter(v => v.group_id === selectedGroup?.id)}
         allVariants={allVariants}
         categories={categories}
-        stockModeEnabled={stockModeEnabled}
+        stockModeEnabled={blockOutOfStock}
         onConfirm={handleVariantConfirm}
         onClose={() => setSelectedGroup(null)}
       />
