@@ -23,7 +23,7 @@ const PARALLEL = 5;
 const sizeCollator = new Intl.Collator('he', { numeric: true });
 
 /** The warehouse's shortage line for the Excel export (settings → "ייצוא חוסרים"; 0 = only sold out). */
-export const shortageThreshold = (warehouse) => Math.max(0, Number(warehouse?.shortage_threshold) || 0);
+const shortageThreshold = (warehouse) => Math.max(0, Number(warehouse?.shortage_threshold) || 0);
 
 /** Excel file (CSV with BOM so Hebrew opens right) of every size at/below the shortage line, by carton. */
 function exportShortages(items, warehouse) {
