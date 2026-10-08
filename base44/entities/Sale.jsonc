@@ -2,40 +2,40 @@
   "name": "Sale",
   "properties": {
     "branch_id": {
-      "description": "מזהה הסניף בו בוצעה המכירה (FK to Branch). null = חנות יחידה / גלובלי — תואמות לאחור מלאה",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e0\u05d9\u05e3 \u05d1\u05d5 \u05d1\u05d5\u05e6\u05e2\u05d4 \u05d4\u05de\u05db\u05d9\u05e8\u05d4 (FK to Branch). null = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 / \u05d2\u05dc\u05d5\u05d1\u05dc\u05d9 \u2014 \u05ea\u05d5\u05d0\u05de\u05d5\u05ea \u05dc\u05d0\u05d7\u05d5\u05e8 \u05de\u05dc\u05d0\u05d4",
       "type": "string"
     },
     "cash_amount": {
-      "description": "החלק ששולם במזומן בתשלום מפוצל",
+      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05de\u05d6\u05d5\u05de\u05df \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc",
       "type": "number"
     },
     "cash_change": {
-      "description": "עודף שהוחזר",
+      "description": "\u05e2\u05d5\u05d3\u05e3 \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8",
       "type": "number"
     },
     "cash_received": {
-      "description": "סכום שהתקבל במזומן",
+      "description": "\u05e1\u05db\u05d5\u05dd \u05e9\u05d4\u05ea\u05e7\u05d1\u05dc \u05d1\u05de\u05d6\u05d5\u05de\u05df",
       "type": "number"
     },
     "client_sale_id": {
-      "description": "מזהה ייחודי שהקופה יוצרת לכל מכירה — מונע כפילות כשמנסים שוב אחרי שגיאה",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u05e9\u05d4\u05e7\u05d5\u05e4\u05d4 \u05d9\u05d5\u05e6\u05e8\u05ea \u05dc\u05db\u05dc \u05de\u05db\u05d9\u05e8\u05d4 \u2014 \u05de\u05d5\u05e0\u05e2 \u05db\u05e4\u05d9\u05dc\u05d5\u05ea \u05db\u05e9\u05de\u05e0\u05e1\u05d9\u05dd \u05e9\u05d5\u05d1 \u05d0\u05d7\u05e8\u05d9 \u05e9\u05d2\u05d9\u05d0\u05d4",
       "type": "string"
     },
     "credit_amount": {
-      "description": "החלק ששולם באשראי בתשלום מפוצל",
+      "description": "\u05d4\u05d7\u05dc\u05e7 \u05e9\u05e9\u05d5\u05dc\u05dd \u05d1\u05d0\u05e9\u05e8\u05d0\u05d9 \u05d1\u05ea\u05e9\u05dc\u05d5\u05dd \u05de\u05e4\u05d5\u05e6\u05dc",
       "type": "number"
     },
     "credit_provider": {
       "type": "string",
-      "description": "איפה חויב האשראי: 'nedarim' = דרך חלון נדרים פלוס בקופה; ריק = ידני (מסוף/טאבלט נפרד)"
+      "description": "\u05d0\u05d9\u05e4\u05d4 \u05d7\u05d5\u05d9\u05d1 \u05d4\u05d0\u05e9\u05e8\u05d0\u05d9: 'nedarim' = \u05d3\u05e8\u05da \u05d7\u05dc\u05d5\u05df \u05e0\u05d3\u05e8\u05d9\u05dd \u05e4\u05dc\u05d5\u05e1 \u05d1\u05e7\u05d5\u05e4\u05d4; \u05e8\u05d9\u05e7 = \u05d9\u05d3\u05e0\u05d9 (\u05de\u05e1\u05d5\u05e3/\u05d8\u05d0\u05d1\u05dc\u05d8 \u05e0\u05e4\u05e8\u05d3)"
     },
     "credit_ref": {
       "type": "string",
-      "description": "מספר העסקה / האישור שהחזיר ספק הסליקה"
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05d4\u05e2\u05e1\u05e7\u05d4 / \u05d4\u05d0\u05d9\u05e9\u05d5\u05e8 \u05e9\u05d4\u05d7\u05d6\u05d9\u05e8 \u05e1\u05e4\u05e7 \u05d4\u05e1\u05dc\u05d9\u05e7\u05d4"
     },
     "credit_details": {
       "type": "object",
-      "description": "התשובה המלאה של ספק הסליקה (לבירורים) — בלי פרטי כרטיס"
+      "description": "\u05d4\u05ea\u05e9\u05d5\u05d1\u05d4 \u05d4\u05de\u05dc\u05d0\u05d4 \u05e9\u05dc \u05e1\u05e4\u05e7 \u05d4\u05e1\u05dc\u05d9\u05e7\u05d4 (\u05dc\u05d1\u05d9\u05e8\u05d5\u05e8\u05d9\u05dd) \u2014 \u05d1\u05dc\u05d9 \u05e4\u05e8\u05d8\u05d9 \u05db\u05e8\u05d8\u05d9\u05e1"
     },
     "items": {
       "items": {
@@ -54,7 +54,12 @@
             "type": "string"
           },
           "quantity": {
-            "type": "number"
+            "type": "number",
+            "description": "\u05db\u05de\u05d5\u05ea. \u05e9\u05dc\u05d9\u05dc\u05d9\u05ea = \u05e4\u05e8\u05d9\u05d8 \u05e9\u05d4\u05d5\u05d7\u05d6\u05e8 \u05d1\u05d4\u05d7\u05dc\u05e4\u05d4 (\u05d7\u05d5\u05d6\u05e8 \u05dc\u05de\u05dc\u05d0\u05d9)"
+          },
+          "returned": {
+            "type": "boolean",
+            "description": "\u05e4\u05e8\u05d9\u05d8 \u05e9\u05d4\u05dc\u05e7\u05d5\u05d7 \u05d4\u05d7\u05d6\u05d9\u05e8 \u05d1\u05d4\u05d7\u05dc\u05e4\u05d4"
           },
           "sell_price": {
             "type": "number"
@@ -70,11 +75,16 @@
     },
     "payment_method": {
       "enum": [
-        "מזומן",
-        "אשראי",
-        "מזומן + אשראי"
+        "\u05de\u05d6\u05d5\u05de\u05df",
+        "\u05d0\u05e9\u05e8\u05d0\u05d9",
+        "\u05de\u05d6\u05d5\u05de\u05df + \u05d0\u05e9\u05e8\u05d0\u05d9",
+        "\u05d4\u05d7\u05dc\u05e4\u05d4"
       ],
       "type": "string"
+    },
+    "is_exchange": {
+      "type": "boolean",
+      "description": "\u05e2\u05e1\u05e7\u05ea \u05d4\u05d7\u05dc\u05e4\u05d4 \u2014 \u05d9\u05e9 \u05d1\u05d4 \u05e4\u05e8\u05d9\u05d8\u05d9\u05dd \u05de\u05d5\u05d7\u05d6\u05e8\u05d9\u05dd (\u05db\u05de\u05d5\u05ea \u05e9\u05dc\u05d9\u05dc\u05d9\u05ea). payment_method='\u05d4\u05d7\u05dc\u05e4\u05d4' = \u05d1\u05dc\u05d9 \u05ea\u05d5\u05e1\u05e4\u05ea \u05ea\u05e9\u05dc\u05d5\u05dd"
     },
     "seller_email": {
       "type": "string"
@@ -83,11 +93,11 @@
       "type": "string"
     },
     "station_email": {
-      "description": "אימייל חשבון העמדה של הסניף — שדה בעלות להרשאות",
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d7\u05e9\u05d1\u05d5\u05df \u05d4\u05e2\u05de\u05d3\u05d4 \u05e9\u05dc \u05d4\u05e1\u05e0\u05d9\u05e3 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
       "type": "string"
     },
     "tenant_email": {
-      "description": "אימייל בעל הרשת. ריק = חנות יחידה — שדה בעלות להרשאות",
+      "description": "\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d1\u05e2\u05dc \u05d4\u05e8\u05e9\u05ea. \u05e8\u05d9\u05e7 = \u05d7\u05e0\u05d5\u05ea \u05d9\u05d7\u05d9\u05d3\u05d4 \u2014 \u05e9\u05d3\u05d4 \u05d1\u05e2\u05dc\u05d5\u05ea \u05dc\u05d4\u05e8\u05e9\u05d0\u05d5\u05ea",
       "type": "string"
     },
     "total": {
