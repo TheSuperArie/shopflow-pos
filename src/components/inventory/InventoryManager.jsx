@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import {
-  Loader2, Search, LayoutGrid, Table2, Boxes, AlertTriangle, PackageX, Layers, Package, History, X, ScanLine,
+  Loader2, Search, LayoutGrid, Table2, Boxes, AlertTriangle, PackageX, Layers, Package, History, X, ScanLine, FileSpreadsheet,
 } from 'lucide-react';
+import { downloadStockExcel } from '@/lib/stockExport';
 import { useScanDetector } from '@/hooks/useScanDetector';
 import { matchScannedCode, matchCartonCode } from '@/lib/supplyOrders';
 import StockCountDialog, { countFormValid } from '@/components/warehouse/stock/StockCountDialog';
@@ -309,6 +310,20 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
                 <X className="w-4 h-4" /> נקה
               </button>
             )}
+            <button
+              onClick={() => {
+                const catName = new Map((data.categories || []).map(c => [c.id, c.name]));
+                const rows = scanRows.filter(r => r.qty > 0).map(r => ({
+                  ...r,
+                  category_name: catName.get(index.groupById.get(r.variant.group_id)?.category_id) || '',
+                }));
+                const n = downloadStockExcel(rows, { fileTitle: 'מלאי', place: branch?.name || 'החנות' });
+                toast({ title: n ? `ירד קובץ אקסל עם ${n} מידות שיש במלאי` : 'אין כרגע מלאי' });
+              }}
+              title="כל המידות שיש מהן במלאי, מסודר לפי מספר קרטון"
+              className="flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm text-blue-800 hover:bg-blue-100">
+              <FileSpreadsheet className="w-4 h-4" /> ייצוא מלאי לאקסל
+            </button>
             <div className="flex rounded-xl border bg-white p-1 mr-auto">
               <button onClick={() => setView('tiles')} className={`rounded-lg p-2 ${view === 'tiles' ? 'bg-gray-900 text-white' : 'text-gray-500'}`} title="תצוגת ריבועים"><LayoutGrid className="w-4 h-4" /></button>
               <button onClick={() => setView('table')} className={`rounded-lg p-2 ${view === 'table' ? 'bg-gray-900 text-white' : 'text-gray-500'}`} title="תצוגת טבלה"><Table2 className="w-4 h-4" /></button>
