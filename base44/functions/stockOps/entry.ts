@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { actingUser } from '../../shared/acting.ts';
 
 /**
  * All stock changes go through here (warehouse + POS):
@@ -18,7 +19,8 @@ function httpError(status, message) {
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    // An authorized network manager (מנהל רשת מורשה) acts as the network owner
+    const user = await actingUser(base44, await base44.auth.me());
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
     const db = base44.asServiceRole.entities;
