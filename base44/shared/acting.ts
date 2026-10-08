@@ -10,6 +10,13 @@
  */
 const lc = (s) => String(s || '').trim().toLowerCase();
 
+/**
+ * Records a manager created are made by the service account and carry acting_owner = the owner.
+ * ownedBy(email) = "created by <email>" including those; asOwnerRows shows them as the owner's.
+ */
+export const ownedBy = (email) => ({ $or: [{ created_by: email }, { acting_owner: email }] });
+export const asOwnerRows = (rows) => (rows || []).map(r => (r && r.acting_owner ? { ...r, created_by: r.acting_owner } : r));
+
 export async function delegateOwnerOf(base44, email) {
   const me = lc(email);
   if (!me) return null;
