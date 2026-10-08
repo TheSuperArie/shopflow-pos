@@ -9,6 +9,36 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2, Mail, Download, Check, Receipt as ReceiptIcon } from 'lucide-react';
 import { getOrCreateReceipt } from '@/lib/receiptNumbers';
 
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/** The card charge's approval details (charged through Nedarim in the POS), as [label, value] rows. */
+function creditRows(sale) {
+  const d = sale?.credit_details;
+  if (!d && !sale?.credit_ref) return [];
+  const amount = Number(d?.amount ?? d?.Amount ?? sale.credit_amount ?? sale.total);
+  const tash = Number(d?.tashlumim ?? d?.Tashloumim ?? 1);
+  const rows = [
+    ['חיוב אשראי', sale.credit_provider === 'nedarim' ? 'נדרים פלוס' : 'כרטיס אשראי'],
+    ['סכום באשראי', Number.isFinite(amount) ? `₪${amount.toFixed(2)}` : null],
+    ['מספר אישור', sale.credit_ref || d?.Confirmation],
+    ['מספר עסקה', d?.TransactionId || d?.ID],
+    ['כרטיס', d?.LastNum ? `מסתיים ב-${d.LastNum}` : null],
+    ['תשלומים', tash > 1 ? `${tash} תשלומים${d?.FirstTashloum ? ` (ראשון ₪${d.FirstTashloum})` : ''}` : null],
+    ['שעת העסקה', d?.TransactionTime],
+  ];
+  if (sale.cash_amount > 0) rows.splice(1, 0, ['שולם במזומן', `₪${Number(sale.cash_amount).toFixed(2)}`]);
+  return rows.filter(([, v]) => v != null && String(v).trim() !== '');
+}
+
+const creditHtml = (sale, boxStyle, rowStyle) => {
+  const rows = creditRows(sale);
+  if (!rows.length) return '';
+  return `<div style="${boxStyle}">
+    <p style="${rowStyle} font-weight: bold;">פרטי אישור העסקה</p>
+    ${rows.map(([k, v]) => `<p style="${rowStyle}"><strong>${esc(k)}:</strong> ${esc(v)}</p>`).join('')}
+  </div>`;
+};
+
 export default function ReceiptModal({ open, sale, onClose }) {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -74,6 +104,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
               <p style="margin: 5px 0;"><strong>שם לקוח:</strong> ${customerName || 'לקוח'}</p>
               <p style="margin: 5px 0;"><strong>אמצעי תשלום:</strong> ${sale.payment_method}</p>
             </div>
+            ${creditHtml(sale, 'background-color: #FFFDF8; border: 1px solid #E2D8C4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;', 'margin: 4px 0;')}
 
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
               <thead>
@@ -169,6 +200,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
             <p><strong>שם לקוח:</strong> ${customerName || 'לקוח'}</p>
             <p><strong>אמצעי תשלום:</strong> ${sale.payment_method}</p>
           </div>
+          ${creditHtml(sale, 'border: 1px solid #E2D8C4; padding: 14px 20px; border-radius: 8px; margin-bottom: 30px; font-size: 14px;', 'margin: 4px 0;')}
           <table>
             <thead>
               <tr>
@@ -235,6 +267,17 @@ export default function ReceiptModal({ open, sale, onClose }) {
               <div><span className="text-gray-500">תאריך:</span> <strong>{receiptDate}</strong></div>
               <div><span className="text-gray-500">אמצעי תשלום:</span> <strong>{sale.payment_method}</strong></div>
             </div>
+
+            {creditRows(sale).length > 0 && (
+              <div className="mb-4 rounded-lg border border-[#E2D8C4] p-3 text-sm">
+                <p className="font-semibold mb-1">פרטי אישור העסקה</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                  {creditRows(sale).map(([k, v]) => (
+                    <div key={k}><span className="text-gray-500">{k}:</span> <strong>{v}</strong></div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2 mb-4">
               {sale.items?.map((item, idx) => (
