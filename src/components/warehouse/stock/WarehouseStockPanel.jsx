@@ -17,7 +17,8 @@ import WarehouseSizeTiles from './WarehouseSizeTiles';
 import StockCountDialog, { countAfter, countFormValid } from './StockCountDialog';
 import MovementsList from './MovementsList';
 
-const emptyForm = { mode: 'COUNT', value: '', notes: '' };
+// Default = correction (+/-): adds to what's recorded. "ספירת מלאי" (replace) only after a warning in the dialog
+const emptyForm = { mode: 'ADJUST', value: '', notes: '' };
 const LOCAL_CAT = { id: '__wh_local__', name: 'מוצרי מחסן', sort_order: 99999 };
 const PARALLEL = 5;
 const sizeCollator = new Intl.Collator('he', { numeric: true });
@@ -132,9 +133,8 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
   // ── Count window (one size) ──
   const openItem = (item, { add = 0, byScan = false } = {}) => {
     opKey.current = newOpKey();
-    const before = counted[item.key];
-    const value = before != null || add ? String((before || 0) + add) : '';
-    setForm({ ...emptyForm, value });
+    // Opens as an addition — an earlier count of this size is picked up only if the user switches to "ספירת מלאי"
+    setForm({ ...emptyForm, value: add ? String(add) : '' });
     setOpenedByScan(byScan);
     setEditing(item);
   };
