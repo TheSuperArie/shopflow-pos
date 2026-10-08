@@ -17,7 +17,8 @@ import ShortagesView from './ShortagesView';
 import StockHistory from './StockHistory';
 import BulkStockBar from './BulkStockBar';
 
-const emptyForm = { mode: 'COUNT', value: '', notes: '' };
+// Default = correction (+/-): adds to what's recorded. "ספירת מלאי" (replace) only after a warning in the dialog
+const emptyForm = { mode: 'ADJUST', value: '', notes: '' };
 
 /**
  * The inventory screen — one component for both sides:
@@ -134,8 +135,8 @@ export default function InventoryManager({ branch, defaultTab = 'stock', title =
   const rowById = useMemo(() => new Map(scanRows.map(r => [r.key, r])), [scanRows]);
 
   const openCount = (row, { add = 0, byScan = false } = {}) => {
-    const before = counted[row.key];
-    setForm({ ...emptyForm, value: before != null || add ? String((before || 0) + add) : '' });
+    // Opens as an addition — an earlier count of this size is picked up only if the seller switches to "ספירת מלאי"
+    setForm({ ...emptyForm, value: add ? String(add) : '' });
     setOpenedByScan(byScan);
     setEditing(row);
   };
