@@ -3,14 +3,18 @@ import { ownedBy, asOwnerRows } from '../../shared/acting.ts';
 
 /**
  * Feed for the separate public stock site ("מלאי תומכי תורה").
- * Called only server-to-server by that site, with the shared key PUBLIC_FEED_KEY (header x-feed-key).
+ * Called only server-to-server by that site, with a shared key (header x-feed-key). The key lives in
+ * AdminSecret (service-role only), row owner_email = '__public_feed__', field admin_password.
  * It never returns quantities — only a status per item: in / low / out.
  *
- *  { action: 'branches' }                              → active branches of the network PUBLIC_FEED_TENANT
+ *  { action: 'branches' }                              → active branches of the network
  *  { action: 'catalog', branch_id, threshold }         → that branch's catalog (same records its POS shows)
  *                                                        with status per variant and sell price
  */
 const lc = (s) => String(s || '').trim().toLowerCase();
+const FEED_ROW = '__public_feed__';
+// The network shown on the public site: תומכי תורה חדרי ביגוד
+const TENANT = 'tt0534168729@gmail.com';
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 
 const safeEqual = (a, b) => {
@@ -30,16 +34,15 @@ const price = (n) => (Number(n) > 0 ? Math.round(Number(n) * 100) / 100 : null);
 
 export default async function (req) {
   try {
-    const key = Deno.env.get('PUBLIC_FEED_KEY');
-    const tenant = lc(Deno.env.get('PUBLIC_FEED_TENANT'));
-    if (!key || !tenant) throw httpError(503, 'הפיד לא מוגדר');
-    if (!safeEqual(req.headers.get('x-feed-key'), key)) throw httpError(401, 'Unauthorized');
-
     const base44 = createClientFromRequest(req);
     const db = base44.asServiceRole.entities;
-    const body = await req.json().catch(() => ({}));
+    const [cfg] = await db.AdminSecret.filter({ owner_email: FEED_ROW }, 'created_date', 1);
+    const key = cfg?.admin_password;
+    if (!key) throw httpError(503, 'הפיד לא מוגדר');
+    if (!safeEqual(req.headers.get('x-feed-key'), key)) throw httpError(401, 'Unauthorized');
 
-    const branches = (await db.Branch.filter({ tenant_email: tenant }, 'created_date', 100)).filter(isLive);
+    const body = await req.json().catch(() => ({}));
+    const branches = (await db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100)).filter(isLive);
 
     if (body.action === 'branches') {
       return Response.json({
