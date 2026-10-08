@@ -28,6 +28,7 @@ function exportShortages(items, warehouse) {
     compareCartonLocation(a, b) ||
     (a.product_name || '').localeCompare(b.product_name || '', 'he') ||
     sizeCollator.compare(a.variant_label || '', b.variant_label || ''));
+  if (!out.length) return 0;
   const cell = (v) => {
     const s = String(v ?? '');
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
