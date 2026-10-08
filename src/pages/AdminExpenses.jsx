@@ -40,7 +40,8 @@ export default function AdminExpenses() {
   const { data: templates = [] } = useQuery({
     queryKey: ['fixed-templates', 'branch', branchId, user?.email],
     queryFn: async () => (await filterBranchScoped(base44.entities.FixedExpenseTemplate, branchId, user.email, {}, 'name', 500))
-      .filter(t => t.network_level !== true),
+      // the network's own templates (network level, or kept by the network manager for this branch) stay hidden
+      .filter(t => t.network_level !== true && t.network_only !== true),
     enabled: !loadingBranch && !!user,
   });
   const lastUsed = lastUsedByTemplate(expenses);
