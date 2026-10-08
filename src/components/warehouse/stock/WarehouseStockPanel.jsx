@@ -305,7 +305,7 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
         <div className="space-y-4">
           {!readOnly && (
             <p className="flex items-center gap-1.5 w-fit rounded-full bg-green-50 border border-green-200 px-3 py-1 text-sm text-green-700 font-medium">
-              <ScanLine className="w-4 h-4" /> הסורק פעיל — סריקה פותחת ספירה של המידה: כל קרטון שנסרק נספר (חולצה = 1), והכמות שנספרה מחליפה את מה שרשום
+              <ScanLine className="w-4 h-4" /> הסורק פעיל — סריקה פותחת את המידה: כל קרטון שנסרק מתווסף (חולצה = 1) על מה שרשום. להחלפת הכמות — "ספירת מלאי" בחלון
             </p>
           )}
 
