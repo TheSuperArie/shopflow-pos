@@ -82,13 +82,20 @@ export default async function (req) {
         if (!g) continue;
         const stock = Number(v.stock) || 0;
         const dims = v.dimensions && typeof v.dimensions === 'object' ? v.dimensions : {};
-        const label = Object.values(dims).map(x => String(x ?? '').trim()).filter(Boolean).join(' · ');
+        // Dimension name → value (names trimmed), for the variation pickers on the public site
+        const d = {};
+        for (const [k, x] of Object.entries(dims)) {
+          const name = String(k || '').trim(), val = String(x ?? '').trim();
+          if (name && val) d[name] = val;
+        }
+        const label = Object.values(d).join(' · ');
         const p = g.has_uniform_price !== false && Number(g.uniform_sell_price) > 0
           ? price(g.uniform_sell_price) : price(v.sell_price);
         if (!items.has(g.id)) items.set(g.id, []);
         items.get(g.id).push({
           id: v.id,
           l: label,
+          d,
           s: stock <= 0 ? 'out' : stock < threshold ? 'low' : 'in',
           p,
         });
