@@ -23,5 +23,5 @@ export async function applyReturnStock(returnId) {
     }
   }
   const msg = lastError?.response?.data?.error || lastError?.message || 'שגיאה לא ידועה';
-  throw new Error(`ההחזרה נשמרה, אבל עדכון המלאי נכשל: ${msg}. אשר אותה שוב מדף ההחזרות כדי להשלים את עדכון המלאי.`);
+  throw new Error(`ההחזרה נשמרה, אבל עדכון המלאי נכשל (${msg}). לחץ "נסה שוב לעדכן מלאי" — זה לא ייצור החזרה נוספת.`);
 }
