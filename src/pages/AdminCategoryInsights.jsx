@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { fetchAllPages, createdDateBetween } from '@/lib/fetchAllPages';
+import { fetchAllPages, createdDateBetween, ALL } from '@/lib/fetchAllPages';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,7 +100,7 @@ export default function AdminCategoryInsights() {
 
   const { data: flexibleVariants = [] } = useQuery({
     queryKey: ['insights-flexible-variants', ownerEmail, branchId],
-    queryFn: () => fetchPosCatalogRecords(base44.entities.FlexibleVariant, ownerEmail, branchId, '-created_date', 5000),
+    queryFn: () => fetchPosCatalogRecords(base44.entities.FlexibleVariant, ownerEmail, branchId, '-created_date', ALL),
     enabled: !!ownerEmail,
     staleTime: 0,
   });

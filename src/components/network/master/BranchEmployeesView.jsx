@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, LogIn, LogOut, Plus } from 'lucide-react';
 import { format, parseISO, differenceInMinutes } from 'date-fns';
 import { fetchBranchScoped } from '@/lib/branchScope';
+import { ALL } from '@/lib/fetchAllPages';
 import NetworkEmployeeFormModal from './NetworkEmployeeFormModal';
 
 export default function BranchEmployeesView({ branch }) {
@@ -22,7 +23,7 @@ export default function BranchEmployeesView({ branch }) {
 
   const { data: logs = [] } = useQuery({
     queryKey: ['branch-attendance-logs', branch.id],
-    queryFn: () => fetchBranchScoped(base44.entities.AttendanceLog, branch, {}, '-clock_in', 1000),
+    queryFn: () => fetchBranchScoped(base44.entities.AttendanceLog, branch, {}, '-clock_in', ALL),
   });
 
   const duration = (log) => {

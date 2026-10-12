@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { createdDateBetween } from '@/lib/fetchAllPages';
+import { createdDateBetween, fetchAllPages } from '@/lib/fetchAllPages';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -136,14 +136,14 @@ export default function NetworkAdminDashboard({ tenantEmail }) {
 
   const { data: productGroups = [] } = useQuery({
     queryKey: ['product-groups-dashboard', tenantEmail, catalogOwners.length],
-    queryFn: () => base44.entities.ProductGroup.filter({ created_by: { $in: catalogOwners } }, '-created_date', 5000),
+    queryFn: () => fetchAllPages(base44.entities.ProductGroup, { created_by: { $in: catalogOwners } }, '-created_date'),
     enabled: catalogOwners.length > 0,
     staleTime: 120000,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories-dashboard', tenantEmail, catalogOwners.length],
-    queryFn: () => base44.entities.Category.filter({ created_by: { $in: catalogOwners } }, 'sort_order', 2000),
+    queryFn: () => fetchAllPages(base44.entities.Category, { created_by: { $in: catalogOwners } }, 'sort_order'),
     enabled: catalogOwners.length > 0,
     staleTime: 120000,
   });

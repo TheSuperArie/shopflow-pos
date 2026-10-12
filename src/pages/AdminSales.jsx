@@ -15,7 +15,7 @@ const formatIsraelTime = (dateString) => {
 };
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { fetchAllPages, createdDateBetween, minDate, maxDate } from '@/lib/fetchAllPages';
+import { fetchAllPages, createdDateBetween, minDate, maxDate, ALL } from '@/lib/fetchAllPages';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +56,7 @@ export default function AdminSales() {
 
   const { data: categories = [] } = usePosCatalogQuery('categories-all', 'Category', { sort: 'sort_order', limit: 500 });
 
-  const { data: groups = [] } = usePosCatalogQuery('product-groups-all', 'ProductGroup', { sort: 'name', limit: 2000 });
+  const { data: groups = [] } = usePosCatalogQuery('product-groups-all', 'ProductGroup', { sort: 'name', limit: ALL });
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses', user?.email, dateFrom, dateTo],
@@ -94,7 +94,7 @@ export default function AdminSales() {
     { name: 'אשראי', value: creditTotal, count: creditSales.length },
   ].filter(d => d.value > 0);
 
-  const { data: variants = [] } = usePosCatalogQuery('product-variants-all', 'ProductVariant', { sort: 'id', limit: 5000 });
+  const { data: variants = [] } = usePosCatalogQuery('product-variants-all', 'ProductVariant', { sort: 'id', limit: ALL });
 
   // Shared hierarchical category analytics
   const { parentCategoryData, flatCategoryData, COLORS } = useCategorySalesAnalytics({
