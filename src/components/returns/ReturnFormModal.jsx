@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,11 +41,21 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
 
   const { data: variants = [] } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
+  // A return already saved in this dialog (its stock update failed) — "try again" only finishes it,
+  // it never creates a second return / credit / expense
+  const saved = useRef(null);
+  const [savedId, setSavedId] = useState(null);
+
   const createReturnMutation = useMutation({
     mutationFn: async (data) => {
       const totalAmount = selectedItems.reduce((sum, item) => 
         sum + (item.sell_price * item.quantity), 0
       );
+
+      if (saved.current) {
+        await applyReturnStock(saved.current.id);
+        return;
+      }
 
       // Create return with approved status
       const returnRecord = await base44.entities.Return.create({
@@ -62,9 +72,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           : {}),
       });
 
-      // Stock: returned items go back, exchange items leave — on the server, once per return
-      // (a double click / retry / second computer never applies it twice)
-      await applyReturnStock(returnRecord.id);
+      saved.current = { id: returnRecord.id };
 
       // Create credit if refund method is זיכוי
       if (data.refund_method === 'זיכוי') {
@@ -94,6 +102,14 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           branch_id: branchId || null,
         });
       }
+
+      // Stock: returned items go back, exchange items leave — on the server, once per return
+      // (a double click / retry / second computer never applies it twice)
+      await applyReturnStock(returnRecord.id);
+    },
+    onError: (e) => {
+      if (saved.current) setSavedId(saved.current.id);
+      toast({ title: 'ההחזרה לא הושלמה', description: e?.message || 'נסו שוב', variant: 'destructive' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns'] });
@@ -123,6 +139,8 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
     setSearchQuery('');
     setExchangeSearchQuery('');
     setLinked(null);
+    saved.current = null;
+    setSavedId(null);
     onClose();
   };
 
@@ -475,6 +493,8 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           >
             {createReturnMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
+            ) : savedId ? (
+              'נסה שוב לעדכן מלאי'
             ) : (
               'יצירת החזרה'
             )}
