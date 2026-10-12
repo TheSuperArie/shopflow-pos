@@ -13,6 +13,8 @@ import { useWarehouseFree } from '@/hooks/useWarehouseFree';
 import SupplyOrderBuilder from './SupplyOrderBuilder';
 
 const collator = new Intl.Collator('he', { numeric: true });
+// Largest quantity a person would type for one size — anything bigger is a barcode typed into the box
+const MAX_TYPED_QTY = 9999;
 
 /**
  * Filling a supply order with the same square tiles as the inventory screen.
