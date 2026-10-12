@@ -86,14 +86,14 @@ export default function AdminCategoryInsights() {
 
   const { data: groups = [] } = useQuery({
     queryKey: ['insights-groups', ownerEmail, branchId],
-    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductGroup, ownerEmail, branchId, undefined, ALL),
+    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductGroup, ownerEmail, branchId, '-created_date', ALL),
     enabled: !!ownerEmail,
     staleTime: 0,
   });
 
   const { data: productVariants = [] } = useQuery({
     queryKey: ['insights-variants', ownerEmail, branchId],
-    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductVariant, ownerEmail, branchId, undefined, ALL),
+    queryFn: () => fetchPosCatalogRecords(base44.entities.ProductVariant, ownerEmail, branchId, '-created_date', ALL),
     enabled: !!ownerEmail,
     staleTime: 0,
   });
