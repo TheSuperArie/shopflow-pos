@@ -66,6 +66,14 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
   // What the qty box / search box held when a key burst began — a scan typed into them is undone
   const snapshot = useRef({ value: '', search: '' });
   const scanBusy = useRef(false); // a scan is saving the previous size — the next one waits
+  // Every stock write from this screen runs one after the other (count window, scans, bottom bar),
+  // so two saves of the same size never read the same old quantity and overwrite each other
+  const writeQueue = useRef(Promise.resolve());
+  const enqueue = (fn) => {
+    const run = writeQueue.current.then(fn, fn);
+    writeQueue.current = run.catch(() => {});
+    return run;
+  };
 
   // ── Tiles index: network catalog groups + one pseudo product per warehouse-only item ──
   const { index, itemByKey } = useMemo(() => {
@@ -128,12 +136,13 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
 
   const save = async ({ type, newQty, notes }, target = editing) => {
     try {
-      await stockOps('warehouseCount', {
-        warehouse_id: warehouse.id, op_key: opKey.current, type,
+      const key = opKey.current;
+      await enqueue(() => stockOps('warehouseCount', {
+        warehouse_id: warehouse.id, op_key: key, type,
         value: type === 'ADJUST' ? newQty - target.qty : newQty,
         item: itemPayload(target),
         meta: { notes, performed_by: 'מנהל המחסן' },
-      });
+      }));
       refresh();
       if (type === 'COUNT' || counted[target.key] != null) setCounted(c => ({ ...c, [target.key]: newQty }));
       toast({ title: `המלאי עודכן${target.variant_label ? ` · ${target.variant_label}` : ''} → ${newQty}` });
@@ -155,13 +164,14 @@ export default function WarehouseStockPanel({ warehouse, readOnly = false }) {
     let failed = 0;
     for (let i = 0; i < list.length; i += PARALLEL) {
       const chunk = list.slice(i, i + PARALLEL);
-      const results = await Promise.allSettled(chunk.map(t => stockOps('warehouseCount', {
+      // Different sizes in one chunk run together; the chunk waits for any open single-size save
+      const results = await enqueue(() => Promise.allSettled(chunk.map(t => stockOps('warehouseCount', {
         warehouse_id: warehouse.id, op_key: newOpKey(),
         type: mode === 'add' ? 'ADJUST' : 'COUNT',
         value: Number(value),
         item: itemPayload(t),
         meta: { notes: mode === 'add' ? 'הוספה לכמה מידות יחד' : 'קביעת כמות לכמה מידות יחד', performed_by: 'מנהל המחסן' },
-      })));
+      }))));
       failed += results.filter(r => r.status === 'rejected').length;
       finished += chunk.length;
       setProgress(Math.round((finished / list.length) * 100));
