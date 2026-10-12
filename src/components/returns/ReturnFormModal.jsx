@@ -13,6 +13,7 @@ import { Loader2, Trash2, Link2, CreditCard, X } from 'lucide-react';
 import { usePosCatalogQuery } from '@/hooks/usePosCatalog';
 import { variantLabel } from '@/lib/supplyOrders';
 import SaleLookup, { originalSaleSnapshot, formatSaleDate } from './SaleLookup';
+import { applyReturnStock } from '@/lib/returnStock';
 
 const itemKey = (i) => i.variant_id || `name:${i.product_name}`;
 const cleanItem = ({ max_quantity: _max, ...rest }) => rest;
@@ -61,39 +62,9 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           : {}),
       });
 
-      // Update inventory: returned items go back to stock
-      const touchedIds = [
-        ...selectedItems.map(i => i.variant_id),
-        ...exchangeItems.map(i => i.variant_id),
-      ].filter(Boolean);
-      const variantsById = new Map(
-        (touchedIds.length
-          ? await base44.entities.ProductVariant.filter({ id: { $in: touchedIds } })
-          : []
-        ).map(v => [v.id, v])
-      );
-      for (const item of selectedItems) {
-        const variant = variantsById.get(item.variant_id);
-        if (variant) {
-          variant.stock = (variant.stock || 0) + item.quantity;
-          await base44.entities.ProductVariant.update(variant.id, {
-            stock: variant.stock,
-          });
-        }
-      }
-
-      // Exchange: replacement items leave stock
-      if (data.refund_method === 'החלפה') {
-        for (const item of exchangeItems) {
-          const variant = variantsById.get(item.variant_id);
-          if (variant) {
-            variant.stock = Math.max(0, (variant.stock || 0) - item.quantity);
-            await base44.entities.ProductVariant.update(variant.id, {
-              stock: variant.stock,
-            });
-          }
-        }
-      }
+      // Stock: returned items go back, exchange items leave — on the server, once per return
+      // (a double click / retry / second computer never applies it twice)
+      await applyReturnStock(returnRecord.id);
 
       // Create credit if refund method is זיכוי
       if (data.refund_method === 'זיכוי') {
