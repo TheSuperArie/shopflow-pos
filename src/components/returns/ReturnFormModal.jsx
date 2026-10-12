@@ -41,8 +41,8 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
 
   const { data: variants = [] } = usePosCatalogQuery('product-variants', 'ProductVariant');
 
-  // A return already saved in this dialog (its stock update failed) — "try again" only finishes it,
-  // it never creates a second return / credit / expense
+  // A return already saved in this dialog (a later step failed) — "try again" only finishes what is
+  // left, it never creates a second return / credit / expense
   const saved = useRef(null);
   const [savedId, setSavedId] = useState(null);
 
@@ -52,12 +52,8 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
         sum + (item.sell_price * item.quantity), 0
       );
 
-      if (saved.current) {
-        await applyReturnStock(saved.current.id);
-        return;
-      }
-
-      // Create return with approved status
+      // Create return with approved status (once — a retry continues the one already saved)
+      if (!saved.current) {
       const returnRecord = await base44.entities.Return.create({
         ...data,
         branch_id: branchId || null,
@@ -72,8 +68,11 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           : {}),
       });
 
-      saved.current = { id: returnRecord.id };
+      saved.current = { id: returnRecord.id, extrasDone: false };
+      }
+      const returnId = saved.current.id;
 
+      if (!saved.current.extrasDone) {
       // Create credit if refund method is זיכוי
       if (data.refund_method === 'זיכוי') {
         const expiryDate = new Date();
@@ -85,7 +84,7 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           customer_phone: data.customer_phone,
           amount: totalAmount,
           balance: totalAmount,
-          return_id: returnRecord.id,
+          return_id: returnId,
           expiry_date: format(expiryDate, 'yyyy-MM-dd'),
           status: 'פעיל',
         });
@@ -102,10 +101,12 @@ export default function ReturnFormModal({ open, onClose, branchId = null }) {
           branch_id: branchId || null,
         });
       }
+      saved.current.extrasDone = true;
+      }
 
       // Stock: returned items go back, exchange items leave — on the server, once per return
       // (a double click / retry / second computer never applies it twice)
-      await applyReturnStock(returnRecord.id);
+      await applyReturnStock(returnId);
     },
     onError: (e) => {
       if (saved.current) setSavedId(saved.current.id);
