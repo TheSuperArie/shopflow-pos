@@ -9,6 +9,7 @@ import { RotateCcw, Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide
 import { format } from 'date-fns';
 import { parseServerDate } from '@/lib/serverDate';
 import ReturnFormModal from '@/components/returns/ReturnFormModal';
+import { applyReturnStock } from '@/lib/returnStock';
 import ReturnDetailsModal from '@/components/returns/ReturnDetailsModal';
 import { useCurrentBranch, filterBranchScoped } from '@/hooks/useCurrentBranch';
 import { ALL } from '@/lib/fetchAllPages';
@@ -43,18 +44,8 @@ export default function AdminReturns() {
         processed_by: 'admin',
       });
 
-      const variantIds = returnData.items.map(i => i.variant_id).filter(Boolean);
-      const variants = variantIds.length
-        ? await base44.entities.ProductVariant.filter({ id: { $in: variantIds } })
-        : [];
-      for (const item of returnData.items) {
-        const variant = variants.find(v => v.id === item.variant_id);
-        if (variant) {
-          await base44.entities.ProductVariant.update(variant.id, {
-            stock: (variant.stock || 0) + item.quantity,
-          });
-        }
-      }
+      // Stock on the server, once per return (safe to retry)
+      await applyReturnStock(returnId);
 
       if (returnData.refund_method === 'זיכוי') {
         const expiryDate = new Date();
