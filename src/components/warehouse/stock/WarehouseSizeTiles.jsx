@@ -12,7 +12,7 @@ export default function WarehouseSizeTiles({ items, selected, onToggle, onEdit, 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
       {items.map(it => {
-        const isSel = selected.has(it.key);
+        const isSel = !readOnly && selected.has(it.key);
         const out = it.qty <= 0;
         const tone = out ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white';
         return (
