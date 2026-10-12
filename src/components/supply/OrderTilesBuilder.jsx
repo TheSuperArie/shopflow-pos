@@ -364,7 +364,11 @@ function SizeTile({ v, threshold, qty, setQty, isSel, onToggle, req, flash, whFr
 
   const commit = () => {
     setEditing(false);
-    if (val.trim() !== '') setQty(v.id, val);
+    if (val.trim() === '') return;
+    // A barcode scanned while the box was open types a huge number — never take that as a quantity
+    const n = parseInt(val, 10);
+    if (Number.isNaN(n) || n > MAX_TYPED_QTY) return;
+    setQty(v.id, val);
   };
 
   // Ordered more than the warehouse has free → red (a warning only; the order still goes through)
@@ -451,7 +455,7 @@ function OrderBulkBar({ count, onApply, onClear }) {
   if (count === 0) return null;
 
   const n = parseInt(value, 10);
-  const valid = value !== '' && !Number.isNaN(n) && n >= 0 && (mode === 'set' || n > 0);
+  const valid = value !== '' && !Number.isNaN(n) && n >= 0 && n <= MAX_TYPED_QTY && (mode === 'set' || n > 0);
   const run = () => {
     if (!valid) return;
     onApply(mode, n);
