@@ -1,3 +1,5 @@
+import { filterUpTo } from '@/lib/fetchAllPages';
+
 /**
  * The catalog a branch POS shows = records the station account created itself
  * + records the network master created for this branch (branch_id = branch.id).
@@ -16,10 +18,11 @@ export async function fetchBranchCatalogRecords(entity, branch, sort) {
   return dedupe((await Promise.all(requests)).flat());
 }
 
-/** POS side: this account's own records + records the network master added for its branch. */
+/** POS side: this account's own records + records the network master added for its branch.
+ *  limit === ALL reads every page (reports), never cut at a fixed number. */
 export async function fetchPosCatalogRecords(entity, userEmail, branchId, sort, limit) {
-  const requests = [entity.filter({ created_by: userEmail }, sort, limit)];
-  if (branchId) requests.push(entity.filter({ branch_id: branchId }, sort, limit));
+  const requests = [filterUpTo(entity, { created_by: userEmail }, sort, limit)];
+  if (branchId) requests.push(filterUpTo(entity, { branch_id: branchId }, sort, limit));
   return dedupe((await Promise.all(requests)).flat());
 }
 
