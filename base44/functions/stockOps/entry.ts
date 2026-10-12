@@ -320,6 +320,47 @@ export default async function (req) {
       return Response.json({ ok: true });
     }
 
+    // ── Returns (and exchanges) ──
+    // Returned items go back to the branch stock; in an exchange the replacement items leave it.
+    // One key per return, every line recorded once applied — a double click / retry never applies twice.
+    if (action === 'returnStock') {
+      const ret = await first(db.Return, { id: body.return_id });
+      if (!ret) throw httpError(404, 'ההחזרה לא נמצאה');
+      if (!(ret.created_by_id === user.id || isMe(ret.station_email) || isMe(ret.tenant_email))) throw httpError(403, 'אין הרשאה להחזרה הזו');
+      const key = `return:${ret.id}`;
+      let op = await getOp(key);
+      if (op?.status === 'DONE') return Response.json({ ok: true, already: true });
+      if (ret.status !== 'אושר') throw httpError(409, 'ההחזרה עוד לא אושרה');
+      const retScope = ret.branch_id ? await branchScope(ret.branch_id) : null;
+      const sameEmail = (a, b) => !!a && !!b && String(a).toLowerCase() === String(b).toLowerCase();
+      const inScope = (v) => !!v && (retScope
+        ? (v.branch_id === retScope.branch_id ||
+           (!v.branch_id && (sameEmail(v.station_email, retScope.station_email) || sameEmail(v.created_by, retScope.station_email))))
+        : (v.created_by_id === user.id || isMe(v.station_email) || isMe(v.tenant_email)));
+      const lines = [
+        ...(ret.items || []).map((it, i) => ({ k: `in:${i}`, variant_id: it?.variant_id, delta: Math.abs(Number(it?.quantity || 0)) })),
+        ...(ret.refund_method === 'החלפה' ? (ret.exchange_items || []) : [])
+          .map((it, i) => ({ k: `out:${i}`, variant_id: it?.variant_id, delta: -Math.abs(Number(it?.quantity || 0)) })),
+      ];
+      if (!op) op = await claimOp(key, 'RETURN', { tenant_email: ret.tenant_email || null, station_email: ret.station_email || user.email }, { return_id: ret.id });
+      for (const l of lines) {
+        if (isApplied(op, l.k)) continue;
+        let change = 0;
+        if (l.variant_id && l.delta) {
+          const v = await first(db.ProductVariant, { id: l.variant_id });
+          if (inScope(v)) {
+            const before = Number(v.stock || 0);
+            const after = Math.max(0, before + l.delta); // never below 0
+            change = after - before;
+            if (after !== before) await db.ProductVariant.update(v.id, { stock: after });
+          }
+        }
+        await markLine(op, l.k, change);
+      }
+      await finishOp(op);
+      return Response.json({ ok: true });
+    }
+
     // ── Branch receiving (scan of the delivery sheet) ──
     // Adds what arrived to the branch stock (the stock the POS sells from). Runs in rounds of up to
     // max_lines lines; every line is recorded once added, so a retry / second device never adds twice.
