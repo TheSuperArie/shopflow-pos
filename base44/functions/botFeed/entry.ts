@@ -109,7 +109,7 @@ export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const db = base44.asServiceRole.entities;
-    const [cfg] = await db.AdminSecret.filter({ owner_email: FEED_ROW }, 'created_date', 1);
+    const [cfg] = await tag('AdminSecret', db.AdminSecret.filter({ owner_email: FEED_ROW }, 'created_date', 1));
     const key = cfg?.admin_password;
     if (!key) throw httpError(503, 'הפיד לא מוגדר');
     if (!safeEqual(req.headers.get('x-bot-key'), key)) throw httpError(401, 'Unauthorized');
@@ -117,7 +117,7 @@ export default async function (req) {
     const body = await req.json().catch(() => ({}));
     const action = body.action;
 
-    const allBranches = await db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100);
+    const allBranches = await tag('Branch', db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100));
     const branches = allBranches.filter(isLive);
     const branchName = new Map(allBranches.map(b => [b.id, String(b.name || '').trim()]));
     const pickBranches = (wanted) => {
