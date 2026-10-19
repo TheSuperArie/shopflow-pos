@@ -73,12 +73,18 @@ const range = (body, defDays = 0) => {
   return { from, to, q, inRange: (v) => { const k = dayKey(v); return !!k && k >= from && k <= to; } };
 };
 
+// Pages are read 4 at a time (a busy month is several thousand sales)
 async function fetchAll(entity, query, sort = undefined) {
   const rows = [];
-  for (let skip = 0; skip < MAX_ROWS; skip += PAGE) {
-    const page = await entity.filter(query, sort, PAGE, skip);
-    rows.push(...page);
-    if (page.length < PAGE) return { rows: dedupe(rows), partial: false };
+  let skip = 0;
+  while (skip < MAX_ROWS) {
+    const skips = [];
+    for (let i = 0; i < 4 && skip < MAX_ROWS; i++, skip += PAGE) skips.push(skip);
+    const pages = await Promise.all(skips.map(s => entity.filter(query, sort, PAGE, s)));
+    for (const page of pages) {
+      rows.push(...page);
+      if (page.length < PAGE) return { rows: dedupe(rows), partial: false };
+    }
   }
   return { rows: dedupe(rows), partial: true };
 }
