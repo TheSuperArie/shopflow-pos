@@ -40,6 +40,7 @@ const dedupe = (rows) => {
   const seen = new Set();
   return rows.filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)));
 };
+const tag = async (label, p) => { try { return await p; } catch (e) { throw Object.assign(new Error(`${label}: ${e?.message || e}`), { status: e?.status || e?.response?.status || 500 }); } };
 const round = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const num = (n) => Number(n) || 0;
 
@@ -131,7 +132,7 @@ export default async function (req) {
       if (!found.length) throw httpError(404, `סניף "${wanted}" לא נמצא. הסניפים: ${branches.map(b => b.name).join(', ')}`);
       return found;
     };
-    const warehousesOf = async () => (await db.Warehouse.filter({ tenant_email: TENANT }, undefined, 20))
+    const warehousesOf = async () => (await tag('Warehouse', db.Warehouse.filter({ tenant_email: TENANT }, undefined, 20)))
       .filter(w => w.status === 'ACTIVE' || (!w.status && w.is_active !== false));
 
     // ---------------------------------------------------------------- overview
@@ -225,8 +226,8 @@ export default async function (req) {
       const out = [];
       for (const w of warehouses) {
         const [stock, reserved] = await Promise.all([
-          fetchAll(db.WarehouseStock, { warehouse_id: w.id }),
-          fetchAll(db.StockReservation, { scope: 'WAREHOUSE', warehouse_id: w.id }),
+          tag('WarehouseStock', fetchAll(db.WarehouseStock, { warehouse_id: w.id })),
+          tag('StockReservation', fetchAll(db.StockReservation, { scope: 'WAREHOUSE', warehouse_id: w.id })),
         ]);
         const res = new Map();
         for (const r of reserved.rows) {
