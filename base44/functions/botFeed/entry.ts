@@ -22,8 +22,8 @@ const ownedBy = (email) => ({ $or: [{ created_by: email }, { acting_owner: email
 const asOwnerRows = (rows) => (rows || []).map(r => (r && r.acting_owner ? { ...r, created_by: r.acting_owner } : r));
 const FEED_ROW = '__bot_feed__';
 const TENANT = 'tt0534168729@gmail.com';
-// Test branches the bot never sees ("אריה נסיון")
-const HIDDEN_BRANCHES = new Set(['6a9eeb72c982cf89d9f7a969']);
+// Branches the bot never sees: "אריה נסיון" (test), "סניף בני ברק שמרעל סוקולובסקי"
+const HIDDEN_BRANCHES = new Set(['6a9eeb72c982cf89d9f7a969', '6a9ee763ddf2cfc53a97d44f']);
 const TZ = 'Asia/Jerusalem';
 const DAY_MS = 86400000;
 const PAGE = 5000;
