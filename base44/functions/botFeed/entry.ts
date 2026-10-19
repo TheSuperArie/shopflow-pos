@@ -24,7 +24,7 @@ const FEED_ROW = '__bot_feed__';
 const TENANT = 'tt0534168729@gmail.com';
 const TZ = 'Asia/Jerusalem';
 const DAY_MS = 86400000;
-const PAGE = 1000;
+const PAGE = 5000;
 const MAX_ROWS = 20000;
 const httpError = (status, message) => Object.assign(new Error(message), { status });
 
@@ -74,18 +74,13 @@ const range = (body, defDays = 0) => {
   return { from, to, q, inRange: (v) => { const k = dayKey(v); return !!k && k >= from && k <= to; } };
 };
 
-// Pages are read 4 at a time (a busy month is several thousand sales)
+// Few, large pages, one after another — keeps the number of requests per call low
 async function fetchAll(entity, query, sort = undefined) {
   const rows = [];
-  let skip = 0;
-  while (skip < MAX_ROWS) {
-    const skips = [];
-    for (let i = 0; i < 4 && skip < MAX_ROWS; i++, skip += PAGE) skips.push(skip);
-    const pages = await Promise.all(skips.map(s => entity.filter(query, sort, PAGE, s)));
-    for (const page of pages) {
-      rows.push(...page);
-      if (page.length < PAGE) return { rows: dedupe(rows), partial: false };
-    }
+  for (let skip = 0; skip < MAX_ROWS; skip += PAGE) {
+    const page = await entity.filter(query, sort, PAGE, skip);
+    rows.push(...page);
+    if (page.length < PAGE) return { rows: dedupe(rows), partial: false };
   }
   return { rows: dedupe(rows), partial: true };
 }
@@ -151,7 +146,7 @@ export default async function (req) {
       const r = range(body, 0);
       const chosen = pickBranches(body.branch);
       const ids = chosen.map(b => b.id);
-      const { rows, partial } = await fetchAll(db.Sale, { created_date: r.q, branch_id: { $in: ids } }, '-created_date');
+      const { rows, partial } = await tag('Sale', fetchAll(db.Sale, { created_date: r.q, branch_id: { $in: ids } }, '-created_date'));
       const sales = rows.filter(s => r.inRange(s.created_date));
 
       const cashOf = (s) => s.payment_method === 'מזומן' ? num(s.total) : s.payment_method === 'מזומן + אשראי' ? num(s.cash_amount) : 0;
@@ -188,11 +183,11 @@ export default async function (req) {
       }
       // size / variation labels + category for the top items
       const top = [...items.values()].sort((a, b) => b.qty - a.qty).slice(0, 40);
-      const vrows = await byIds(db.ProductVariant, top.map(t => t.variant_id));
+      const vrows = await tag('ProductVariant', byIds(db.ProductVariant, top.map(t => t.variant_id)));
       const vmap = new Map(vrows.map(v => [v.id, v]));
-      const groups = await byIds(db.ProductGroup, vrows.map(v => v.group_id));
+      const groups = await tag('ProductGroup', byIds(db.ProductGroup, vrows.map(v => v.group_id)));
       const gmap = new Map(groups.map(g => [g.id, g]));
-      const cats = await byIds(db.Category, groups.map(g => g.category_id));
+      const cats = await tag('Category', byIds(db.Category, groups.map(g => g.category_id)));
       const cmap = new Map(cats.map(c => [c.id, String(c.name || '').trim()]));
       const fin = (t) => ({ ...t, revenue: round(t.revenue), cash: round(t.cash), credit: round(t.credit) });
 
