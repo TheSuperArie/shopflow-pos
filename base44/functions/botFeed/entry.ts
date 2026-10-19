@@ -73,7 +73,7 @@ const range = (body, defDays = 0) => {
   return { from, to, q, inRange: (v) => { const k = dayKey(v); return !!k && k >= from && k <= to; } };
 };
 
-async function fetchAll(entity, query, sort) {
+async function fetchAll(entity, query, sort = undefined) {
   const rows = [];
   for (let skip = 0; skip < MAX_ROWS; skip += PAGE) {
     const page = await entity.filter(query, sort, PAGE, skip);
@@ -253,7 +253,7 @@ export default async function (req) {
       const result = [];
       for (const branch of chosen) {
         const station = lc(branch.station_email);
-        const load = async (entity, sort) => {
+        const load = async (entity, sort = undefined) => {
           const [own, stamped] = await Promise.all([
             fetchAll(entity, ownedBy(station), sort),
             fetchAll(entity, { branch_id: branch.id }, sort),
@@ -262,7 +262,7 @@ export default async function (req) {
         };
         const [categories, groups, variants] = await Promise.all([load(db.Category), load(db.ProductGroup), load(db.ProductVariant)]);
         const cat = new Map(categories.map(c => [c.id, String(c.name || '').trim()]));
-        const grp = new Map(groups.filter(g => g.is_active !== false).map(g => [g.id, g]));
+        const grp = new Map<string, any>(groups.filter(g => g.is_active !== false).map(g => [g.id, g]));
         let units = 0, sizes = 0, out = 0;
         const rows = [];
         for (const v of variants) {
