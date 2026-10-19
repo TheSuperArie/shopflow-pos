@@ -22,6 +22,8 @@ const ownedBy = (email) => ({ $or: [{ created_by: email }, { acting_owner: email
 const asOwnerRows = (rows) => (rows || []).map(r => (r && r.acting_owner ? { ...r, created_by: r.acting_owner } : r));
 const FEED_ROW = '__bot_feed__';
 const TENANT = 'tt0534168729@gmail.com';
+// Test branches the bot never sees ("אריה נסיון")
+const HIDDEN_BRANCHES = new Set(['6a9eeb72c982cf89d9f7a969']);
 const TZ = 'Asia/Jerusalem';
 const DAY_MS = 86400000;
 const PAGE = 5000;
@@ -133,7 +135,8 @@ export default async function (req) {
     const body = await req.json().catch(() => ({}));
     const action = body.action;
 
-    const allBranches = await tag('Branch', db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100));
+    const allBranches = (await tag('Branch', db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100)))
+      .filter(b => !HIDDEN_BRANCHES.has(b.id));
     const branches = allBranches.filter(isLive);
     const branchName = new Map(allBranches.map(b => [b.id, String(b.name || '').trim()]));
     const pickBranches = (wanted) => {
