@@ -41,6 +41,22 @@ const dedupe = (rows) => {
   return rows.filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)));
 };
 const tag = async (label, p) => { try { return await p; } catch (e) { throw Object.assign(new Error(`${label}: ${e?.message || e}`), { status: e?.status || e?.response?.status || 500 }); } };
+// Base44 sometimes rejects a service-role read for a moment (403 "...support panel...", 429, 5xx).
+// Every read is retried a few times with a short pause before giving up.
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const transient = (e) => /support panel/i.test(String(e?.message || ''))
+  || [403, 429, 500, 502, 503, 504].includes(Number(e?.status || e?.response?.status));
+const retry = async (fn) => {
+  for (let i = 0; ; i++) {
+    try { return await fn(); } catch (e) {
+      if (i >= 5 || !transient(e)) throw e;
+      await sleep(300 * (i + 1));
+    }
+  }
+};
+const readOnlyDb = (raw) => new Proxy({}, {
+  get: (_, name) => ({ filter: (...args) => retry(() => raw[name].filter(...args)) }),
+});
 const round = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const num = (n) => Number(n) || 0;
 
@@ -108,7 +124,7 @@ const matches = (text, query) => {
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    const db = base44.asServiceRole.entities;
+    const db: any = readOnlyDb(base44.asServiceRole.entities); // read-only: only .filter exists
     const [cfg] = await tag('AdminSecret', db.AdminSecret.filter({ owner_email: FEED_ROW }, 'created_date', 1));
     const key = cfg?.admin_password;
     if (!key) throw httpError(503, 'הפיד לא מוגדר');
