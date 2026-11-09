@@ -1,0 +1,106 @@
+# Security gate — runs on every push and pull request (and weekly, to catch new CVEs).
+# Each job maps to OWASP Top 10 / OWASP API Top 10 risks; any failing job marks the commit red.
+#
+#   policy        A01 / API1 BOLA, API5 — entity access rules (RLS), function auth, link trust
+#   bola-tests    A01 / API1 BOLA, A07  — attack replays against the real backend functions
+#   dependencies  A06                   — known-vulnerable npm packages
+#   secrets       A02 / A05             — credentials committed to git
+#   sast          A03 XSS/injection, A02, A05, A08, A10 — Semgrep OWASP rules on new code
+name: Security
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '27 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: Access-control policy (RLS + functions)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check security policy
+        run: node security/check-policy.mjs
+
+  bola-tests:
+    name: BOLA / auth regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Replay attacks against the backend functions
+        run: deno test --no-check --config security/deno.json --allow-env --allow-read security/tests
+
+  dependencies:
+    name: Vulnerable dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Shipped code — no high / critical advisories
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build tooling — no critical advisories
+        run: npm audit --audit-level=critical
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan the full git history
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.21.2 \
+            detect --source /repo --redact --no-banner --verbose
+
+  sast:
+    name: SAST (Semgrep — OWASP Top 10)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: semgrep/semgrep:1.95.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          CONFIGS="--config p/owasp-top-ten --config p/javascript --config p/typescript --config p/react --config p/secrets"
+          BASE=""
+          if [ "$EVENT" = "pull_request" ]; then BASE="$PR_BASE"; fi
+          if [ "$EVENT" = "push" ] && [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != "0000000000000000000000000000000000000000" ]; then BASE="$PUSH_BEFORE"; fi
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "Diff-aware scan: failing only on findings introduced since $BASE"
+            semgrep scan $CONFIGS --metrics=off --error --baseline-commit "$BASE"
+          else
+            echo "Full scan (report only — no baseline commit for this run)"
+            semgrep scan $CONFIGS --metrics=off
+          fi

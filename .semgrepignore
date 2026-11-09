@@ -1,0 +1,7 @@
+node_modules/
+dist/
+package-lock.json
+# generated UI kit (shadcn)
+src/components/ui/
+# in-memory SDK stand-in used only by the security tests
+security/mock/

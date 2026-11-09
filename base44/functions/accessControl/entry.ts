@@ -66,7 +66,7 @@ export default async function (req: Request): Promise<Response> {
     }
 
     // ── Developer actions — require the developer code (rate limited) ────
-    const guard = await guardDevCode(base44, user.email, code);
+    const guard = await guardDevCode(base44, user, code);
     if (!guard.ok) return Response.json({ error: guard.message }, { status: guard.status });
     const devRecord = guard.record;
 
@@ -92,6 +92,7 @@ export default async function (req: Request): Promise<Response> {
 
     if (action === 'decide') {
       const { request_id, decision } = body; // decision: approved | rejected
+      if (!['approved', 'rejected'].includes(decision)) return Response.json({ error: 'החלטה לא תקינה' }, { status: 400 });
       const request = await sr.AccessRequest.list('-created_date', 500).then(rs => rs.find(r => r.id === request_id));
       if (!request) return Response.json({ error: 'בקשה לא נמצאה' }, { status: 404 });
       await sr.AccessRequest.update(request.id, { status: decision, decided_at: new Date().toISOString() });
@@ -101,6 +102,8 @@ export default async function (req: Request): Promise<Response> {
 
     if (action === 'setAccountStatus') {
       const { email, status } = body; // approved | blocked
+      if (!['approved', 'blocked'].includes(status)) return Response.json({ error: 'סטטוס לא תקין' }, { status: 400 });
+      if (!email || typeof email !== 'string') return Response.json({ error: 'חסר מייל' }, { status: 400 });
       const updated = await setUserStatus(base44, email, status);
       const reqs = await sr.AccessRequest.filter({ account_email: email }, '-created_date', 1);
       if (reqs[0]) await sr.AccessRequest.update(reqs[0].id, { status, decided_at: new Date().toISOString() });
@@ -109,6 +112,7 @@ export default async function (req: Request): Promise<Response> {
 
     if (action === 'decideInvite') {
       const { branch_id, decision } = body; // APPROVED | REJECTED
+      if (!['APPROVED', 'REJECTED'].includes(decision)) return Response.json({ error: 'החלטה לא תקינה' }, { status: 400 });
       const branches = await sr.Branch.filter({ system_approval: 'PENDING_SYSTEM' }, '-created_date', 200);
       const branch = branches.find(b => b.id === branch_id);
       if (!branch) return Response.json({ error: 'הצעה לא נמצאה' }, { status: 404 });
@@ -131,6 +135,7 @@ export default async function (req: Request): Promise<Response> {
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('accessControl', error);
+    return Response.json({ error: 'Server error' }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { actingUser } from '../../shared/acting.ts';
+import { createTrust, safeEqual } from '../../shared/trust.ts';
 
 /**
  * Admin codes (branch manager code + network master code) live only on the server, in
@@ -30,6 +31,36 @@ const clean = (v) => {
   return s.startsWith(MOVED) ? '' : s;
 };
 
+/**
+ * Security: AppSettings is readable by every account. Codes still sitting there (accounts that
+ * haven't opened the admin screen since the codes moved to AdminSecret) are moved once per server
+ * instance, for everyone — exactly like loadSecret does for the caller.
+ */
+let sweep = null;
+const sweepLegacyCodes = (db) => {
+  if (!sweep) {
+    sweep = (async () => {
+      const rows = await db.AppSettings.list('created_date', 5000);
+      const leaking = rows.filter(r => clean(r.admin_password) || clean(r.network_admin_password));
+      const done = new Set();
+      for (const row of leaking) {
+        const owner = String(row.created_by || '').trim().toLowerCase();
+        if (owner && !done.has(owner)) {
+          done.add(owner);
+          const [existing] = await db.AdminSecret.filter({ owner_email: owner }, 'created_date', 1);
+          if (!existing) {
+            await db.AdminSecret.create({
+              owner_email: owner, admin_password: clean(row.admin_password), network_admin_password: clean(row.network_admin_password), failed_count: 0,
+            });
+          }
+        }
+        await db.AppSettings.update(row.id, { admin_password: `${MOVED}${crypto.randomUUID()}`, network_admin_password: `${MOVED}${crypto.randomUUID()}` });
+      }
+    })().catch((e) => { sweep = null; console.error('adminAuth sweep', e); });
+  }
+  return sweep;
+};
+
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -39,7 +70,9 @@ export default async function (req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
     const db = base44.asServiceRole.entities;
+    await sweepLegacyCodes(db);
     const email = String(user.email || '').toLowerCase();
+    const trust = createTrust(base44);
 
     // This account's codes. First use: moved over from AppSettings, which keeps only a marker.
     const loadSecret = async () => {
@@ -61,8 +94,10 @@ export default async function (req) {
     };
 
     const isNetworkBranchStation = async () => {
+      // Only links the station really accepted count (a row someone else typed in can't lock anyone out)
       const branches = await db.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }, undefined, 50);
-      return branches.some(b => b.tenant_email && String(b.tenant_email).toLowerCase() !== email);
+      const others = branches.filter(b => b.tenant_email && String(b.tenant_email).toLowerCase() !== email);
+      return (await trust.confirmedLive('branch', others)).length > 0;
     };
 
     const roleFor = async (secret, code) => {
@@ -70,8 +105,8 @@ export default async function (req) {
       if (!pwd) return null;
       const network = secret.network_admin_password || DEFAULT_NETWORK;
       const branch = secret.admin_password || DEFAULT_BRANCH;
-      if (pwd === network && !(await isNetworkBranchStation())) return 'NETWORK_MASTER';
-      if (pwd === branch) return 'BRANCH_MANAGER';
+      if (safeEqual(pwd, network) && !(await isNetworkBranchStation())) return 'NETWORK_MASTER';
+      if (safeEqual(pwd, branch)) return 'BRANCH_MANAGER';
       return null;
     };
 
@@ -142,8 +177,11 @@ export default async function (req) {
     const hasNedarim = (s) => !!(s && s.nedarim_mosad);
     const networkSecret = async () => {
       // A branch station without its own settings uses its network owner's
+      // Security: only a branch the network owner created AND this station accepted — otherwise
+      // anyone could add a Branch row naming a network and read its payment key (BOLA).
       const branches = await db.Branch.filter({ station_email: user.email, status: 'ACTIVE' }, undefined, 10);
-      const tenant = branches.map(b => String(b.tenant_email || '').toLowerCase()).find(t => t && t !== email);
+      const confirmed = await trust.confirmedLive('branch', branches.filter(b => String(b.station_email || '').toLowerCase() === email));
+      const tenant = confirmed.map(b => String(b.tenant_email || '').toLowerCase()).find(t => t && t !== email);
       if (!tenant) return null;
       const [s] = await db.AdminSecret.filter({ owner_email: tenant }, 'created_date', 1);
       return s || null;
@@ -187,6 +225,8 @@ export default async function (req) {
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: error.status || 500 });
+    const status = error.status || 500;
+    if (status >= 500) console.error('adminAuth', error);
+    return Response.json({ error: status >= 500 ? 'Server error' : error.message }, { status });
   }
 }

@@ -1,3 +1,5 @@
+import { safeEqual } from './trust.ts';
+
 const DEFAULT_CODE = '0963';
 const MAX_ATTEMPTS = 5;
 const BLOCK_MINUTES = 15;
@@ -13,8 +15,22 @@ export async function getDevSettings(base44) {
 export async function verifyDevCode(base44, code) {
   const record = await getDevSettings(base44);
   const current = record.dev_code || DEFAULT_CODE;
-  if (String(code || '').trim() !== String(current)) return null;
+  if (!safeEqual(String(code || '').trim(), String(current))) return null;
   return record;
+}
+
+/**
+ * Security: the developer pages are for the developer's own account(s) only — an app admin
+ * (User.role = 'admin', i.e. the Base44 app owner) or an address listed in the DEVELOPER_EMAILS
+ * secret (comma separated). The code alone is not enough: it is short, and anyone could guess it.
+ */
+export function isDeveloper(user): boolean {
+  if (!user?.email) return false;
+  if (user.role === 'admin') return true;
+  let list = '';
+  try { list = Deno.env.get('DEVELOPER_EMAILS') || ''; } catch { list = ''; }
+  const me = String(user.email).trim().toLowerCase();
+  return list.split(',').map(s => s.trim().toLowerCase()).filter(Boolean).includes(me);
 }
 
 /**
@@ -22,7 +38,9 @@ export async function verifyDevCode(base44, code) {
  * trigger a 15 minute block. Counters live server-side in DevCodeAttempt.
  * Returns { ok: true, record } or { ok: false, status, message }.
  */
-export async function guardDevCode(base44, email, code) {
+export async function guardDevCode(base44, user, code) {
+  if (!isDeveloper(user)) return { ok: false, status: 403, message: 'גישה למפתח בלבד' };
+  const email = user.email;
   const sr = base44.asServiceRole.entities;
   const rows = await sr.DevCodeAttempt.filter({ user_email: email }, '-created_date', 1);
   const row = rows[0] || null;

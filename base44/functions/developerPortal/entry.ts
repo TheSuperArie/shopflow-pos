@@ -11,7 +11,7 @@ export default async function (req: Request): Promise<Response> {
     const { action = 'verify', code, new_code, dev_email } = body;
 
     // Rate limited: 5 wrong codes from the same account = 15 minute block
-    const guard = await guardDevCode(base44, user.email, code);
+    const guard = await guardDevCode(base44, user, code);
     if (!guard.ok) return Response.json({ error: guard.message }, { status: guard.status });
     const record = guard.record;
 
@@ -38,6 +38,7 @@ export default async function (req: Request): Promise<Response> {
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('developerPortal', error);
+    return Response.json({ error: 'Server error' }, { status: 500 });
   }
 }

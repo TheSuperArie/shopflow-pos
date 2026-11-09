@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { actingUser } from '../../shared/acting.ts';
+import { createTrust } from '../../shared/trust.ts';
 
 /**
  * Supply-order helpers that need to see the whole network, while each account can only read
@@ -23,8 +24,10 @@ export default async function (req) {
       const tenant = String(body.tenant_email || '').trim();
       if (!tenant) return Response.json({ error: 'חסרה רשת' }, { status: 400 });
       if (lc(tenant) !== lc(user.email)) {
+        // Only a branch the owner created and this station accepted (not a row the caller typed in)
         const branches = await db.Branch.filter({ station_email: user.email, tenant_email: tenant }, undefined, 10);
-        if (!branches.some(b => b.status === 'ACTIVE' || b.is_active)) {
+        const trust = createTrust(base44);
+        if (!(await trust.confirmedLive('branch', branches.filter(b => lc(b.station_email) === lc(user.email)))).length) {
           return Response.json({ error: 'אין הרשאה לרשת הזו' }, { status: 403 });
         }
       }
@@ -35,6 +38,8 @@ export default async function (req) {
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: error.status || 500 });
+    const status = error.status || 500;
+    if (status >= 500) console.error('supplyOps', error);
+    return Response.json({ error: status >= 500 ? 'Server error' : error.message }, { status });
   }
 }

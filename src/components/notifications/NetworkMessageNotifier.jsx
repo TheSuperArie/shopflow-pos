@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { fetchStationBranches } from '@/lib/networkLinks';
 
 /**
  * Plays a short two-tone "ding-dong" using the Web Audio API (no asset files needed).
@@ -50,7 +51,7 @@ export default function NetworkMessageNotifier() {
   // This account's branch as a station in someone else's network (POS branch rule)
   const { data: stationBranches = [] } = useQuery({
     queryKey: ['notifier-station-branches', user?.email],
-    queryFn: () => base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }),
+    queryFn: () => fetchStationBranches(base44, user.email),
     enabled: !!user?.email,
     staleTime: 0,
   });

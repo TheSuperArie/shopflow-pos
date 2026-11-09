@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { actingUser } from '../../shared/acting.ts';
+import { createTrust } from '../../shared/trust.ts';
 
 /**
  * All stock changes go through here (warehouse + POS):
@@ -28,6 +29,7 @@ export default async function (req) {
     const isMe = (e) => !!e && String(e).toLowerCase() === me;
     const now = () => new Date().toISOString();
     const first = async (entity, query) => (await entity.filter(query, undefined, 1))[0] || null;
+    const trust = createTrust(base44);
 
     // ── Operation log (idempotency) ──
     const getOp = (key) => first(db.StockOperation, { op_key: key });
@@ -65,7 +67,10 @@ export default async function (req) {
     const loadWarehouse = async (id) => {
       if (!id) throw httpError(400, 'חסר מחסן');
       const w = await first(db.Warehouse, { id });
-      if (!w || !(isMe(w.station_email) || isMe(w.tenant_email))) throw httpError(403, 'אין הרשאה למחסן הזה');
+      // Security (BOLA): the owner created the link and the warehouse account accepted it
+      const allowed = !!w && ((isMe(w.tenant_email) && await trust.isTenantOf(w, me))
+        || (isMe(w.station_email) && await trust.isStationOf('warehouse', w, me)));
+      if (!allowed) throw httpError(403, 'אין הרשאה למחסן הזה');
       return w;
     };
     const whOwner = (w) => ({ warehouse_id: w.id, tenant_email: w.tenant_email || null, station_email: w.station_email || null });
@@ -191,7 +196,10 @@ export default async function (req) {
     const branchScope = async (branchId) => {
       if (!branchId) return { branch_id: null, station_email: user.email, tenant_email: null };
       const b = await first(db.Branch, { id: branchId });
-      if (!b || !(isMe(b.station_email) || isMe(b.tenant_email))) throw httpError(403, 'אין הרשאה לסניף הזה');
+      // Security (BOLA): the owner created the branch and the station accepted it
+      const allowed = !!b && ((isMe(b.tenant_email) && await trust.isTenantOf(b, me))
+        || (isMe(b.station_email) && await trust.isStationOf('branch', b, me)));
+      if (!allowed) throw httpError(403, 'אין הרשאה לסניף הזה');
       return { branch_id: b.id, station_email: b.station_email, tenant_email: b.tenant_email || null };
     };
 
@@ -278,9 +286,11 @@ export default async function (req) {
       const key = `sale:${csid}`;
       let op = await getOp(key);
       if (op?.status === 'DONE') return Response.json({ ok: true, already: true });
-      const sale = await first(db.Sale, { client_sale_id: csid });
-      if (!sale) throw httpError(404, 'המכירה לא נמצאה');
-      if (!(sale.created_by_id === user.id || isMe(sale.station_email) || isMe(sale.tenant_email))) throw httpError(403, 'אין הרשאה למכירה הזו');
+      // Several accounts may hold a sale with the same client id — only the caller's own counts
+      const candidates = await db.Sale.filter({ client_sale_id: csid }, 'created_date', 10);
+      if (!candidates.length) throw httpError(404, 'המכירה לא נמצאה');
+      const sale = candidates.find(s => s.created_by_id === user.id || isMe(s.station_email) || isMe(s.tenant_email));
+      if (!sale) throw httpError(403, 'אין הרשאה למכירה הזו');
       // Branch sale: the caller must belong to that branch (403 otherwise), and only that branch's variants are deducted.
       // Single store: only variants the caller owns.
       const saleScope = sale.branch_id ? await branchScope(sale.branch_id) : null;
@@ -440,6 +450,8 @@ export default async function (req) {
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: error.status || 500 });
+    const status = error.status || 500;
+    if (status >= 500) console.error('stockOps', error);
+    return Response.json({ error: status >= 500 ? 'Server error' : error.message }, { status });
   }
 }

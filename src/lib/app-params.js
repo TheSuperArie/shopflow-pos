@@ -34,6 +34,23 @@ const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl =
 	return null;
 }
 
+// Security: the login redirect goes to app_base_url, and a ?app_base_url= link is remembered —
+// only this site or a Base44 host is accepted (no open redirect to a look-alike login page).
+const safeBaseUrl = (value) => {
+	if (!value || isNode) return value;
+	try {
+		const u = new URL(value, window.location.origin);
+		const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+		const httpsOk = u.protocol === 'https:' || (local && u.protocol === 'http:');
+		const host = u.hostname.toLowerCase();
+		const trusted = u.origin === window.location.origin || local ||
+			host === 'base44.app' || host.endsWith('.base44.app') || host === 'base44.com' || host.endsWith('.base44.com');
+		if (httpsOk && trusted) return value;
+	} catch { /* invalid URL */ }
+	try { storage.removeItem('base44_app_base_url'); } catch { /* storage blocked */ }
+	return import.meta.env.VITE_BASE44_APP_BASE_URL || null;
+}
+
 const getAppParams = () => {
 	if (getAppParamValue("clear_access_token") === 'true') {
 		storage.removeItem('base44_access_token');
@@ -44,7 +61,7 @@ const getAppParams = () => {
 		token: getAppParamValue("access_token", { removeFromUrl: true }),
 		fromUrl: getAppParamValue("from_url", { defaultValue: window.location.href }),
 		functionsVersion: getAppParamValue("functions_version", { defaultValue: import.meta.env.VITE_BASE44_FUNCTIONS_VERSION }),
-		appBaseUrl: getAppParamValue("app_base_url", { defaultValue: import.meta.env.VITE_BASE44_APP_BASE_URL }),
+		appBaseUrl: safeBaseUrl(getAppParamValue("app_base_url", { defaultValue: import.meta.env.VITE_BASE44_APP_BASE_URL })),
 	}
 }
 

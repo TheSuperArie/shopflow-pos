@@ -55,7 +55,9 @@
     "qty"
   ],
   "rls": {
-    "create": true,
+    "create": {
+      "created_by_id": "__developer_service_role_only__"
+    },
     "read": {
       "$or": [
         {
@@ -70,30 +72,10 @@
       ]
     },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "data.station_email": "{{user.email}}"
-        },
-        {
-          "data.tenant_email": "{{user.email}}"
-        }
-      ]
+      "created_by_id": "__developer_service_role_only__"
     },
     "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "data.station_email": "{{user.email}}"
-        },
-        {
-          "data.tenant_email": "{{user.email}}"
-        }
-      ]
+      "created_by_id": "__developer_service_role_only__"
     }
   }
 }

@@ -83,8 +83,8 @@ export default function ReceiptModal({ open, sale, onClose }) {
       
       const itemsHtml = sale.items.map(item => `
         <tr>
-          <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.product_name}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee;">${esc(item.product_name)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${esc(item.quantity)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: left;">₪${item.sell_price.toFixed(2)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: left; font-weight: bold;">₪${(item.quantity * item.sell_price).toFixed(2)}</td>
         </tr>
@@ -94,15 +94,15 @@ export default function ReceiptModal({ open, sale, onClose }) {
         <div style="direction: rtl; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #F5EFE3;">
           <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #1E2433; margin: 0; font-family: Georgia, serif;">${storeName}</h1>
+              <h1 style="color: #1E2433; margin: 0; font-family: Georgia, serif;">${esc(storeName)}</h1>
               <p style="color: #666; margin: 5px 0;">קבלה דיגיטלית</p>
             </div>
             
             <div style="background-color: #F5EFE3; border: 1px solid #E2D8C4; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <p style="margin: 5px 0;"><strong>מספר קבלה:</strong> ${receipt.receipt_number}</p>
+              <p style="margin: 5px 0;"><strong>מספר קבלה:</strong> ${esc(receipt.receipt_number)}</p>
               <p style="margin: 5px 0;"><strong>תאריך:</strong> ${receiptDate}</p>
-              <p style="margin: 5px 0;"><strong>שם לקוח:</strong> ${customerName || 'לקוח'}</p>
-              <p style="margin: 5px 0;"><strong>אמצעי תשלום:</strong> ${sale.payment_method}</p>
+              <p style="margin: 5px 0;"><strong>שם לקוח:</strong> ${esc(customerName || 'לקוח')}</p>
+              <p style="margin: 5px 0;"><strong>אמצעי תשלום:</strong> ${esc(sale.payment_method)}</p>
             </div>
             ${creditHtml(sale, 'background-color: #FFFDF8; border: 1px solid #E2D8C4; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;', 'margin: 4px 0;')}
 
@@ -126,7 +126,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
 
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 14px;">
               <p>תודה שקנית אצלנו!</p>
-              <p style="margin: 5px 0;">לשירות ותמיכה, צור קשר עם ${storeName}</p>
+              <p style="margin: 5px 0;">לשירות ותמיכה, צור קשר עם ${esc(storeName)}</p>
             </div>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
 
       await base44.integrations.Core.SendEmail({
         to: customerEmail,
-        subject: `קבלה ${receipt.receipt_number} - ${storeName}`,
+        subject: `קבלה ${esc(receipt.receipt_number)} - ${esc(storeName)}`,
         body: emailBody,
         from_name: storeName,
       });
@@ -174,7 +174,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
     printWindow.document.write(`
       <html dir="rtl">
         <head>
-          <title>קבלה ${receiptNumber}</title>
+          <title>קבלה ${esc(receiptNumber)}</title>
           <style>
             body { font-family: Arial, sans-serif; color: #1E2433; padding: 40px; max-width: 800px; margin: 0 auto; }
             .header { text-align: center; margin-bottom: 30px; border-bottom: 3px double #1E2433; padding-bottom: 20px; }
@@ -191,14 +191,14 @@ export default function ReceiptModal({ open, sale, onClose }) {
         </head>
         <body>
           <div class="header">
-            <h1>${storeName}</h1>
+            <h1>${esc(storeName)}</h1>
             <p>קבלה דיגיטלית</p>
           </div>
           <div class="info">
-            <p><strong>מספר קבלה:</strong> ${receiptNumber}</p>
+            <p><strong>מספר קבלה:</strong> ${esc(receiptNumber)}</p>
             <p><strong>תאריך:</strong> ${receiptDate}</p>
-            <p><strong>שם לקוח:</strong> ${customerName || 'לקוח'}</p>
-            <p><strong>אמצעי תשלום:</strong> ${sale.payment_method}</p>
+            <p><strong>שם לקוח:</strong> ${esc(customerName || 'לקוח')}</p>
+            <p><strong>אמצעי תשלום:</strong> ${esc(sale.payment_method)}</p>
           </div>
           ${creditHtml(sale, 'border: 1px solid #E2D8C4; padding: 14px 20px; border-radius: 8px; margin-bottom: 30px; font-size: 14px;', 'margin: 4px 0;')}
           <table>
@@ -213,8 +213,8 @@ export default function ReceiptModal({ open, sale, onClose }) {
             <tbody>
               ${sale.items.map(item => `
                 <tr>
-                  <td>${item.product_name}</td>
-                  <td style="text-align: center;">${item.quantity}</td>
+                  <td>${esc(item.product_name)}</td>
+                  <td style="text-align: center;">${esc(item.quantity)}</td>
                   <td style="text-align: left;">₪${item.sell_price.toFixed(2)}</td>
                   <td style="text-align: left; font-weight: bold;">₪${(item.quantity * item.sell_price).toFixed(2)}</td>
                 </tr>
@@ -226,7 +226,7 @@ export default function ReceiptModal({ open, sale, onClose }) {
           </div>
           <div class="footer">
             <p>תודה שקנית אצלנו!</p>
-            <p>${storeName}</p>
+            <p>${esc(storeName)}</p>
           </div>
         </body>
       </html>

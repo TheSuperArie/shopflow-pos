@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { filterUpTo } from '@/lib/fetchAllPages';
+import { confirmedLinkIds, keepConfirmed } from '@/lib/networkLinks';
 
 /**
  * Resolves the branch the current station account belongs to — the same
@@ -13,7 +14,14 @@ export function useCurrentBranch() {
 
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ['current-branch', user?.email],
-    queryFn: () => base44.entities.Branch.filter({ station_email: user.email }),
+    // Only a branch this station accepted (a Branch row naming it proves nothing — see networkLinks.js)
+    queryFn: async () => {
+      const [rows, ids] = await Promise.all([
+        base44.entities.Branch.filter({ station_email: user.email }),
+        confirmedLinkIds(base44, user.email),
+      ]);
+      return ids ? keepConfirmed(rows, ids) : rows.filter(b => !b.status || b.status === 'ACTIVE');
+    },
     enabled: !!user,
   });
 

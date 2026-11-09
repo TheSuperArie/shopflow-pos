@@ -6,6 +6,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Warehouse, CheckCircle2, XCircle } from 'lucide-react';
+import { fetchMyWarehouses, resetConfirmedLinks } from '@/lib/networkLinks';
 
 const ALLOWED_FOR_WAREHOUSE = ['/Warehouse', '/UsageAnalytics'];
 const cacheKey = (email) => `warehouse-gate:${email}`;
@@ -25,7 +26,8 @@ export default function WarehouseGate({ children }) {
 
   const { data: records, isLoading } = useQuery({
     queryKey: ['my-warehouse', email],
-    queryFn: () => base44.entities.Warehouse.filter({ station_email: email }),
+    // An ACTIVE row counts only when this account accepted it (anyone can create a Warehouse row naming it)
+    queryFn: () => fetchMyWarehouses(base44, email),
     enabled: !!email,
     staleTime: 300000,
     retry: false,
@@ -44,9 +46,9 @@ export default function WarehouseGate({ children }) {
 
   const respond = useMutation({
     mutationFn: async (accept) => {
-      await base44.entities.Warehouse.update(pending.id, accept
-        ? { status: 'ACTIVE', is_active: true }
-        : { status: 'REJECTED', is_active: false });
+      // Answered on the server, which records the acceptance (NetworkMembership)
+      await base44.functions.invoke('networkMembership', { action: accept ? 'accept' : 'decline', kind: 'warehouse', id: pending.id });
+      resetConfirmedLinks();
       if (accept) {
         await base44.entities.NetworkAlert.create({
           tenant_email: pending.tenant_email,

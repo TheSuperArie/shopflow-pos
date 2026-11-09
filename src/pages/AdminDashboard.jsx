@@ -6,6 +6,7 @@ import BranchDashboard from '@/components/dashboard/BranchDashboard';
 import BranchInvitationBanner from '@/components/dashboard/BranchInvitationBanner';
 import ShortageOrderBanner from '@/components/dashboard/ShortageOrderBanner';
 import { useQuery } from '@tanstack/react-query';
+import { fetchStationBranches } from '@/lib/networkLinks';
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
@@ -19,7 +20,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const [own, station] = await Promise.all([
         base44.entities.Branch.filter({ tenant_email: user.email }),
-        base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }),
+        fetchStationBranches(base44, user.email),
       ]);
       return station.length > 0 ? station : own;
     },

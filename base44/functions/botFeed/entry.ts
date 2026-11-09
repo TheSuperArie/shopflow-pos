@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { createTrust } from '../../shared/trust.ts';
 
 /**
  * READ-ONLY feed for the owner's Google Chat bot ("קציר", Apps Script).
@@ -135,9 +136,23 @@ export default async function (req) {
     const body = await req.json().catch(() => ({}));
     const action = body.action;
 
-    const allBranches = (await tag('Branch', db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100)))
-      .filter(b => !HIDDEN_BRANCHES.has(b.id));
-    const branches = allBranches.filter(isLive);
+    // Security: only branches / warehouses the owner created and the station accepted, and only
+    // rows really written by the branch or the owner — tenant_email / branch_id alone can be typed in.
+    const trust = createTrust(base44, { readOnly: true });
+    const allBranches = [];
+    for (const b of await tag('Branch', db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100))) {
+      if (!HIDDEN_BRANCHES.has(b.id) && await trust.isTenantAuthored(b)) allBranches.push(b);
+    }
+    const branches = await trust.confirmedLive('branch', allBranches.filter(isLive));
+    const stationOf = new Map(allBranches.map(b => [b.id, lc(b.station_email)]));
+    const byBranchParty = async (rows) => {
+      const out = [];
+      for (const r of await trust.cleanActing(rows)) {
+        const who = lc(r.acting_owner || r.created_by);
+        if (who === lc(TENANT) || (who && who === stationOf.get(r.branch_id))) out.push(r);
+      }
+      return out;
+    };
     const branchName = new Map(allBranches.map(b => [b.id, String(b.name || '').trim()]));
     const pickBranches = (wanted) => {
       if (!wanted) return branches;
@@ -146,8 +161,8 @@ export default async function (req) {
       if (!found.length) throw httpError(404, `סניף "${wanted}" לא נמצא. הסניפים: ${branches.map(b => b.name).join(', ')}`);
       return found;
     };
-    const warehousesOf = async () => (await tag('Warehouse', db.Warehouse.filter({ tenant_email: TENANT }, undefined, 20)))
-      .filter(w => w.status === 'ACTIVE' || (!w.status && w.is_active !== false));
+    const warehousesOf = async () => trust.confirmedLive('warehouse',
+      await tag('Warehouse', db.Warehouse.filter({ tenant_email: TENANT }, undefined, 20)));
 
     // ---------------------------------------------------------------- overview
     if (action === 'overview') {
@@ -166,7 +181,7 @@ export default async function (req) {
       const chosen = pickBranches(body.branch);
       const ids = chosen.map(b => b.id);
       const { rows, partial } = await tag('Sale', fetchAll(db.Sale, { created_date: r.q, branch_id: { $in: ids } }, '-created_date'));
-      const sales = rows.filter(s => r.inRange(s.created_date));
+      const sales = (await byBranchParty(rows)).filter(s => r.inRange(s.created_date));
 
       const cashOf = (s) => s.payment_method === 'מזומן' ? num(s.total) : s.payment_method === 'מזומן + אשראי' ? num(s.cash_amount) : 0;
       const creditOf = (s) => s.payment_method === 'אשראי' ? num(s.total)
@@ -279,7 +294,9 @@ export default async function (req) {
             fetchAll(entity, ownedBy(station), sort),
             fetchAll(entity, { branch_id: branch.id }, sort),
           ]);
-          return dedupe(asOwnerRows([...own.rows, ...stamped.rows])).filter(r => !r.branch_id || r.branch_id === branch.id);
+          const mine = await trust.ownedRows(own.rows, station);
+          const forBranch = await byBranchParty(stamped.rows);
+          return dedupe(asOwnerRows([...mine, ...forBranch])).filter(r => !r.branch_id || r.branch_id === branch.id);
         };
         const [categories, groups, variants] = await Promise.all([load(db.Category), load(db.ProductGroup), load(db.ProductVariant)]);
         const cat = new Map(categories.map(c => [c.id, String(c.name || '').trim()]));
@@ -377,7 +394,7 @@ export default async function (req) {
       const r = range(body, 30);
       const ids = pickBranches(body.branch).map(b => b.id);
       const { rows } = await fetchAll(db.Return, { created_date: r.q, branch_id: { $in: ids } }, '-created_date');
-      const list = rows.filter(x => r.inRange(x.created_date));
+      const list = (await byBranchParty(rows)).filter(x => r.inRange(x.created_date));
       const sum = (f) => round(list.filter(f).reduce((s, x) => s + num(x.total_amount), 0));
       const name = (i) => `${String(i.product_name || i.name || '').trim()}${i.variant_label ? ' ' + i.variant_label : ''} x${num(i.quantity) || 1}`;
       return Response.json({
@@ -398,6 +415,8 @@ export default async function (req) {
 
     throw httpError(400, 'Unknown action');
   } catch (error) {
-    return Response.json({ error: error.message }, { status: error.status || 500 });
+    const status = error.status || 500;
+    if (status >= 500) console.error('botFeed', error);
+    return Response.json({ error: status >= 500 ? 'Server error' : error.message }, { status });
   }
 }

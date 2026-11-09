@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { fetchStationBranches } from '@/lib/networkLinks';
 
 const SESSION_KEY = 'usage_log_recorded';
 
@@ -24,7 +25,7 @@ export function useUsageLogger() {
       let branch = null;
       let ownsNetwork = false;
       try {
-        const asStation = await base44.entities.Branch.filter({ station_email: user.email, status: 'ACTIVE' });
+        const asStation = await fetchStationBranches(base44, user.email, { status: 'ACTIVE' });
         branch = asStation.find(b => b.tenant_email && b.tenant_email !== user.email) || null;
         const owned = await base44.entities.Branch.filter({ tenant_email: user.email });
         ownsNetwork = owned.length > 0;
