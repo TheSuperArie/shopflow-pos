@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { createTrust } from '../../shared/trust.ts';
 
 /**
  * Feed for the separate public stock site ("מלאי תומכי תורה").
@@ -44,7 +45,14 @@ export default async function (req) {
     if (!safeEqual(req.headers.get('x-feed-key'), key)) throw httpError(401, 'Unauthorized');
 
     const body = await req.json().catch(() => ({}));
-    const branches = (await db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100)).filter(isLive);
+    // Security: only branches the owner created and the station accepted; only rows really written by
+    // the station or the owner (a forged tenant_email / acting_owner / branch_id can't reach the public site)
+    const trust = createTrust(base44, { readOnly: true });
+    const authored = [];
+    for (const b of await db.Branch.filter({ tenant_email: TENANT }, 'created_date', 100)) {
+      if (await trust.isTenantAuthored(b)) authored.push(b);
+    }
+    const branches = await trust.confirmedLive('branch', authored.filter(isLive));
 
     if (body.action === 'branches') {
       return Response.json({
@@ -66,7 +74,12 @@ export default async function (req) {
           entity.filter(ownedBy(station), sort, 5000),
           entity.filter({ branch_id: branch.id }, sort, 5000),
         ]);
-        return dedupe(asOwnerRows([...own, ...stamped]))
+        const mine = await trust.ownedRows(own, station);
+        const forBranch = (await trust.cleanActing(stamped)).filter(r => {
+          const who = lc(r.acting_owner || r.created_by);
+          return who === station || who === lc(TENANT);
+        });
+        return dedupe(asOwnerRows([...mine, ...forBranch]))
           .filter(r => !r.branch_id || r.branch_id === branch.id);
       };
       const [categories, groups, variants] = await Promise.all([
@@ -110,7 +123,8 @@ export default async function (req) {
           id: g.id,
           n: String(g.name || '').trim(),
           c: g.category_id || null,
-          img: g.image_url || '',
+          // Only https image links reach the public site (no javascript:/data: URLs)
+          img: /^https:\/\//i.test(String(g.image_url || '')) ? String(g.image_url) : '',
           v: list,
         });
       }
@@ -140,6 +154,8 @@ export default async function (req) {
 
     throw httpError(400, 'Unknown action');
   } catch (error) {
-    return Response.json({ error: error.message }, { status: error.status || 500 });
+    const status = error.status || 500;
+    if (status >= 500) console.error('publicStockFeed', error);
+    return Response.json({ error: status >= 500 ? 'Server error' : error.message }, { status });
   }
 }

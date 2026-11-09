@@ -1,3 +1,4 @@
+import { confirmedLinkIds, keepConfirmed } from '@/lib/networkLinks';
 /**
  * Automatic ownership stamping (station_email / tenant_email) for every newly
  * created store record. Metadata only — never overrides values the caller set,
@@ -18,11 +19,13 @@ export function createOwnershipResolver(client) {
 
   const loadCtx = async () => {
     const me = await client.auth.me();
-    const [stations, owned] = await Promise.all([
+    const [stations, owned, ids] = await Promise.all([
       client.entities.Branch.filter({ station_email: me.email }),
       client.entities.Branch.filter({ tenant_email: me.email }, undefined, 1),
+      confirmedLinkIds(client, me.email),
     ]);
-    const active = stations.filter(isActive);
+    // Security: never stamp records with a network this account did not accept (BOLA)
+    const active = keepConfirmed(stations.filter(isActive), ids);
     return { email: me.email, station: active.length === 1 ? active[0] : null, isMaster: owned.length > 0 };
   };
 

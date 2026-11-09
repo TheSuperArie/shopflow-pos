@@ -13,6 +13,7 @@ import { Plus, Building2, Phone, Mail, MapPin, CreditCard, Package, Edit, Dollar
 import { format } from 'date-fns';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import TransactionLedger from '@/components/supplier/TransactionLedger';
+import { escapeHtml } from '@/lib/utils';
 
 export default function AdminSuppliers() {
   const [showSupplierForm, setShowSupplierForm] = useState(false);
@@ -382,22 +383,22 @@ function PaymentFormModal({ open, supplier, onClose, queryClient, toast }) {
             <div class="title">אישור תשלום</div>
           </div>
           <div class="section">
-            <span class="label">שם הספק:</span> <span class="value">${supplier.name}</span>
+            <span class="label">שם הספק:</span> <span class="value">${escapeHtml(supplier.name)}</span>
           </div>
           <div class="section">
             <span class="label">תאריך תשלום:</span> <span class="value">${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</span>
           </div>
           <div class="section">
-            <span class="label">אמצעי תשלום:</span> <span class="value">${payment.payment_method}</span>
+            <span class="label">אמצעי תשלום:</span> <span class="value">${escapeHtml(payment.payment_method)}</span>
           </div>
           <div class="section">
-            <span class="label">מספר אסמכתא:</span> <span class="value">${payment.reference_number || '—'}</span>
+            <span class="label">מספר אסמכתא:</span> <span class="value">${escapeHtml(payment.reference_number || '—')}</span>
           </div>
           <div class="amount-box">
             <div>סכום התשלום:</div>
             <div class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</div>
           </div>
-          ${payment.notes ? `<div class="section"><span class="label">הערות:</span> <span class="value">${payment.notes}</span></div>` : ''}
+          ${payment.notes ? `<div class="section"><span class="label">הערות:</span> <span class="value">${escapeHtml(payment.notes)}</span></div>` : ''}
           <div class="footer">
             <p>אישור זה נוצר בתאריך ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
           </div>
@@ -631,22 +632,22 @@ function SupplierDetailsModal({ open, supplier, orders, payments, onClose, onAdd
             <div class="title">אישור תשלום</div>
           </div>
           <div class="section">
-            <span class="label">שם הספק:</span> <span class="value">${supplier.name}</span>
+            <span class="label">שם הספק:</span> <span class="value">${escapeHtml(supplier.name)}</span>
           </div>
           <div class="section">
             <span class="label">תאריך תשלום:</span> <span class="value">${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</span>
           </div>
           <div class="section">
-            <span class="label">אמצעי תשלום:</span> <span class="value">${payment.payment_method}</span>
+            <span class="label">אמצעי תשלום:</span> <span class="value">${escapeHtml(payment.payment_method)}</span>
           </div>
           <div class="section">
-            <span class="label">מספר אסמכתא:</span> <span class="value">${payment.reference_number || '—'}</span>
+            <span class="label">מספר אסמכתא:</span> <span class="value">${escapeHtml(payment.reference_number || '—')}</span>
           </div>
           <div class="amount-box">
             <div>סכום התשלום:</div>
             <div class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</div>
           </div>
-          ${payment.notes ? `<div class="section"><span class="label">הערות:</span> <span class="value">${payment.notes}</span></div>` : ''}
+          ${payment.notes ? `<div class="section"><span class="label">הערות:</span> <span class="value">${escapeHtml(payment.notes)}</span></div>` : ''}
           <div class="footer">
             <p>אישור זה נוצר בתאריך ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
           </div>

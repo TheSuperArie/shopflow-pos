@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "npm:@base44/sdk@0.8.44": "./mock/sdk.ts",
+    "npm:@base44/sdk@0.8.52": "./mock/sdk.ts"
+  },
+  "lock": false,
+  "compilerOptions": { "strict": false, "noImplicitAny": false }
+}

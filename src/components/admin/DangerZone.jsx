@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/components/ui/use-toast';
 import { AlertTriangle, Loader2, Trash2, PackageX, ArchiveX } from 'lucide-react';
 import { fetchAllPages } from '@/lib/fetchAllPages';
+import { fetchStationBranches } from '@/lib/networkLinks';
 
 const ACTIONS = [
   {
@@ -117,7 +118,7 @@ export default function DangerZone({ user }) {
       // The branch this station belongs to (null for a standalone store)
       let branchId = null;
       try {
-        const branches = await base44.entities.Branch.filter({ station_email: email });
+        const branches = await fetchStationBranches(base44, email, {});
         branchId = branches[0]?.id || null;
       } catch {
         branchId = null;

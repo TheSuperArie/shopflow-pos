@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Mail } from 'lucide-react';
+import { resetConfirmedLinks } from '@/lib/networkLinks';
 
 /**
  * Shows a prominent banner when the local admin has a PENDING branch invitation.
@@ -16,7 +17,9 @@ export default function BranchInvitationBanner({ invitation, userEmail }) {
 
   const accept = useMutation({
     mutationFn: async () => {
-      await base44.entities.Branch.update(invitation.id, { status: 'ACTIVE', is_active: true });
+      // Accepted on the server, which records it (NetworkMembership) — see networkLinks.js
+      await base44.functions.invoke('networkMembership', { action: 'accept', kind: 'branch', id: invitation.id });
+      resetConfirmedLinks();
       // Notify the Master Admin (tenant_email on the branch is the master's email)
       await base44.entities.NetworkAlert.create({
         tenant_email: invitation.tenant_email,
@@ -38,7 +41,10 @@ export default function BranchInvitationBanner({ invitation, userEmail }) {
   });
 
   const decline = useMutation({
-    mutationFn: () => base44.entities.Branch.update(invitation.id, { status: 'REJECTED', is_active: false }),
+    mutationFn: async () => {
+      await base44.functions.invoke('networkMembership', { action: 'decline', kind: 'branch', id: invitation.id });
+      resetConfirmedLinks();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', userEmail] });
       queryClient.invalidateQueries({ queryKey: ['pending-invitations', userEmail] });

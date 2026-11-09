@@ -16,6 +16,7 @@ import NetworkLevelExpensesTab from '@/components/network/master/NetworkLevelExp
 import NetworkSupplyCenter from '@/components/supply/NetworkSupplyCenter';
 import NetworkWarehouseStockTab from '@/components/network/warehouse/NetworkWarehouseStockTab';
 import NetworkOrderDistributionTab from '@/components/network/master/NetworkOrderDistributionTab';
+import { fetchStationBranches } from '@/lib/networkLinks';
 
 export default function NetworkMasterDashboard() {
   // Returning from a branch insights page restores the tab (and branch) it was opened from
@@ -45,7 +46,7 @@ export default function NetworkMasterDashboard() {
   // it may only view the network it joined (entered via the master's code).
   const { data: myStationBranches = [] } = useQuery({
     queryKey: ['my-station-branch', currentUser?.email],
-    queryFn: () => base44.entities.Branch.filter({ station_email: currentUser.email, is_active: true, status: 'ACTIVE' }),
+    queryFn: () => fetchStationBranches(base44, currentUser.email),
     enabled: !!currentUser?.email,
   });
   const joinedMasterEmail = myStationBranches.find(b => b.tenant_email && b.tenant_email !== currentUser?.email)?.tenant_email || null;

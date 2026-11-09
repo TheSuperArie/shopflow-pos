@@ -22,11 +22,13 @@ import { delegateOwnerOf } from '../../shared/acting.ts';
 const lc = (s) => String(s || '').trim().toLowerCase();
 
 // Readable by every signed-in account anyway (open read rules) — no read scope
-const OPEN_READ = new Set(['AppSettings', 'Branch', 'BranchProductVisibility']);
-// Open write rules
-const OPEN_WRITE = new Set(['BranchProductVisibility']);
+const OPEN_READ = new Set(['AppSettings', 'Branch']);
+// Open write rules (none — every table is scoped to its network)
+const OPEN_WRITE = new Set<string>();
 // Never through here
-const BLOCKED = new Set(['User', 'AccessRequest', 'AdminSecret', 'DevCodeAttempt', 'DeveloperSettings', 'TicketChat', 'UsageLog']);
+const BLOCKED = new Set(['User', 'AccessRequest', 'AdminSecret', 'DevCodeAttempt', 'DeveloperSettings', 'TicketChat', 'UsageLog', 'NetworkMembership']);
+// Written only by the server functions (stockOps / networkMembership) — read-only here
+const SERVER_WRITE_ONLY = new Set(['StockOperation', 'StockReservation']);
 // Same list as the browser's ownership stamping (src/lib/ownershipStamp.js)
 const STAMPED = new Set([
   'Sale', 'Expense', 'Return', 'Credit', 'Category', 'ProductGroup', 'ProductVariant',
@@ -116,7 +118,7 @@ export default async function (req) {
       else own = { station_email: owner, tenant_email: owner };
       return { ...d, station_email: d.station_email || own.station_email, tenant_email: d.tenant_email || own.tenant_email };
     };
-    const mayWrite = (r) => OPEN_WRITE.has(name) || inWriteScope(r, owner);
+    const mayWrite = (r) => !SERVER_WRITE_ONLY.has(name) && (OPEN_WRITE.has(name) || inWriteScope(r, owner));
     const loadOne = async (id) => (await entity.filter({ id }, undefined, 1))[0] || null;
 
     switch (body.op) {
@@ -162,6 +164,8 @@ export default async function (req) {
         throw httpError(400, 'Unknown op');
     }
   } catch (error) {
-    return Response.json({ error: error.message }, { status: error.status || 500 });
+    const status = error.status || 500;
+    if (status >= 500) console.error('networkDelegate', error);
+    return Response.json({ error: status >= 500 ? 'Server error' : error.message }, { status });
   }
 }

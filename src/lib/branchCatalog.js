@@ -1,4 +1,5 @@
 import { filterUpTo } from '@/lib/fetchAllPages';
+import { fetchStationBranches } from '@/lib/networkLinks';
 
 /**
  * The catalog a branch POS shows = records the station account created itself
@@ -27,10 +28,11 @@ export async function fetchPosCatalogRecords(entity, userEmail, branchId, sort, 
 }
 
 /** Branches this account may operate as: an approved station branch first, else its own branches. */
-export async function fetchPosBranches(entities, userEmail) {
+export async function fetchPosBranches(client, userEmail) {
+  // Station branches only when this account accepted them (see networkLinks.js)
   const [own, station] = await Promise.all([
-    entities.Branch.filter({ tenant_email: userEmail }),
-    entities.Branch.filter({ station_email: userEmail, is_active: true, status: 'ACTIVE' }),
+    client.entities.Branch.filter({ tenant_email: userEmail }),
+    fetchStationBranches(client, userEmail),
   ]);
   return station.length > 0 ? station : own;
 }

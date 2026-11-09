@@ -17,6 +17,7 @@ import VirtualFolderManager from '@/components/admin/VirtualFolderManager';
 import AdminCodeChange from '@/components/admin/AdminCodeChange';
 import NedarimSettingsCard from '@/components/admin/NedarimSettingsCard';
 import PosWatermarkCard from '@/components/admin/PosWatermarkCard';
+import { fetchStationBranches } from '@/lib/networkLinks';
 
 export default function AdminSettings() {
   const [storeName, setStoreName] = useState('');
@@ -51,7 +52,7 @@ export default function AdminSettings() {
   // If this store joined a network as a branch station, the branch name is set by the network owner
   const { data: myNetworkBranches = [] } = useQuery({
     queryKey: ['my-network-branch-settings', user?.email],
-    queryFn: () => user ? base44.entities.Branch.filter({ station_email: user.email, is_active: true, status: 'ACTIVE' }) : [],
+    queryFn: () => user ? fetchStationBranches(base44, user.email) : [],
     enabled: !!user,
   });
   const networkBranch = myNetworkBranches.find(b => b.tenant_email && b.tenant_email !== user?.email) || null;

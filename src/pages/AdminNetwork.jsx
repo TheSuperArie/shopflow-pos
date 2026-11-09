@@ -26,7 +26,10 @@ export default function AdminNetwork() {
   });
 
   const createBranch = useMutation({
-    mutationFn: (data) => base44.entities.Branch.create({ ...data, tenant_email: tenantEmail, is_active: true }),
+    // An invitation, like the network screen: the station must accept it (and the system approve it)
+    mutationFn: (data) => base44.entities.Branch.create({
+      ...data, tenant_email: tenantEmail, is_active: false, status: 'PENDING', system_approval: 'PENDING_SYSTEM',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches', tenantEmail] });
       setShowForm(false);

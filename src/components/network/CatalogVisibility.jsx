@@ -36,6 +36,9 @@ export default function CatalogVisibility({ branch, tenantEmail }) {
             branch_id: branch.id,
             product_group_id: group.id,
             is_visible: false,
+            // ownership fields — the table's access rules scope rows to the network / branch
+            tenant_email: branch.tenant_email || tenantEmail,
+            station_email: branch.station_email || null,
           });
         }
       } else {

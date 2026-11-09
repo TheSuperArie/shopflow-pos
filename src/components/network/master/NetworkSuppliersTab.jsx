@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Plus, Building2, Phone, Mail, MapPin, CreditCard, Package, Edit, DollarSign, Printer, History } from 'lucide-react';
 import { format } from 'date-fns';
 import TransactionLedger from '@/components/supplier/TransactionLedger';
+import { escapeHtml } from '@/lib/utils';
 
 export default function NetworkSuppliersTab({ tenantEmail }) {
   const [showSupplierForm, setShowSupplierForm] = useState(false);
@@ -267,7 +268,7 @@ function PaymentFormModal({ open, supplier, tenantEmail, onClose, queryClient, t
 
   const handlePrint = (payment) => {
     const w = window.open('', '', 'width=800,height=600');
-    w.document.write(`<html dir="rtl"><head><title>אישור תשלום</title><style>body{font-family:Arial;padding:20px;direction:rtl}.amount{font-size:28px;font-weight:bold;color:#2c5aa0}</style></head><body><h2>אישור תשלום</h2><p><b>ספק:</b> ${supplier.name}</p><p><b>תאריך:</b> ${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</p><p><b>אמצעי:</b> ${payment.payment_method}</p><p class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</p>${payment.notes ? `<p>${payment.notes}</p>` : ''}</body></html>`);
+    w.document.write(`<html dir="rtl"><head><title>אישור תשלום</title><style>body{font-family:Arial;padding:20px;direction:rtl}.amount{font-size:28px;font-weight:bold;color:#2c5aa0}</style></head><body><h2>אישור תשלום</h2><p><b>ספק:</b> ${escapeHtml(supplier.name)}</p><p><b>תאריך:</b> ${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</p><p><b>אמצעי:</b> ${escapeHtml(payment.payment_method)}</p><p class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</p>${payment.notes ? `<p>${escapeHtml(payment.notes)}</p>` : ''}</body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 250);
   };
@@ -375,7 +376,7 @@ function SupplierDetailsModal({ open, supplier, tenantEmail, orders, payments, o
 
   const handlePrintPayment = (payment) => {
     const w = window.open('', '', 'width=800,height=600');
-    w.document.write(`<html dir="rtl"><head><title>אישור תשלום</title><style>body{font-family:Arial;padding:20px;direction:rtl}.amount{font-size:28px;font-weight:bold;color:#2c5aa0}</style></head><body><h2>אישור תשלום</h2><p><b>ספק:</b> ${supplier.name}</p><p><b>תאריך:</b> ${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</p><p class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</p></body></html>`);
+    w.document.write(`<html dir="rtl"><head><title>אישור תשלום</title><style>body{font-family:Arial;padding:20px;direction:rtl}.amount{font-size:28px;font-weight:bold;color:#2c5aa0}</style></head><body><h2>אישור תשלום</h2><p><b>ספק:</b> ${escapeHtml(supplier.name)}</p><p><b>תאריך:</b> ${format(new Date(payment.payment_date), 'dd/MM/yyyy')}</p><p class="amount">₪${payment.amount.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</p></body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 250);
   };

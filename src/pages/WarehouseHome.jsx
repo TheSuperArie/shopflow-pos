@@ -18,6 +18,7 @@ import PinPadDialog from '@/components/warehouse/PinPadDialog';
 import PickerPortal from '@/components/warehouse/PickerPortal';
 import WarehouseAdmin, { DEFAULT_WAREHOUSE_CODE } from '@/components/warehouse/WarehouseAdmin';
 import { orderTotals, formatOrderDate } from '@/lib/supplyOrders';
+import { fetchMyWarehouses } from '@/lib/networkLinks';
 
 /**
  * The warehouse account's whole app: incoming orders, picking, ready orders, chat with the network.
@@ -40,7 +41,7 @@ export default function WarehouseHome() {
 
   const { data: records = [], isLoading: loadingWarehouse } = useQuery({
     queryKey: ['my-warehouse', user?.email],
-    queryFn: () => base44.entities.Warehouse.filter({ station_email: user.email }),
+    queryFn: () => fetchMyWarehouses(base44, user.email),
     enabled: !!user?.email,
     staleTime: 300000,
   });

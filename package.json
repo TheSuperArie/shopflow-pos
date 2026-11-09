@@ -9,13 +9,16 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "security:policy": "node security/check-policy.mjs",
+    "security:test": "deno test --no-check --config security/deno.json --allow-env --allow-read security/tests",
+    "security:audit": "npm audit --omit=dev --audit-level=high",
+    "security": "npm run security:policy && npm run security:test && npm run security:audit"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.57",
     "@base44/vite-plugin": "^1.0.48",
     "@hello-pangea/dnd": "^17.0.0",
-    "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -68,7 +71,6 @@
     "react-hot-toast": "^2.6.0",
     "react-leaflet": "^4.2.1",
     "react-markdown": "^9.0.1",
-    "react-quill": "^2.0.0",
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^6.26.0",
     "recharts": "^2.15.4",
@@ -76,8 +78,7 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.171.0",
-    "vaul": "^1.1.2",
-    "zod": "^3.24.2"
+    "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

@@ -11,7 +11,7 @@ export function usePosBranch() {
   const user = useCurrentUser();
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ['pos-branches', user?.email],
-    queryFn: () => fetchPosBranches(base44.entities, user.email),
+    queryFn: () => fetchPosBranches(base44, user.email),
     enabled: !!user?.email,
     staleTime: 120000,
   });

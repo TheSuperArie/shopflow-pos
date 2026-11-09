@@ -1,0 +1,69 @@
+{
+  "name": "NetworkMembership",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "branch",
+        "warehouse"
+      ],
+      "description": "Security: written only by the server (function networkMembership) after the station accepted. Branch = branch station of a network, warehouse = warehouse account of a network"
+    },
+    "link_id": {
+      "type": "string",
+      "description": "Branch.id or Warehouse.id that was accepted"
+    },
+    "station_email": {
+      "type": "string",
+      "description": "The station / warehouse account that accepted the invitation (lower case)"
+    },
+    "tenant_email": {
+      "type": "string",
+      "description": "The network owner that sent the invitation (lower case)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "REVOKED"
+      ],
+      "default": "ACTIVE"
+    },
+    "accepted_at": {
+      "type": "string",
+      "description": "ISO time of acceptance"
+    },
+    "legacy": {
+      "type": "boolean",
+      "description": "Recorded automatically for a link that existed before NetworkMembership (snapshot of the station/owner pair it was trusted with)"
+    }
+  },
+  "required": [
+    "kind",
+    "link_id",
+    "station_email",
+    "tenant_email"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.station_email": "{{user.email}}"
+        },
+        {
+          "data.tenant_email": "{{user.email}}"
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "__developer_service_role_only__"
+    },
+    "update": {
+      "created_by_id": "__developer_service_role_only__"
+    },
+    "delete": {
+      "created_by_id": "__developer_service_role_only__"
+    }
+  }
+}
